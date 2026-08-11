@@ -22,7 +22,7 @@ class ProductionSchemaSnapshotTest(unittest.TestCase):
         result = subprocess.run(["git", "-C", str(source), *args], check=True, capture_output=True, text=True)
         return result.stdout.strip()
 
-    def _source_repo(self) -> tuple[tempfile.TemporaryDirectory, Path, str]:
+    def _source_repo(self, schema_text: str | None = None) -> tuple[tempfile.TemporaryDirectory, Path, str]:
         temporary = tempfile.TemporaryDirectory()
         source = Path(temporary.name) / "production"
         source.mkdir()
@@ -30,7 +30,9 @@ class ProductionSchemaSnapshotTest(unittest.TestCase):
         schema = source / "schemas" / "external" / "production-result.v1.schema.json"
         schema.parent.mkdir(parents=True)
         schema.write_text(
-            json.dumps({"$schema": "https://json-schema.org/draft/2020-12/schema", "type": "object"}) + "\n",
+            schema_text
+            if schema_text is not None
+            else json.dumps({"$schema": "https://json-schema.org/draft/2020-12/schema", "type": "object"}) + "\n",
             encoding="utf-8",
         )
         self._git(source, "add", ".")
@@ -101,6 +103,122 @@ class ProductionSchemaSnapshotTest(unittest.TestCase):
                 version="1.0.0",
             )
         self.assertFalse((root / "schemas" / "external" / "production-result.v1.schema.json").exists())
+
+    def test_commit_mismatch_is_rejected_before_snapshot(self) -> None:
+        source_temporary, source, commit = self._source_repo()
+        research_temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(source_temporary.cleanup)
+        self.addCleanup(research_temporary.cleanup)
+        root = self._research_root(research_temporary)
+
+        with self.assertRaisesRegex(SchemaSnapshotError, "EXTERNAL-SCHEMA-SOURCE"):
+            snapshot_schema(
+                root,
+                source,
+                "schemas/external/production-result.v1.schema.json",
+                Path("schemas/external/production-result.v1.schema.json"),
+                source_repository="masa-san-jp/agentic-art-production",
+                commit="0" * 40,
+                acquired_at="2026-08-12T00:30:00+09:00",
+                version="1.0.0",
+            )
+        self.assertNotEqual(commit, "0" * 40)
+        self.assertFalse((root / "schemas" / "external" / "production-result.v1.schema.json").exists())
+
+    def test_invalid_schema_is_rejected_before_snapshot(self) -> None:
+        source_temporary, source, _commit = self._source_repo("[]\n")
+        research_temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(source_temporary.cleanup)
+        self.addCleanup(research_temporary.cleanup)
+        root = self._research_root(research_temporary)
+
+        with self.assertRaisesRegex(SchemaSnapshotError, "EXTERNAL-SCHEMA-SCHEMA"):
+            snapshot_schema(
+                root,
+                source,
+                "schemas/external/production-result.v1.schema.json",
+                Path("schemas/external/production-result.v1.schema.json"),
+                source_repository="masa-san-jp/agentic-art-production",
+                commit=self._git(source, "rev-parse", "HEAD"),
+                acquired_at="2026-08-12T00:30:00+09:00",
+                version="1.0.0",
+            )
+        self.assertFalse((root / "schemas" / "external" / "production-result.v1.schema.json").exists())
+
+    def test_output_outside_external_schema_directory_is_rejected(self) -> None:
+        source_temporary, source, commit = self._source_repo()
+        research_temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(source_temporary.cleanup)
+        self.addCleanup(research_temporary.cleanup)
+        root = self._research_root(research_temporary)
+
+        with self.assertRaisesRegex(SchemaSnapshotError, "EXTERNAL-SCHEMA-PATH"):
+            snapshot_schema(
+                root,
+                source,
+                "schemas/external/production-result.v1.schema.json",
+                Path("schemas/not-external.json"),
+                source_repository="masa-san-jp/agentic-art-production",
+                commit=commit,
+                acquired_at="2026-08-12T00:30:00+09:00",
+                version="1.0.0",
+            )
+        self.assertFalse((root / "schemas" / "not-external.json").exists())
+
+    def test_different_existing_snapshot_is_never_overwritten(self) -> None:
+        source_temporary, source, commit = self._source_repo()
+        research_temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(source_temporary.cleanup)
+        self.addCleanup(research_temporary.cleanup)
+        root = self._research_root(research_temporary)
+        output = Path("schemas/external/production-result.v1.schema.json")
+        kwargs = {
+            "source_repository": "masa-san-jp/agentic-art-production",
+            "commit": commit,
+            "acquired_at": "2026-08-12T00:30:00+09:00",
+            "version": "1.0.0",
+        }
+        snapshot_schema(root, source, output.as_posix(), output, **kwargs)
+        original = (root / output).read_bytes()
+
+        source_schema = source / "schemas" / "external" / "production-result.v1.schema.json"
+        source_schema.write_text(
+            json.dumps({"$schema": "https://json-schema.org/draft/2020-12/schema", "type": "array"}) + "\n",
+            encoding="utf-8",
+        )
+        self._git(source, "add", ".")
+        subprocess.run(
+            [
+                "git",
+                "-C",
+                str(source),
+                "-c",
+                "user.name=fixture",
+                "-c",
+                "user.email=fixture@example.invalid",
+                "commit",
+                "--quiet",
+                "-m",
+                "fixture-update",
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        changed_commit = self._git(source, "rev-parse", "HEAD")
+
+        with self.assertRaisesRegex(SchemaSnapshotError, "EXTERNAL-SCHEMA-OVERWRITE"):
+            snapshot_schema(
+                root,
+                source,
+                output.as_posix(),
+                output,
+                source_repository="masa-san-jp/agentic-art-production",
+                commit=changed_commit,
+                acquired_at="2026-08-12T00:30:00+09:00",
+                version="1.0.0",
+            )
+        self.assertEqual(original, (root / output).read_bytes())
 
 
 if __name__ == "__main__":
