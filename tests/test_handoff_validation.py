@@ -113,7 +113,7 @@ class HandoffValidationTest(unittest.TestCase):
             "missing-requirement": ("HANDOFF-REQUIREMENT", lambda handoff, project: handoff.update({"requirements": []})),
             "handoff-reference": ("HANDOFF-REFERENCE", lambda handoff, project: handoff.update({"research_project_id": "project/other"})),
             "selection": ("HANDOFF-SELECTION", lambda handoff, project: handoff["selection"].update({"status": "HUMAN_SELECTION_REQUIRED", "selected_hypothesis_id": "PH001", "human_approval_required": True})),
-            "supersede-cycle": ("HANDOFF-LIFECYCLE", lambda handoff, project: handoff.update({"status": "SUPERSEDED", "supersedes": "HO001", "revision": 2})),
+            "supersede-cycle": ("HANDOFF-LIFECYCLE", lambda handoff, project: handoff.update({"supersedes": "HO001", "revision": 2})),
             "blocking-gap": ("HANDOFF-READINESS", lambda handoff, project: handoff["open_gaps"][0].update({"blocking": True})),
         }
         for name, (rule, mutate) in mutations.items():
@@ -231,6 +231,63 @@ class HandoffValidationTest(unittest.TestCase):
 
     def test_feedback_requires_production_owned_schema_snapshot(self) -> None:
         project = self.make_handoff_project()
+        feedback_path = project / "07_runtime" / "production-feedback-imports.jsonl"
+        feedback_path.write_text(json.dumps({"schema_version": "1.0.0", "result_id": "PR001"}) + "\n", encoding="utf-8")
+        findings = self.findings_for(project)
+        self.assertTrue(any(item.rule == "EXTERNAL-SCHEMA" for item in findings), [item.render() for item in findings])
+
+    def test_uncertainty_and_requirement_snapshots_remain_mutually_traceable(self) -> None:
+        project = self.make_handoff_project()
+        hypothesis_path = project / "04_decisions" / "production-hypotheses.yaml"
+        hypotheses = yaml.safe_load(hypothesis_path.read_text(encoding="utf-8"))
+        hypotheses["hypotheses"][0]["uncertainties"][0]["prototype_plan_ids"] = ["PP999"]
+        hypothesis_path.write_text(yaml.safe_dump(hypotheses, sort_keys=False, allow_unicode=True), encoding="utf-8")
+        findings = self.findings_for(project)
+        self.assertTrue(any(item.rule == "UNCERTAINTY-PROTOTYPE" for item in findings), [item.render() for item in findings])
+
+        project = self.make_handoff_project()
+        plan_path = project / "05_production" / "prototype-plans.yaml"
+        plans = yaml.safe_load(plan_path.read_text(encoding="utf-8"))
+        plans["prototype_plans"][0]["uncertainty_ids"] = ["U999"]
+        plan_path.write_text(yaml.safe_dump(plans, sort_keys=False, allow_unicode=True), encoding="utf-8")
+        findings = self.findings_for(project)
+        self.assertTrue(any(item.rule == "UNCERTAINTY-PROTOTYPE" for item in findings), [item.render() for item in findings])
+
+        project = self.make_handoff_project()
+        handoff_path = project / "05_production" / "production-handoff.yaml"
+        handoff = yaml.safe_load(handoff_path.read_text(encoding="utf-8"))
+        handoff["requirements"][0]["source_decision_ids"] = ["DC999"]
+        handoff["requirements"][0]["acceptance_test_ids"] = ["AT999"]
+        handoff["integrity"]["content_sha256"] = handoff_sha256(handoff)
+        handoff_path.write_text(yaml.safe_dump(handoff, sort_keys=False, allow_unicode=True), encoding="utf-8")
+        findings = self.findings_for(project)
+        self.assertTrue(any(item.rule == "HANDOFF-REQUIREMENT" for item in findings), [item.render() for item in findings])
+
+    def test_selection_supersedes_security_and_schema_versions_fail_closed(self) -> None:
+        project = self.make_handoff_project()
+        handoff_path = project / "05_production" / "production-handoff.yaml"
+        handoff = yaml.safe_load(handoff_path.read_text(encoding="utf-8"))
+        handoff["selection"]["selected_hypothesis_id"] = None
+        handoff["integrity"]["content_sha256"] = handoff_sha256(handoff)
+        handoff_path.write_text(yaml.safe_dump(handoff, sort_keys=False, allow_unicode=True), encoding="utf-8")
+        findings = self.findings_for(project)
+        self.assertTrue(any(item.rule == "HANDOFF-SELECTION" for item in findings), [item.render() for item in findings])
+
+        project = self.make_handoff_project()
+        handoff_path = project / "05_production" / "production-handoff.yaml"
+        handoff = yaml.safe_load(handoff_path.read_text(encoding="utf-8"))
+        handoff.update({"handoff_id": "HO002", "revision": 2, "supersedes": "HO001"})
+        handoff["constraints"]["safety"].append("Distribution is unrestricted; compare input / output.")
+        handoff["integrity"]["content_sha256"] = handoff_sha256(handoff)
+        handoff_path.write_text(yaml.safe_dump(handoff, sort_keys=False, allow_unicode=True), encoding="utf-8")
+        findings = self.findings_for(project)
+        self.assertFalse(any(item.rule in {"HANDOFF-LIFECYCLE", "HANDOFF-SECURITY"} for item in findings), [item.render() for item in findings])
+
+        schema_path = project.parents[1] / "schemas" / "external" / "production-result.v1.schema.json"
+        schema_path.write_text(
+            json.dumps({"$schema": "https://json-schema.org/draft/2020-12/schema", "type": "object"}) + "\n",
+            encoding="utf-8",
+        )
         feedback_path = project / "07_runtime" / "production-feedback-imports.jsonl"
         feedback_path.write_text(json.dumps({"schema_version": "1.0.0", "result_id": "PR001"}) + "\n", encoding="utf-8")
         findings = self.findings_for(project)

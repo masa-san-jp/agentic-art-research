@@ -353,6 +353,8 @@ READY → REJECTED
 
 既存handoffを上書きして意味を変えない。内容変更時は新しいhandoff IDまたはrevisionを生成し、`supersedes` を記録する。
 
+`supersedes`は現在のhandoffが置き換える過去のhandoff IDを指すため、現在のstatusが`READY`または`ACCEPTED`でも使用できる。`SUPERSEDED`は過去handoff側の状態であり、`supersedes`を後継IDとして解釈してはならない。
+
 ## 10. Production Result還流契約
 
 production側から最低限次を受け取る。

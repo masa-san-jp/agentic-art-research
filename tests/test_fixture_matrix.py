@@ -331,7 +331,7 @@ class ValidationFixtureMatrixTest(unittest.TestCase):
         elif setup == "handoff-lifecycle":
             path = project / "05_production" / "production-handoff.yaml"
             handoff = yaml.safe_load(path.read_text(encoding="utf-8"))
-            handoff.update({"status": "SUPERSEDED", "supersedes": "HO001", "revision": 2})
+            handoff.update({"supersedes": "HO001", "revision": 2})
             path.write_text(yaml.safe_dump(handoff, sort_keys=False, allow_unicode=True), encoding="utf-8")
         elif setup == "handoff-readiness":
             path = project / "05_production" / "production-handoff.yaml"

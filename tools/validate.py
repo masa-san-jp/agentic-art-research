@@ -370,7 +370,11 @@ COMPARISON_PATH = "04_decisions/hypothesis-comparison.yaml"
 PROTOTYPES_PATH = "05_production/prototype-plans.yaml"
 CREATIVE_DIRECTION_PATH = "05_production/creative-direction.md"
 FEEDBACK_PATH = "07_runtime/production-feedback-imports.jsonl"
-ABSOLUTE_PATH_PATTERN = re.compile(r"(?:^|[\s(])(?:/|[A-Za-z]:[\\/]|~[\\/]|file://)", re.IGNORECASE)
+ABSOLUTE_PATH_PATTERN = re.compile(
+    r"(?:^|[\s(])(?:/(?!/)\S+|[A-Za-z]:[\\/]\S*|~[\\/]\S*|file://\S+)",
+    re.IGNORECASE,
+)
+PROHIBITED_CLASSIFICATION_PATTERN = re.compile(r"(?<![A-Z0-9_])(?:PRIVATE_RAW|RESTRICTED)(?![A-Z0-9_])")
 
 
 def _handoff_finding(
@@ -564,6 +568,19 @@ def _check_external_schema_compatibility(
     supported_versions = policy.get("production_result_schema_versions", [])
     if not isinstance(supported_versions, list):
         supported_versions = []
+    if not supported_versions:
+        findings.append(
+            _handoff_finding(
+                root,
+                project,
+                FEEDBACK_PATH,
+                "EXTERNAL-SCHEMA",
+                "production feedback is present but no supported production result schema version is configured",
+                field="schema_version",
+                remediation="List only reviewed versions backed by immutable production-owned schema snapshots in config/handoff-policy.yaml.",
+            )
+        )
+        return
     for line, record in feedback_records:
         version = record.get("schema_version")
         if supported_versions and version not in supported_versions:
@@ -601,7 +618,17 @@ def _check_handoff_security(
     payload = handoff_hash_payload(handoff)
     payload_bytes = canonical_json_bytes(payload)
     max_payload = policy.get("max_payload_bytes", 262144)
-    if isinstance(max_payload, int) and len(payload_bytes) > max_payload:
+    if type(max_payload) is not int or max_payload <= 0:
+        findings.append(
+            Finding(
+                "config/handoff-policy.yaml",
+                "HANDOFF-SECURITY",
+                "max_payload_bytes must be a positive integer",
+                field="max_payload_bytes",
+                remediation="Set a positive bounded payload size before validating or exporting a handoff.",
+            )
+        )
+    elif len(payload_bytes) > max_payload:
         findings.append(
             _handoff_finding(
                 root,
@@ -623,10 +650,9 @@ def _check_handoff_security(
         except re.error:
             continue
     signed_markers = [str(marker).lower() for marker in policy.get("signed_url_markers", []) if isinstance(marker, str)]
-    blocking_tokens = {str(token).upper() for token in ("PRIVATE_RAW", "RESTRICTED")}
     for field, value in _iter_string_values(handoff):
         upper_value = value.upper()
-        if any(token in upper_value for token in blocking_tokens):
+        if PROHIBITED_CLASSIFICATION_PATTERN.search(upper_value):
             findings.append(
                 _handoff_finding(
                     root,
@@ -717,6 +743,12 @@ def _check_handoff_contract(
     if not isinstance(prototype_plans, list):
         prototype_plans = []
 
+    prototype_by_id = {
+        plan.get("id"): plan
+        for plan in prototype_plans
+        if isinstance(plan, dict) and isinstance(plan.get("id"), str)
+    }
+
     if not hypotheses:
         findings.append(
             _handoff_finding(
@@ -754,7 +786,9 @@ def _check_handoff_contract(
             severity = uncertainty.get("severity")
             plan_ids = uncertainty.get("prototype_plan_ids") if isinstance(uncertainty.get("prototype_plan_ids"), list) else []
             external_reason = uncertainty.get("external_validation_reason")
-            if severity in {"MAJOR", "CRITICAL"} and not plan_ids and not isinstance(external_reason, str):
+            if severity in {"MAJOR", "CRITICAL"} and not plan_ids and (
+                not isinstance(external_reason, str) or not external_reason.strip()
+            ):
                 findings.append(
                     _handoff_finding(
                         root,
@@ -763,9 +797,38 @@ def _check_handoff_contract(
                         "UNCERTAINTY-PROTOTYPE",
                         f"{severity} uncertainty {uncertainty.get('id', uncertainty_index)!r} has no prototype plan or external validation basis",
                         field=f"hypotheses[{hypothesis_index}].uncertainties[{uncertainty_index}].prototype_plan_ids",
-                        remediation="Connect the uncertainty to a Prototype Plan that tests it, or extend the contract with an explicit approved external-validation basis.",
+                        remediation="Connect the uncertainty to a Prototype Plan that tests it, or record an explicit external-validation basis.",
                     )
                 )
+            uncertainty_id = uncertainty.get("id")
+            hypothesis_id = hypothesis.get("id")
+            for plan_index, plan_id in enumerate(plan_ids):
+                plan = prototype_by_id.get(plan_id)
+                if not isinstance(plan, dict):
+                    findings.append(
+                        _handoff_finding(
+                            root,
+                            project,
+                            HYPOTHESES_PATH,
+                            "UNCERTAINTY-PROTOTYPE",
+                            f"uncertainty {uncertainty_id!r} references missing Prototype Plan {plan_id!r}",
+                            field=f"hypotheses[{hypothesis_index}].uncertainties[{uncertainty_index}].prototype_plan_ids[{plan_index}]",
+                            remediation="Create the referenced Prototype Plan or remove the stale plan ID.",
+                        )
+                    )
+                    continue
+                if plan.get("hypothesis_id") != hypothesis_id or uncertainty_id not in plan.get("uncertainty_ids", []):
+                    findings.append(
+                        _handoff_finding(
+                            root,
+                            project,
+                            HYPOTHESES_PATH,
+                            "UNCERTAINTY-PROTOTYPE",
+                            f"uncertainty {uncertainty_id!r} and Prototype Plan {plan_id!r} do not reference each other within hypothesis {hypothesis_id!r}",
+                            field=f"hypotheses[{hypothesis_index}].uncertainties[{uncertainty_index}].prototype_plan_ids[{plan_index}]",
+                            remediation="Make the hypothesis, uncertainty, and Prototype Plan references mutually consistent.",
+                        )
+                    )
 
     if len(hypotheses) == 1:
         rationale = hypotheses[0].get("single_hypothesis_rationale") if isinstance(hypotheses[0], dict) else None
@@ -810,7 +873,10 @@ def _check_handoff_contract(
     for plan_index, plan in enumerate(prototype_plans):
         if not isinstance(plan, dict):
             continue
-        if plan.get("status") == "EXTERNAL_VALIDATION_REQUIRED" and not isinstance(plan.get("external_validation_reason"), str):
+        if plan.get("status") == "EXTERNAL_VALIDATION_REQUIRED" and (
+            not isinstance(plan.get("external_validation_reason"), str)
+            or not plan["external_validation_reason"].strip()
+        ):
             findings.append(
                 _handoff_finding(
                     root,
@@ -920,26 +986,30 @@ def _check_handoff_contract(
                 remediation="Clear selected_hypothesis_id and set human_approval_required to true until a human selects a candidate.",
             )
         )
-    if selection_status == "HUMAN_SELECTED" and (authority != "human-approved" or human_approval_required is True):
+    if selection_status == "HUMAN_SELECTED" and (
+        not isinstance(selected_id, str) or authority != "human-approved" or human_approval_required is not False
+    ):
         findings.append(
             _handoff_finding(
                 root,
                 project,
                 HANDOFF_PATH,
                 "HANDOFF-SELECTION",
-                "HUMAN_SELECTED requires human-approved authority and cannot still require approval",
+                "HUMAN_SELECTED requires a selected hypothesis, human-approved authority, and completed approval",
                 field="selection",
                 remediation="Record the human-approved authority only after the human selection is complete.",
             )
         )
-    if selection_status == "AGENT_RECOMMENDED" and human_approval_required is True:
+    if selection_status == "AGENT_RECOMMENDED" and (
+        not isinstance(selected_id, str) or authority != "agent-recommended" or human_approval_required is not False
+    ):
         findings.append(
             _handoff_finding(
                 root,
                 project,
                 HANDOFF_PATH,
                 "HANDOFF-SELECTION",
-                "AGENT_RECOMMENDED cannot claim a completed selection while human approval is required",
+                "AGENT_RECOMMENDED requires a selected hypothesis, agent-recommended authority, and no pending human approval",
                 field="selection.human_approval_required",
                 remediation="Use HUMAN_SELECTION_REQUIRED for an unresolved human choice or clear the approval flag for an agent recommendation.",
             )
@@ -977,18 +1047,6 @@ def _check_handoff_contract(
     lifecycle_status = handoff.get("status")
     supersedes = handoff.get("supersedes")
     revision = handoff.get("revision")
-    if lifecycle_status == "SUPERSEDED" and not supersedes:
-        findings.append(
-            _handoff_finding(
-                root,
-                project,
-                HANDOFF_PATH,
-                "HANDOFF-LIFECYCLE",
-                "SUPERSEDED handoff must identify the handoff it supersedes",
-                field="supersedes",
-                remediation="Create a new handoff ID and record the previous handoff ID in supersedes.",
-            )
-        )
     if supersedes == handoff.get("handoff_id"):
         findings.append(
             _handoff_finding(
@@ -1013,19 +1071,6 @@ def _check_handoff_contract(
                 remediation="Increment revision when superseding an earlier handoff or clear supersedes for the initial revision.",
             )
         )
-    if lifecycle_status != "SUPERSEDED" and supersedes:
-        findings.append(
-            _handoff_finding(
-                root,
-                project,
-                HANDOFF_PATH,
-                "HANDOFF-LIFECYCLE",
-                f"handoff status {lifecycle_status!r} is inconsistent with supersedes",
-                field="status",
-                remediation="Use SUPERSEDED when replacing an earlier handoff, or clear supersedes for active states.",
-            )
-        )
-
     if lifecycle_status == "READY":
         for gap_index, gap in enumerate(handoff.get("open_gaps", [])):
             if not isinstance(gap, dict):
@@ -1118,6 +1163,22 @@ def _check_handoff_contract(
                     f"handoff requirement {requirement_id!r} changes the canonical statement or priority",
                     field=f"requirements[{requirement_index}]",
                     remediation="Treat production-requirements.yaml as the source of truth and regenerate the handoff snapshot.",
+                )
+            )
+        snapshot_decisions = set(snapshot.get("source_decision_ids", []))
+        canonical_decisions = set(source.get("source_decisions", []))
+        snapshot_tests = set(snapshot.get("acceptance_test_ids", []))
+        canonical_tests = set(source.get("acceptance_test_ids", []))
+        if snapshot_decisions != canonical_decisions or snapshot_tests != canonical_tests:
+            findings.append(
+                _handoff_finding(
+                    root,
+                    project,
+                    HANDOFF_PATH,
+                    "HANDOFF-REQUIREMENT",
+                    f"handoff requirement {requirement_id!r} changes canonical decision or acceptance-test references",
+                    field=f"requirements[{requirement_index}]",
+                    remediation="Copy the exact source_decisions and acceptance_test_ids from the canonical requirement before regenerating the handoff.",
                 )
             )
         for test_index, test_id in enumerate(snapshot.get("acceptance_test_ids", [])):

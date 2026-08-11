@@ -1,5 +1,5 @@
 version: 2
-updated_at: "2026-08-11T21:26:00+09:00"
+updated_at: "2026-08-11T22:00:00+09:00"
 selection_policy: lowest_id_ready_with_dependencies_done
 allowed_statuses: [BACKLOG, READY, IN_PROGRESS, BLOCKED, DONE]
 tasks:
@@ -168,7 +168,7 @@ tasks:
   - id: HANDOFF-BUILD-001
     milestone: H3
     title: Build deterministic production handoff bundles
-    status: BACKLOG
+    status: IN_PROGRESS
     depends_on: [HANDOFF-VALIDATE-001]
     acceptance: Canonical sources generate byte-identical handoff bundles connected to graph, bundle, and impact outputs.
   - id: FEEDBACK-IMPORT-001
