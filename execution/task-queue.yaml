@@ -120,6 +120,6 @@ tasks:
   - id: RELEASE-001
     milestone: M6
     title: Release v1.0.0
-    status: IN_PROGRESS
+    status: DONE
     depends_on: [EVAL-002]
     acceptance: Design specification section 19.2 is fully checked and CI passes three times.
