@@ -1,5 +1,5 @@
 version: 1
-updated_at: "2026-08-11T15:51:34+09:00"
+updated_at: "2026-08-11T16:00:32+09:00"
 selection_policy: lowest_id_ready_with_dependencies_done
 allowed_statuses: [BACKLOG, READY, IN_PROGRESS, BLOCKED, DONE]
 tasks:
@@ -54,13 +54,13 @@ tasks:
   - id: IMPACT-001
     milestone: M2
     title: Complete change impact analysis
-    status: READY
+    status: DONE
     depends_on: [GRAPH-001]
     acceptance: Upstream and downstream impact are emitted as JSON and Markdown.
   - id: AUDIT-001
     milestone: M2
     title: Complete non-blocking audit
-    status: BACKLOG
+    status: READY
     depends_on: [GRAPH-001]
     acceptance: Orphans, bias, stale evidence, weak decisions, and unrun tests are reported.
   - id: SAMPLE-001

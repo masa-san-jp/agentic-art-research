@@ -13,3 +13,4 @@
 | 2026-08-11 | ED-007 | TEST-001では正常生成プロジェクトへ単一変異を適用する動的fixtureと、既存スキーマfixtureを一つのYAMLマトリクスで管理 | 全blocking ruleを重複の少ない再現可能な入力として確認するため | `tests/fixtures/validation-matrix.yaml`、`tests/test_fixture_matrix.py` |
 | 2026-08-11 | ED-008 | グラフの辺はプロジェクトスコープの `project/<slug>::<local-id>` を参照し、裸のIDの影響分析は一意な場合だけ許可 | 複数プロジェクトに同じローカルIDが存在しても証拠の影響範囲を混同しないため | `tools/build_graph.py`、`tools/impact.py`、`tools/audit.py` |
 | 2026-08-11 | ED-009 | BUNDLE-001はaudienceごとの固定相対パスを全件解決し、解決済みソース一覧をbundleへ出力する | 必要文脈の欠落を成功扱いにせず、bundleの範囲を監査可能にするため | `tools/bundle.py`、`tests/test_bundle.py` |
+| 2026-08-11 | ED-010 | IMPACT-001は同じレポートモデルをJSONとMarkdownへ変換し、上流・下流をともに深さ付きBFSで列挙する | CLI、機械処理、人間レビューで同じ影響範囲を再利用するため | `tools/impact.py`、`tests/test_graph.py` |
