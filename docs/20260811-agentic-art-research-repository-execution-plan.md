@@ -45,6 +45,7 @@ python3 tools/bundle.py project/harmony-study --audience human
 - [x] (2026-08-11) `IMPACT-001`: upstream/downstream影響をJSONまたはMarkdownで出力。
 - [x] (2026-08-11) `AUDIT-001`: 孤立、出典偏り、鮮度、弱い判断、未実施試験を非ブロッキング警告として出力。
 - [x] (2026-08-11) `SAMPLE-001`: 固定timestampの合成offline fixtureから`COMPLETE_WITH_GAPS`のtraceable packageを再生成。
+- [x] (2026-08-11) `COMPLETE-001`: `COMPLETE`と`COMPLETE_WITH_GAPS`のcompletion reportを決定論的・schema-validに生成。
 - [ ] M1b: 全JSON Schema検証と参照整合性を実装。
 - [ ] M2: 依存グラフ、バンドル、影響分析、監査を実用レベルへ完成。
 - [ ] M3: 代表サンプルプロジェクトを固定fixtureで完走。
@@ -66,6 +67,7 @@ python3 tools/bundle.py project/harmony-study --audience human
 - 2026-08-11: 既存の影響分析は下流JSONだけで、判断や要件の根拠を遡れなかった。辺を反転したBFSとJSON/Markdown共通レポートを追加した。
 - 2026-08-11: 鮮度は入力に依存する時間変化する警告なので、`retention-policy.yaml` の証拠review日数と監査時刻を分離注入し、validatorのblocking判定には混ぜない。
 - 2026-08-11: 代表fixtureを再現可能にするには、通常の現在時刻付き雛形生成と、固定timestamp・overlay入力によるoffline実行を分離する必要があった。
+- 2026-08-11: terminal completionは現在時刻を暗黙に使うと再生成差分になるため、既存の固定timestampまたは明示引数を使い、VALIDATINGから合法な遷移イベントを記録する仕様にした。
 
 ## Decision Log
 
@@ -82,10 +84,11 @@ python3 tools/bundle.py project/harmony-study --audience human
 | 2026-08-11 | IMPACT-001は同じレポートモデルをJSONとMarkdownへ変換し、上流・下流をともに深さ付きBFSで列挙する | CLI、機械処理、人間レビューで同じ影響範囲を再利用するため |
 | 2026-08-11 | AUDIT-001の鮮度判定は設定済みreview日数と注入可能な現在時刻で行い、監査結果はexit code 0の警告にする | 時間依存の品質確認を再現可能にし、調査途中のプロジェクトをcommit阻止しないため |
 | 2026-08-11 | SAMPLE-001は固定metadataで雛形を生成し、fixture内の正本overlayを適用後、validatorとgraphを再生成する | 同じ入力から同じterminal packageを作り、個人・外部原文を含めないため |
+| 2026-08-11 | COMPLETE-001は既存または明示されたRFC 3339時刻をcompletion reportと状態更新へ使い、`VALIDATING`からterminal状態へのイベントを追記する | 完了判定を決定論的にし、状態機械と再開情報を同時に保持するため |
 
 ## Outcomes & Retrospective
 
-M0/M1a、`SCHEMA-001`、`VALIDATE-001`、`SECURITY-001`、`VALIDATE-002`、`TEST-001`、`GRAPH-001`、`BUNDLE-001`、`IMPACT-001`、`AUDIT-001`、`SAMPLE-001`完了時点では、プロジェクト雛形の生成、Draft 2020-12スキーマ検証、JSONL行番号付きエラー、YAML重複キー検出、機密・秘密境界検査、参照整合性、状態遷移と試験接続の検査、blocking ruleの正常・失敗fixtureマトリクス、プロジェクトスコープで決定的な依存グラフ、4 audienceの範囲制限付きbundle生成、upstream/downstreamのJSON・Markdown影響分析、出典偏り・鮮度・弱い判断・未実施試験の非ブロッキング監査、固定offline fixtureからの`COMPLETE_WITH_GAPS` package再生成、CI初期版が実行可能になる。調査Orchestratorと外部アダプタは未実装であり、「自律リサーチ完成」とはまだ呼ばない。
+M0/M1a、`SCHEMA-001`、`VALIDATE-001`、`SECURITY-001`、`VALIDATE-002`、`TEST-001`、`GRAPH-001`、`BUNDLE-001`、`IMPACT-001`、`AUDIT-001`、`SAMPLE-001`、`COMPLETE-001`完了時点では、プロジェクト雛形の生成、Draft 2020-12スキーマ検証、JSONL行番号付きエラー、YAML重複キー検出、機密・秘密境界検査、参照整合性、状態遷移と試験接続の検査、blocking ruleの正常・失敗fixtureマトリクス、プロジェクトスコープで決定的な依存グラフ、4 audienceの範囲制限付きbundle生成、upstream/downstreamのJSON・Markdown影響分析、出典偏り・鮮度・弱い判断・未実施試験の非ブロッキング監査、固定offline fixtureからの`COMPLETE_WITH_GAPS` package再生成、両terminal statusの決定論的completion生成、CI初期版が実行可能になる。調査Orchestratorと外部アダプタは未実装であり、「自律リサーチ完成」とはまだ呼ばない。
 
 ## Context and Orientation
 
