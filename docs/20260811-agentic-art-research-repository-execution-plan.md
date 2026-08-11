@@ -56,12 +56,14 @@ python3 tools/bundle.py project/harmony-study --audience human
 - [x] (2026-08-11) `RELEASE-001`: 設計仕様§19.2の10項目、必要パス、CI相当3回、offline fixture、5ゲートを確認するv1.0.0チェックリストを実装。
 - [x] (2026-08-11) `SECURITY-002`: symlink、外部path traversal、unsafe archiveの非展開検査をvalidatorとCIへ接続。
 - [x] (2026-08-11) `CHAOS-001`: API停止、破損JSONL、期限切れlease、重複effectを合成rootで再現する決定的chaos suiteをCIへ接続。
-- [ ] M1b: 全JSON Schema検証と参照整合性を実装。
-- [ ] M2: 依存グラフ、バンドル、影響分析、監査を実用レベルへ完成。
-- [ ] M3: 代表サンプルプロジェクトを固定fixtureで完走。
-- [ ] M4: 状態機械と自律Orchestratorを実装。
+- [x] M1b: 全JSON Schema検証と参照整合性を実装。
+- [x] M2: 依存グラフ、バンドル、影響分析、監査を実用レベルへ完成。
+- [x] M3: 代表サンプルプロジェクトを固定fixtureで完走。
+- [x] M4: 状態機械と自律Orchestratorを実装。
 - [x] M5: `art-history-notes` と個人証拠保管先のアダプタを実装。
-- [ ] M6: 評価、セキュリティ、回帰、リリース判定を完成。
+- [x] `DOCS-001`: 導入、通常運用、障害対応、モデル別開始プロンプトを契約化。
+- [x] `RELEASE-002`: 追加hardeningを含む最終リリースゲートを三回実行。
+- [x] M6: 評価、セキュリティ、回帰、運用文書、リリース判定を完成。
 
 ## Surprises & Discoveries
 
@@ -88,6 +90,8 @@ python3 tools/bundle.py project/harmony-study --audience human
 - 2026-08-11: リリース判定は公開やタグ作成と分離し、設計仕様§19.2のチェック済み件数、workflowの必須コマンド、offline評価、CI相当コマンド3回をローカルで検査する。外部公開は人間承認対象として実行しない。
 - 2026-08-11: SECURITY-002ではアーカイブを展開しない。member名、サイズ、権限、リンク種別、禁止拡張子・ファイル名だけを検査し、symlinkはリポジトリ内を指す場合も監査対象にする。
 - 2026-08-11: CHAOS-001は外部APIを呼ばず、停止を`TIMEOUT`へ分類するfake faultと、task runtime・validatorの既存契約を一時rootで組み合わせる。各シナリオは固定時刻で結果を比較できる。
+- 2026-08-11: DOCS-001では運用文書の必須見出しを`config/documentation.yaml`へ置き、文書の存在と内容をCIで検査する。モデル起動文は機密境界と外部操作の禁止を含む合成テキストに限定した。
+- 2026-08-11: RELEASE-002ではsecurity、chaos、documentationをMVPとCI相当3回の各実行へ組み込む。リリースゲートは引き続き公開・タグ作成・外部送信を行わない。
 
 ## Decision Log
 
@@ -113,7 +117,7 @@ python3 tools/bundle.py project/harmony-study --audience human
 
 ## Outcomes & Retrospective
 
-M0/M1a、`SCHEMA-001`、`VALIDATE-001`、`SECURITY-001`、`VALIDATE-002`、`TEST-001`、`GRAPH-001`、`BUNDLE-001`、`IMPACT-001`、`AUDIT-001`、`SAMPLE-001`、`COMPLETE-001`、`RUNTIME-001`、`RUNTIME-002`、`RUNTIME-003`、`RUNTIME-004`、`INTEGRATION-001`、`INTEGRATION-002`、`EVAL-002`、`RELEASE-001`完了時点では、プロジェクト雛形の生成、Draft 2020-12スキーマ検証、JSONL行番号付きエラー、YAML重複キー検出、機密・秘密境界検査、参照整合性、状態遷移と試験接続の検査、blocking ruleの正常・失敗fixtureマトリクス、プロジェクトスコープで決定的な依存グラフ、4 audienceの範囲制限付きbundle生成、upstream/downstreamのJSON・Markdown影響分析、出典偏り・鮮度・弱い判断・未実施試験の非ブロッキング監査、固定offline fixtureからの`COMPLETE_WITH_GAPS` package再生成、両terminal statusの決定論的completion生成、状態機械とrun-log replay、依存DAG・lease・bounded retry・failure classification・resume、検索・資料・失敗・飽和の設定上限と質問終端化、タスク最小のロールコンテキストパック、外部KBのstable reference adapter、private-sourceのno-raw adapter、5ゲートの決定的評価、MVP release checklist、CI初期版が実行可能になる。運用hardeningの追加項目は別タスク化してから着手し、「自律リサーチ完成」とは公開運用まで含む意味ではまだ呼ばない。
+M0からM6までの全タスクが完了し、プロジェクト雛形の生成、Draft 2020-12スキーマ検証、JSONL行番号付きエラー、YAML重複キー検出、機密・秘密境界検査、参照整合性、状態遷移と試験接続の検査、blocking ruleの正常・失敗fixtureマトリクス、プロジェクトスコープで決定的な依存グラフ、4 audienceの範囲制限付きbundle生成、upstream/downstreamのJSON・Markdown影響分析、出典偏り・鮮度・弱い判断・未実施試験の非ブロッキング監査、固定offline fixtureからの`COMPLETE_WITH_GAPS` package再生成、両terminal statusの決定論的completion生成、状態機械とrun-log replay、依存DAG・lease・bounded retry・failure classification・resume、検索・資料・失敗・飽和の設定上限と質問終端化、タスク最小のロールコンテキストパック、外部KBのstable reference adapter、private-sourceのno-raw adapter、5ゲートの決定的評価、symlink・path traversal・unsafe archive検査、停止・破損・中断・重複のchaos検査、運用文書契約、MVP release checklist、追加hardeningを含む三回のCI相当最終ゲートが実行可能になった。公開運用、外部送信、タグ作成、GitHub Releaseは引き続き人間承認の範囲として実行していない。
 
 ## Context and Orientation
 
@@ -249,6 +253,7 @@ fixtureから同じ完了パッケージを再生成でき、採用要件の追�
 3. `CHAOS-001`: API停止、壊れたJSONL、途中kill、重複実行の試験。
 4. `DOCS-001`: 導入、運用、障害対応、モデル別開始プロンプト。
 5. `RELEASE-001`: v1.0.0チェックリスト。
+6. `RELEASE-002`: 追加hardeningを含む最終リリースゲート。
 
 ### Acceptance
 
