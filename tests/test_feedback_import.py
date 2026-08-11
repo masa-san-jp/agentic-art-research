@@ -16,11 +16,7 @@ FIXTURE_ROOT = REPO_ROOT / "tests" / "fixtures"
 sys.path.insert(0, str(REPO_ROOT / "tools"))
 
 from build_handoff import build_handoff
-from build_graph import build_graph
-from canonical import payload_sha256
-from export_handoff import export_handoff
 from import_production_result import ResultImportError, import_production_result, result_sha256
-from impact import impact_report
 from new_project import create_project
 
 
