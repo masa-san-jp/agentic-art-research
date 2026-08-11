@@ -12,7 +12,15 @@ AIエージェントがアート制作のための調査を、計画、証拠収
 - 運用手順: [`docs/operations.md`](docs/operations.md)
 - リリース判定: [`docs/release-checklist.md`](docs/release-checklist.md)
 
-MVP、個人証拠境界、品質評価、追加のリポジトリ安全検査、決定的chaos検査、運用文書、三回のCI相当リリースゲートを実装済み。サンプルプロジェクトは固定手順で `COMPLETE` または `COMPLETE_WITH_GAPS` に到達し、証拠から制作要件まで追跡できる。
+MVP、個人証拠境界、品質評価、追加のリポジトリ安全検査、決定的chaos検査、運用文書、三回のCI相当リリースゲートを実装済み。固定fixtureで、実プロジェクトを保存せずに証拠から制作要件までの追跡を検証できる。
+
+## 成果物の保存境界
+
+このリポジトリはプロトコル専用であり、デモや実際の生成物を常設しない。実際のアートリサーチ成果物は、次の外部フォルダにプロジェクト単位で保存する。
+
+/Users/masa/マイドライブ/AI-Agent-Pipeline/Agentic-Art-Output/<project-id>/
+
+生成と検証は一時cloneまたは一時作業rootで行い、検証後に projects/<project-id>/ だけを外部出力先へコピーする。canonical repositoryへ projects/の実データや、それに由来する data/のgraphを追加しない。
 
 ## エージェントの開始手順
 
@@ -28,21 +36,27 @@ MVP、個人証拠境界、品質評価、追加のリポジトリ安全検査�
 
 ## ローカル実行
 
-```bash
+プロトコル自体の検証は、このリポジトリで実行する。
+
+~~~bash
 python3 -m venv .venv
 . .venv/bin/activate
 python3 -m pip install -r requirements.txt
-python3 tools/new_project.py example-project --title "Example Project"
 python3 tools/validate.py --check
-python3 tools/build_graph.py
-python3 tools/bundle.py project/example-project --audience human
-python3 tools/audit.py
-python3 tools/security_check.py --check
-python3 tools/chaos_check.py
-python3 tools/docs_check.py --check
-python3 tools/release_check.py --offline-fixture tests/fixtures/harmony --ci-evidence execution/ci-evidence.json
+python3 tools/build_graph.py --check
 python3 -m unittest discover -s tests -v
-```
+~~~
+
+実プロジェクトを試す場合は、一時cloneを作り、検証後に外部出力先へプロジェクト単位でコピーする。
+
+~~~bash
+PROJECT_OUTPUT_ROOT="/Users/masa/マイドライブ/AI-Agent-Pipeline/Agentic-Art-Output"
+WORK_ROOT="$(mktemp -d /tmp/agentic-art-project.XXXXXX)"
+git clone --local --no-hardlinks . "$WORK_ROOT"
+python3 "$WORK_ROOT/tools/new_project.py" example-project --title "Example Project" --root "$WORK_ROOT"
+python3 "$WORK_ROOT/tools/validate.py" --root "$WORK_ROOT" --check
+cp -R "$WORK_ROOT/projects/example-project" "$PROJECT_OUTPUT_ROOT/example-project"
+~~~
 
 ## 構造
 
@@ -53,7 +67,7 @@ docs/         設計、実行計画、調査・統治・連携手順
 execution/    タスクキュー、進捗、判断、引継ぎ
 templates/    新規プロジェクトの雛形
 profiles/     制作者の時系列派生シグナル
-projects/     作品単位のリサーチパッケージ
+projects/     一時作業rootでmaterializeする作品単位のリサーチパッケージ。canonical repositoryには実データを置かない
 tools/        生成、検証、グラフ、バンドル、影響分析、監査
 tests/        回帰テスト
 data/         正本から作る生成物。手編集禁止
