@@ -82,7 +82,7 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "statement", "severity", "prototype_plan_ids"],
+        "required": ["id", "statement", "severity", "prototype_plan_ids", "external_validation_reason"],
         "additionalProperties": false,
         "properties": {
           "id": {"type": "string", "pattern": "^U[0-9]{3,}$"},
@@ -92,8 +92,20 @@
             "type": "array",
             "items": {"type": "string", "pattern": "^PP[0-9]{3,}$"},
             "uniqueItems": true
+          },
+          "external_validation_reason": {"type": ["string", "null"], "minLength": 1}
+        },
+        "allOf": [
+          {
+            "if": {"properties": {"severity": {"enum": ["MAJOR", "CRITICAL"]}}},
+            "then": {
+              "anyOf": [
+                {"properties": {"prototype_plan_ids": {"minItems": 1}}},
+                {"properties": {"external_validation_reason": {"type": "string", "minLength": 1}}}
+              ]
+            }
           }
-        }
+        ]
       }
     },
     "recommendation": {"$ref": "common.schema.json#/$defs/hypothesisRecommendation"},

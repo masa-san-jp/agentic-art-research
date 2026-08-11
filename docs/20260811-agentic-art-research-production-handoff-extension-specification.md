@@ -172,6 +172,7 @@ hypotheses:
         statement: 三方向から中断が知覚できるか
         severity: MAJOR
         prototype_plan_ids: [PP001]
+        external_validation_reason: null
     recommendation: RECOMMENDED
     status: ADOPTED
 ```
@@ -288,6 +289,7 @@ open_gaps:
     statement: 実会場寸法が未確定
     impact: サイズと搬入経路を確定できない
     resolution_owner: production
+    blocking: false
 
 replan_triggers:
   - 会場変更
@@ -312,6 +314,8 @@ integrity:
 - 権利、安全、プライバシー制約
 - 未解決事項、仮定、再計画条件
 - source ID、source commit、公開可能な短い要約
+
+`prototype_plan_ids`は、選択仮説に試作対象の重大な不確実性がない場合、または重大な不確実性ごとに`external_validation_reason`がある場合は空配列でよい。`open_gaps`は各項目に`blocking`を持ち、`READY`では`blocking: true`を禁止する。
 
 ### 8.4 含めてはならない情報
 
@@ -502,6 +506,8 @@ production側で作品が完成していなくてもresearch projectは完了で
 | schema共有 | commit固定immutable snapshot | オフライン検証と供給元追跡を両立するため |
 | feedback | 新証拠候補として取込 | 制作結果で過去判断を黙って上書きしないため |
 | 既存v1 | `RESEARCH_ONLY` として互換維持 | 公開済み利用契約を壊さないため |
+| 重大な不確実性 | Prototype Planまたは明示的な外部検証理由 | 不要な試作を水増しせず、未検証事項の処理方法を機械判定可能にするため |
+| handoff gap | `blocking`を各gapに明示 | `READY`可否を文面解釈ではなくvalidatorで判定するため |
 
 ## 19. 未決事項の扱い
 

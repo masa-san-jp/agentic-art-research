@@ -171,6 +171,20 @@ class SchemaContractTest(unittest.TestCase):
             with self.subTest(definition=definition, vocabulary=vocabulary):
                 self.assertEqual(common["$defs"][definition]["enum"], vocab[vocabulary])
 
+    def test_handoff_contract_represents_external_validation_and_non_blocking_gaps(self) -> None:
+        hypothesis = load_json(FIXTURE_ROOT / "schema-valid" / "production-hypothesis.json")
+        uncertainty = hypothesis["uncertainties"][0]
+        uncertainty["prototype_plan_ids"] = []
+        uncertainty["external_validation_reason"] = "The venue must be measured by the production team."
+        self.assertEqual([], list(validator_for("production-hypothesis").iter_errors(hypothesis)))
+
+        uncertainty["external_validation_reason"] = None
+        self.assertTrue(list(validator_for("production-hypothesis").iter_errors(hypothesis)))
+
+        handoff = load_json(FIXTURE_ROOT / "schema-valid" / "production-handoff.json")
+        handoff["prototype_plan_ids"] = []
+        self.assertEqual([], list(validator_for("production-handoff").iter_errors(handoff)))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -24,7 +24,8 @@
       "id": "U001",
       "statement": "The interruption may not be visible from all required viewpoints.",
       "severity": "MAJOR",
-      "prototype_plan_ids": ["PP001"]
+      "prototype_plan_ids": ["PP001"],
+      "external_validation_reason": null
     }
   ],
   "recommendation": "RECOMMENDED",

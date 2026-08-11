@@ -37,7 +37,8 @@
       "id": "GP001",
       "statement": "Final venue dimensions are unknown.",
       "impact": "Final size and delivery route cannot be fixed.",
-      "resolution_owner": "production"
+      "resolution_owner": "production",
+      "blocking": false
     }
   ],
   "replan_triggers": ["Venue change", "Material specification change", "Mandatory acceptance test failure"],

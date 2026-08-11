@@ -92,7 +92,6 @@
     "prototype_plan_ids": {
       "type": "array",
       "items": {"type": "string", "pattern": "^PP[0-9]{3,}$"},
-      "minItems": 1,
       "uniqueItems": true
     },
     "constraints": {
@@ -110,13 +109,14 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "statement", "impact", "resolution_owner"],
+        "required": ["id", "statement", "impact", "resolution_owner", "blocking"],
         "additionalProperties": false,
         "properties": {
           "id": {"type": "string", "pattern": "^GP[0-9]{3,}$"},
           "statement": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
           "impact": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
-          "resolution_owner": {"enum": ["research", "production", "human", "external"]}
+          "resolution_owner": {"enum": ["research", "production", "human", "external"]},
+          "blocking": {"type": "boolean"}
         }
       }
     },
