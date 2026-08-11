@@ -1,0 +1,13 @@
+{
+  "id": "DC001",
+  "question": "Should the central subject be shown directly?",
+  "selected_option": "Use an identifiable absence rather than a direct depiction.",
+  "rejected_options": ["Show the subject directly."],
+  "insight_ids": ["IN001"],
+  "evidence_ids": ["EV001"],
+  "reason": "The insight supports a testable omission while preserving uncertainty.",
+  "uncertainty": "The effect at installation scale is untested.",
+  "review_trigger": "Prototype review does not communicate the intended absence.",
+  "authority": "agent-recommended",
+  "status": "ADOPTED"
+}

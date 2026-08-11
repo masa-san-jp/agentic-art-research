@@ -35,6 +35,7 @@ python3 tools/bundle.py project/harmony-study --audience human
 
 - [x] (2026-08-11) M0: リポジトリ骨格、エージェント規則、実行計画、設定、初期スキーマを作成。
 - [x] (2026-08-11) M1a: `new_project.py`、基礎validator、テスト、CIの初期版を作成。
+- [x] (2026-08-11) `SCHEMA-001`: 7ドメインのDraft 2020-12スキーマ、正常fixture、規則別異常fixtureを追加。
 - [ ] M1b: 全JSON Schema検証と参照整合性を実装。
 - [ ] M2: 依存グラフ、バンドル、影響分析、監査を実用レベルへ完成。
 - [ ] M3: 代表サンプルプロジェクトを固定fixtureで完走。
@@ -47,6 +48,7 @@ python3 tools/bundle.py project/harmony-study --audience human
 - 2026-08-11: 元のリポジトリは設計文書中心で、実行系・テスト・CIが未作成だった。このため、機能実装より先に再開可能な計画と機械可読キューが必要。
 - 2026-08-11: 個人証拠の原文をGitへ置く構造は不可。テストは合成fixture、実運用は不透明URIとハッシュを使う。
 - 2026-08-11: 実行系モデルのベンダー差を吸収するには、モデル固有プロンプトより、短い恒久規則、自己完結計画、テスト、状態ファイルの組合せが重要。
+- 2026-08-11: スキーマのDraft 2020-12参照解決とfixture検証には `jsonschema` が必要だった。依存をrequirementsへ追加し、CLIへの統合は `VALIDATE-001` で行う。
 
 ## Decision Log
 
@@ -56,10 +58,11 @@ python3 tools/bundle.py project/harmony-study --audience human
 | 2026-08-11 | Python 3.11とPyYAMLだけで開始 | Luna/Sonnet級エージェントが依存問題を解きやすくするため |
 | 2026-08-11 | 外部接続なしのfixture完走を必須にする | 認証、API停止、ネットワーク制約と機能不良を分離するため |
 | 2026-08-11 | 1タスク1責務、依存DAG、状態遷移を固定 | 自律実行の暴走と重複実装を防ぐため |
+| 2026-08-11 | Draft 2020-12の参照解決テストに `jsonschema` 4.xを追加 | 共通定義を重複させず、schemaとfixtureを同じ実装で検査するため |
 
 ## Outcomes & Retrospective
 
-M0/M1a完了時点では、プロジェクト雛形の生成、構造検査、基礎テスト、CIが実行可能になる。調査Orchestratorと外部アダプタは未実装であり、「自律リサーチ完成」とはまだ呼ばない。
+M0/M1aと`SCHEMA-001`完了時点では、プロジェクト雛形の生成、構造検査、Draft 2020-12スキーマの契約テスト、CI初期版が実行可能になる。JSONL検証、参照整合性、調査Orchestratorと外部アダプタは未実装であり、「自律リサーチ完成」とはまだ呼ばない。
 
 ## Context and Orientation
 
@@ -244,9 +247,8 @@ python3 tools/validate.py --check
 ## Interfaces and Dependencies
 
 - Python: 3.11以上
-- Runtime dependency: PyYAML 6.x
+- Runtime dependencies: PyYAML 6.x、jsonschema 4.x
 - CLI exit: 0=成功、1=検証不合格、2=利用方法または設定エラー、3=外部依存ブロック
 - ID: `<prefix><zero-padded-number>` または `project/<slug>`。正規表現はschemaを正本にする。
 - 時刻: RFC 3339、タイムゾーン必須。
 - JSONL: 1行1object、UTF-8、行順は生成時にIDで安定化する。
-

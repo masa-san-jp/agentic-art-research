@@ -1,0 +1,9 @@
+{
+  "id": "RQ001",
+  "category": "visual",
+  "statement": "The central subject must not be directly identifiable.",
+  "source_decisions": ["DC001"],
+  "priority": "mandatory",
+  "acceptance_test_ids": ["AT001"],
+  "status": "ADOPTED"
+}

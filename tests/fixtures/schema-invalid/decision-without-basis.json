@@ -1,0 +1,13 @@
+{
+  "id": "DC001",
+  "question": "Should the central subject be shown directly?",
+  "selected_option": "Use an identifiable absence rather than a direct depiction.",
+  "rejected_options": [],
+  "insight_ids": [],
+  "evidence_ids": [],
+  "reason": "No basis was recorded.",
+  "uncertainty": null,
+  "review_trigger": null,
+  "authority": "agent-recommended",
+  "status": "PROPOSED"
+}

@@ -1,0 +1,10 @@
+{
+  "id": "CL001",
+  "statement": "A missing element is used as a formal device.",
+  "type": "UNSUPPORTED_TYPE",
+  "evidence_ids": ["EV001"],
+  "supporting_claims": [],
+  "opposing_claims": [],
+  "scope": "project/harmony-study",
+  "epistemic_status": "SUPPORTED"
+}

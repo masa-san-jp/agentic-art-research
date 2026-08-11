@@ -11,7 +11,8 @@
     "requirements_testable": false,
     "rights_review_complete": false,
     "privacy_review_complete": false,
-    "no_private_raw_in_git": true
+    "no_private_raw_in_git": true,
+    "completion_report_terminal": true
   },
   "gaps": [],
   "blockers": [
@@ -23,4 +24,3 @@
   ],
   "reopen_triggers": []
 }
-

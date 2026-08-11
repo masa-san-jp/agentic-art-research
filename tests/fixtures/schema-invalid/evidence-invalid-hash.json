@@ -1,0 +1,17 @@
+{
+  "id": "EV001",
+  "source_type": "primary_public",
+  "source_location": "https://example.invalid/source/001",
+  "creator": null,
+  "created_at": "unknown",
+  "acquired_at": "2026-08-11T15:00:00+09:00",
+  "content_hash": "not-a-sha256-hash",
+  "rights_status": "public-use",
+  "sensitivity": "PUBLIC_CITABLE",
+  "redistribution": "allowed",
+  "related_projects": ["project/harmony-study"],
+  "related_questions": ["Q001"],
+  "extraction_status": "processed",
+  "direct_observation": false,
+  "observed_by": "collector"
+}

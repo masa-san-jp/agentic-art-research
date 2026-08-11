@@ -3,33 +3,50 @@
   "$id": "https://example.invalid/agentic-art-research/claim.schema.json",
   "title": "Claim",
   "type": "object",
-  "required": ["id", "statement", "type", "evidence_ids", "opposing_claims", "scope", "epistemic_status"],
+  "required": ["id", "statement", "type", "evidence_ids", "supporting_claims", "opposing_claims", "scope", "epistemic_status"],
   "additionalProperties": false,
   "properties": {
     "id": {"type": "string", "pattern": "^CL[0-9]{3,}$"},
-    "statement": {"type": "string", "minLength": 1},
-    "type": {"enum": ["FACT", "SOURCE_CLAIM", "OBSERVATION", "INTERPRETATION", "INFERENCE", "PREFERENCE_SIGNAL", "HYPOTHESIS"]},
-    "evidence_ids": {"type": "array", "items": {"type": "string", "pattern": "^EV[0-9]{3,}$"}, "uniqueItems": true},
-    "supporting_claims": {"type": "array", "items": {"type": "string", "pattern": "^CL[0-9]{3,}$"}, "uniqueItems": true},
-    "opposing_claims": {"type": "array", "items": {"type": "string", "pattern": "^CL[0-9]{3,}$"}, "uniqueItems": true},
-    "scope": {"type": "string", "minLength": 1},
+    "statement": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "type": {"$ref": "common.schema.json#/$defs/claimType"},
+    "evidence_ids": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^EV[0-9]{3,}$"},
+      "uniqueItems": true
+    },
+    "supporting_claims": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^CL[0-9]{3,}$"},
+      "uniqueItems": true
+    },
+    "opposing_claims": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^CL[0-9]{3,}$"},
+      "uniqueItems": true
+    },
+    "scope": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
     "epistemic_status": {"$ref": "common.schema.json#/$defs/epistemicStatus"},
     "confidence": {
       "type": "object",
+      "required": ["source_reliability", "directness", "corroboration", "freshness", "scope_fit", "conflict_penalty", "derived_score"],
+      "additionalProperties": false,
       "properties": {
-        "source_reliability": {"type": "integer", "minimum": 0, "maximum": 4},
-        "directness": {"type": "integer", "minimum": 0, "maximum": 4},
-        "corroboration": {"type": "integer", "minimum": 0, "maximum": 4},
-        "freshness": {"type": "integer", "minimum": 0, "maximum": 4},
-        "scope_fit": {"type": "integer", "minimum": 0, "maximum": 4},
-        "conflict_penalty": {"type": "integer", "minimum": 0, "maximum": 2},
+        "source_reliability": {"$ref": "common.schema.json#/$defs/confidenceFactor"},
+        "directness": {"$ref": "common.schema.json#/$defs/confidenceFactor"},
+        "corroboration": {"$ref": "common.schema.json#/$defs/confidenceFactor"},
+        "freshness": {"$ref": "common.schema.json#/$defs/confidenceFactor"},
+        "scope_fit": {"$ref": "common.schema.json#/$defs/confidenceFactor"},
+        "conflict_penalty": {"$ref": "common.schema.json#/$defs/conflictPenalty"},
         "derived_score": {"type": "integer", "minimum": 0, "maximum": 100}
-      },
-      "additionalProperties": false
+      }
     },
-    "valid_from": {"type": ["string", "null"]},
-    "review_after": {"type": ["string", "null"]}
+    "valid_from": {"anyOf": [{"$ref": "common.schema.json#/$defs/date"}, {"type": "null"}]},
+    "review_after": {"anyOf": [{"$ref": "common.schema.json#/$defs/date"}, {"type": "null"}]}
   },
+  "anyOf": [
+    {"properties": {"evidence_ids": {"minItems": 1}}},
+    {"properties": {"supporting_claims": {"minItems": 1}}}
+  ],
   "allOf": [
     {
       "if": {"properties": {"type": {"const": "FACT"}}},
@@ -37,4 +54,3 @@
     }
   ]
 }
-
