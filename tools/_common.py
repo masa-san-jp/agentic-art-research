@@ -48,7 +48,29 @@ EMPTY_JSONL_FILES = tuple(path for path in PROJECT_REQUIRED_FILES if path.endswi
 
 
 class DuplicateKeyError(ValueError):
-    pass
+    def __init__(self, key: Any, line: int, column: int) -> None:
+        self.key = key
+        self.line = line
+        self.column = column
+        super().__init__(f"duplicate YAML key: {key}")
+
+
+class InputParseError(ValueError):
+    def __init__(
+        self,
+        path: Path,
+        message: str,
+        *,
+        line: int | None = None,
+        column: int | None = None,
+        field: str | None = None,
+    ) -> None:
+        self.path = path
+        self.line = line
+        self.column = column
+        self.field = field
+        self.message = message
+        super().__init__(message)
 
 
 class StrictLoader(yaml.SafeLoader):
@@ -60,7 +82,8 @@ def _construct_mapping(loader: StrictLoader, node: yaml.MappingNode, deep: bool 
     for key_node, value_node in node.value:
         key = loader.construct_object(key_node, deep=deep)
         if key in mapping:
-            raise DuplicateKeyError(f"duplicate YAML key: {key}")
+            mark = key_node.start_mark
+            raise DuplicateKeyError(key, mark.line + 1, mark.column + 1)
         mapping[key] = loader.construct_object(value_node, deep=deep)
     return mapping
 
@@ -69,17 +92,31 @@ StrictLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _co
 
 
 def load_yaml(path: Path) -> Any:
-    with path.open("r", encoding="utf-8") as handle:
-        return yaml.load(handle, Loader=StrictLoader)
+    try:
+        with path.open("r", encoding="utf-8") as handle:
+            return yaml.load(handle, Loader=StrictLoader)
+    except DuplicateKeyError as exc:
+        raise InputParseError(path, str(exc), line=exc.line, column=exc.column, field=str(exc.key)) from exc
+    except yaml.YAMLError as exc:
+        mark = getattr(exc, "problem_mark", None)
+        raise InputParseError(
+            path,
+            getattr(exc, "problem", None) or str(exc),
+            line=mark.line + 1 if mark else None,
+            column=mark.column + 1 if mark else None,
+        ) from exc
 
 
 def load_json(path: Path) -> Any:
-    with path.open("r", encoding="utf-8") as handle:
-        return json.load(handle)
+    try:
+        with path.open("r", encoding="utf-8") as handle:
+            return json.load(handle)
+    except json.JSONDecodeError as exc:
+        raise InputParseError(path, f"invalid JSON: {exc.msg}", line=exc.lineno, column=exc.colno) from exc
 
 
-def read_jsonl(path: Path) -> list[dict[str, Any]]:
-    records: list[dict[str, Any]] = []
+def read_jsonl_with_lines(path: Path) -> list[tuple[int, dict[str, Any]]]:
+    records: list[tuple[int, dict[str, Any]]] = []
     if not path.exists():
         return records
     with path.open("r", encoding="utf-8") as handle:
@@ -89,11 +126,26 @@ def read_jsonl(path: Path) -> list[dict[str, Any]]:
             try:
                 value = json.loads(raw)
             except json.JSONDecodeError as exc:
-                raise ValueError(f"{path}:{line_number}: invalid JSON: {exc.msg}") from exc
+                raise InputParseError(
+                    path,
+                    f"invalid JSON: {exc.msg}",
+                    line=line_number,
+                    column=exc.colno,
+                    field="$",
+                ) from exc
             if not isinstance(value, dict):
-                raise ValueError(f"{path}:{line_number}: JSONL record must be an object")
-            records.append(value)
+                raise InputParseError(
+                    path,
+                    "JSONL record must be an object",
+                    line=line_number,
+                    field="$",
+                )
+            records.append((line_number, value))
     return records
+
+
+def read_jsonl(path: Path) -> list[dict[str, Any]]:
+    return [record for _, record in read_jsonl_with_lines(path)]
 
 
 def iter_project_dirs(root: Path) -> Iterable[Path]:
@@ -129,5 +181,7 @@ def yaml_list(path: Path, key: str) -> list[dict[str, Any]]:
     records = value.get(key, []) if isinstance(value, dict) else []
     if not isinstance(records, list):
         raise ValueError(f"{path}: {key} must be a list")
-    return [record for record in records if isinstance(record, dict)]
-
+    invalid = next((index for index, record in enumerate(records) if not isinstance(record, dict)), None)
+    if invalid is not None:
+        raise InputParseError(path, f"{key}[{invalid}] must be an object", field=f"{key}[{invalid}]")
+    return records
