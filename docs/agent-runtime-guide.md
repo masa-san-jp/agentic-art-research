@@ -37,6 +37,19 @@ python3 tools/stopping_policy.py project/example apply --evaluated-at 2026-08-11
 `UNRESOLVED` または `BLOCKED` に終端化する。applyは同じ入力へ再実行しても停止イベントを
 重複追記しない。
 
+## ロール別context pack
+
+workerへはプロジェクト全体を渡さず、task、role固有の宣言済みsource、制約、受入試験だけを
+含む最小packを生成する。
+
+```bash
+python3 tools/context_pack.py project/example TASK001 --role planner
+python3 tools/context_pack.py project/example TASK002 --role production-translator -o /tmp/context.json
+```
+
+未知のrole、存在しないtask、欠損source、プロジェクト外へ解決されるsourceは失敗する。
+packは生成物であり、正本の代わりに編集してはならない。
+
 ## 共通起動プロンプト
 
 ```text
