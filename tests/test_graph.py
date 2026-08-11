@@ -14,7 +14,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "tools"))
 
 from build_graph import build_graph, node_key
-from impact import downstream
+from impact import downstream, impact_report, render_markdown, upstream
 from new_project import create_project
 
 
@@ -106,6 +106,26 @@ class GraphContractTest(unittest.TestCase):
         first_impact = downstream(graph, "project/first-project::EV001")
         self.assertTrue(first_impact)
         self.assertTrue(all(item["project_id"] == "project/first-project" for item in first_impact))
+
+    def test_impact_report_emits_upstream_and_downstream_json_and_markdown(self) -> None:
+        root = self.make_root()
+        self.add_chain(root, "impact-test")
+        graph = build_graph(root)
+
+        report = impact_report(graph, "EV001")
+        self.assertEqual({"Q001"}, {item["id"] for item in report["upstream"]})
+        self.assertEqual({"CL001", "IN001", "DC001", "RQ001", "AT001"}, {item["id"] for item in report["downstream"]})
+        self.assertEqual(
+            {"RQ001", "DC001", "IN001", "CL001", "EV001", "Q001"},
+            {item["id"] for item in upstream(graph, "AT001")},
+        )
+
+        markdown = render_markdown(report)
+        self.assertIn("## Upstream", markdown)
+        self.assertIn("## Downstream", markdown)
+        self.assertIn("`AT001`", markdown)
+        self.assertIn("`Q001`", markdown)
+        self.assertEqual({"node": "missing", "found": False, "upstream": [], "downstream": []}, impact_report(graph, "missing"))
 
 
 if __name__ == "__main__":
