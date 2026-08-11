@@ -1,0 +1,12 @@
+decisions:
+  - id: DC001
+    question: What should organize the first prototype?
+    selected_option: Use a repeated interval with one deliberate interruption.
+    rejected_options: [Use an unstructured field, Use explanatory wall text]
+    insight_ids: [IN001]
+    evidence_ids: [EV001, EV002]
+    reason: The two sources support a perceptual rule while the opposing hypothesis remains explicit.
+    uncertainty: Venue lighting may alter the perceived interval.
+    review_trigger: Fail the frame review under the target lighting condition.
+    authority: agent-recommended
+    status: ADOPTED

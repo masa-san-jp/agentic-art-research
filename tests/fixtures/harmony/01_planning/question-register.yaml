@@ -1,0 +1,9 @@
+questions:
+  - id: Q001
+    text: How can a repeated visual interval be translated into a small installation?
+    priority: mandatory
+    status: ANSWERED
+  - id: Q002
+    text: Which venue-specific lighting condition should be tested next?
+    priority: optional
+    status: OPEN

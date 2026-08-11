@@ -15,3 +15,4 @@
 | 2026-08-11 | ED-009 | BUNDLE-001はaudienceごとの固定相対パスを全件解決し、解決済みソース一覧をbundleへ出力する | 必要文脈の欠落を成功扱いにせず、bundleの範囲を監査可能にするため | `tools/bundle.py`、`tests/test_bundle.py` |
 | 2026-08-11 | ED-010 | IMPACT-001は同じレポートモデルをJSONとMarkdownへ変換し、上流・下流をともに深さ付きBFSで列挙する | CLI、機械処理、人間レビューで同じ影響範囲を再利用するため | `tools/impact.py`、`tests/test_graph.py` |
 | 2026-08-11 | ED-011 | AUDIT-001の鮮度判定は設定済みreview日数と注入可能な現在時刻で行い、監査結果はexit code 0の警告にする | 時間依存の品質確認を再現可能にし、調査途中のプロジェクトをcommit阻止しないため | `config/retention-policy.yaml`、`tools/audit.py`、`tests/test_audit.py` |
+| 2026-08-11 | ED-012 | SAMPLE-001は固定metadataで雛形を生成し、fixture内の正本overlayを適用後、validatorとgraphを再生成する | 同じ入力から同じterminal packageを作り、個人・外部原文を含めないため | `tools/run_project.py`、`tests/fixtures/harmony/`、`tests/test_sample.py` |

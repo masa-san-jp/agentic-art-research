@@ -1,0 +1,18 @@
+project:
+  id: project/harmony-study
+  title: Harmony Study
+  version: 0.1.0
+  status: COMPLETE_WITH_GAPS
+  creator_id: creator/fixture
+  created_at: "2026-08-11T00:00:00+09:00"
+  updated_at: "2026-08-11T00:00:00+09:00"
+entry_points:
+  human_summary: 05_production/creative-direction.md
+  research_plan: 01_planning/research-plan.yaml
+  evidence_ledger: 02_evidence/evidence-ledger.jsonl
+  decision_log: 04_decisions/decision-log.yaml
+  production_requirements: 05_production/production-requirements.yaml
+  completion_report: 07_runtime/completion-report.json
+access:
+  classification: PROJECT_INTERNAL
+  allowed_agents: [orchestrator, planner, collector, curator, analyst, critic, production-translator, validator, auditor]

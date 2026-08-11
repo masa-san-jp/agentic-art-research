@@ -1,0 +1,3 @@
+{"id":"CL001","statement":"The reference material uses a repeated interval as a perceptual constraint.","type":"OBSERVATION","evidence_ids":["EV001"],"supporting_claims":[],"opposing_claims":[],"scope":"harmony-study","epistemic_status":"VERIFIED"}
+{"id":"CL002","statement":"A repeated interval can become the installation's primary organizing rule.","type":"INFERENCE","evidence_ids":["EV002"],"supporting_claims":["CL001"],"opposing_claims":[],"scope":"harmony-study","epistemic_status":"SUPPORTED"}
+{"id":"CL003","statement":"A single interval may be insufficient under changing venue conditions.","type":"HYPOTHESIS","evidence_ids":["EV002"],"supporting_claims":[],"opposing_claims":[],"scope":"harmony-study","epistemic_status":"HYPOTHESIS"}

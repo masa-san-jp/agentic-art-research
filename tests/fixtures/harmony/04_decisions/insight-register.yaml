@@ -1,0 +1,7 @@
+insights:
+  - id: IN001
+    statement: Repetition can carry the concept without explanatory text.
+    claim_ids: [CL002]
+    opposing_claim_ids: [CL003]
+    epistemic_status: SUPPORTED
+    production_implication: Make interval and interruption observable in the prototype.
