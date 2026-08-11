@@ -7,20 +7,31 @@
   "additionalProperties": false,
   "properties": {
     "id": {"type": "string", "pattern": "^DC[0-9]{3,}$"},
-    "question": {"type": "string", "minLength": 1},
-    "selected_option": {"type": "string", "minLength": 1},
-    "rejected_options": {"type": "array", "items": {"type": "string"}},
-    "insight_ids": {"type": "array", "items": {"type": "string", "pattern": "^IN[0-9]{3,}$"}, "uniqueItems": true},
-    "evidence_ids": {"type": "array", "items": {"type": "string", "pattern": "^EV[0-9]{3,}$"}, "uniqueItems": true},
-    "reason": {"type": "string", "minLength": 1},
-    "uncertainty": {"type": ["string", "null"]},
-    "review_trigger": {"type": ["string", "null"]},
+    "question": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "selected_option": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "rejected_options": {
+      "type": "array",
+      "items": {"type": "string"},
+      "uniqueItems": true
+    },
+    "insight_ids": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^IN[0-9]{3,}$"},
+      "uniqueItems": true
+    },
+    "evidence_ids": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^EV[0-9]{3,}$"},
+      "uniqueItems": true
+    },
+    "reason": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "uncertainty": {"type": ["string", "null"], "minLength": 1},
+    "review_trigger": {"type": ["string", "null"], "minLength": 1},
     "authority": {"enum": ["agent-recommended", "human-approved", "policy-derived"]},
-    "status": {"enum": ["PROPOSED", "ADOPTED", "REJECTED", "ON_HOLD", "INVALIDATED"]}
+    "status": {"$ref": "common.schema.json#/$defs/decisionStatus"}
   },
   "anyOf": [
     {"properties": {"insight_ids": {"minItems": 1}}},
     {"properties": {"evidence_ids": {"minItems": 1}}}
   ]
 }
-

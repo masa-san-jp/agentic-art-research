@@ -4,7 +4,11 @@
   "$defs": {
     "timestamp": {
       "type": "string",
-      "format": "date-time"
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$"
+    },
+    "date": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
     },
     "stableId": {
       "type": "string",
@@ -18,12 +22,41 @@
       "type": "string",
       "minLength": 1
     },
+    "uri": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9+.-]*:[^\\s]+$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
     "accessClass": {
       "enum": ["PRIVATE_RAW", "PRIVATE_DERIVED", "PROJECT_INTERNAL", "PUBLIC_CITABLE", "RESTRICTED"]
     },
+    "projectStatus": {
+      "enum": ["DRAFT", "PLANNED", "COLLECTING", "NORMALIZING", "ANALYZING", "DECIDING", "READY_FOR_PRODUCTION", "VALIDATING", "COMPLETE", "COMPLETE_WITH_GAPS", "BLOCKED", "CANCELLED"]
+    },
+    "claimType": {
+      "enum": ["FACT", "SOURCE_CLAIM", "OBSERVATION", "INTERPRETATION", "INFERENCE", "PREFERENCE_SIGNAL", "HYPOTHESIS"]
+    },
     "epistemicStatus": {
       "enum": ["VERIFIED", "SUPPORTED", "CONTESTED", "WEAK", "HYPOTHESIS", "REJECTED", "UNRESOLVED"]
+    },
+    "decisionStatus": {
+      "enum": ["PROPOSED", "ADOPTED", "REJECTED", "ON_HOLD", "INVALIDATED"]
+    },
+    "requirementPriority": {
+      "enum": ["mandatory", "preferred", "optional"]
+    },
+    "confidenceFactor": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4
+    },
+    "conflictPenalty": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2
     }
   }
 }
-

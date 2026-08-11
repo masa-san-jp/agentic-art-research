@@ -1,0 +1,8 @@
+{
+  "id": "IN001",
+  "statement": "Absence is a candidate cross-project operation.",
+  "claim_ids": [],
+  "opposing_claim_ids": [],
+  "epistemic_status": "SUPPORTED",
+  "production_implication": "Test omission as a visual operation in the prototype."
+}

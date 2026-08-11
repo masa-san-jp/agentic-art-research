@@ -1,0 +1,26 @@
+{
+  "project_id": "project/harmony-study",
+  "status": "COMPLETE_WITH_GAPS",
+  "completed_at": "2026-08-11T15:00:00+09:00",
+  "checks": {
+    "manifest_valid": true,
+    "mandatory_questions_terminal": true,
+    "evidence_ledger_valid": true,
+    "claim_references_resolved": true,
+    "decisions_traceable": true,
+    "requirements_testable": true,
+    "rights_review_complete": true,
+    "privacy_review_complete": true,
+    "no_private_raw_in_git": true,
+    "completion_report_terminal": true
+  },
+  "gaps": [
+    {
+      "id": "GAP001",
+      "reason": "Installation-scale audience response was not tested.",
+      "impact": "External validation is required before final production."
+    }
+  ],
+  "blockers": [],
+  "reopen_triggers": ["new_candidate_work"]
+}

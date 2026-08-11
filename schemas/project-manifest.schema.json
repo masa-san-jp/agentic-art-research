@@ -13,26 +13,41 @@
       "properties": {
         "id": {"$ref": "common.schema.json#/$defs/projectId"},
         "title": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
-        "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
-        "status": {"enum": ["DRAFT", "PLANNED", "COLLECTING", "NORMALIZING", "ANALYZING", "DECIDING", "READY_FOR_PRODUCTION", "VALIDATING", "COMPLETE", "COMPLETE_WITH_GAPS", "BLOCKED", "CANCELLED"]},
-        "creator_id": {"type": ["string", "null"]},
+        "version": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+        },
+        "status": {"$ref": "common.schema.json#/$defs/projectStatus"},
+        "creator_id": {"type": ["string", "null"], "minLength": 1},
         "created_at": {"$ref": "common.schema.json#/$defs/timestamp"},
         "updated_at": {"$ref": "common.schema.json#/$defs/timestamp"}
       }
     },
     "entry_points": {
       "type": "object",
-      "required": ["human_summary", "research_plan", "evidence_ledger", "completion_report"],
-      "additionalProperties": {"type": "string"}
+      "required": ["human_summary", "research_plan", "evidence_ledger", "decision_log", "production_requirements", "completion_report"],
+      "additionalProperties": false,
+      "properties": {
+        "human_summary": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+        "research_plan": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+        "evidence_ledger": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+        "decision_log": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+        "production_requirements": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+        "completion_report": {"$ref": "common.schema.json#/$defs/nonEmptyString"}
+      }
     },
     "access": {
       "type": "object",
       "required": ["classification"],
+      "additionalProperties": false,
       "properties": {
         "classification": {"$ref": "common.schema.json#/$defs/accessClass"},
-        "allowed_agents": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}
+        "allowed_agents": {
+          "type": "array",
+          "items": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+          "uniqueItems": true
+        }
       }
     }
   }
 }
-

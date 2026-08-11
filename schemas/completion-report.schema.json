@@ -11,12 +11,51 @@
     "completed_at": {"$ref": "common.schema.json#/$defs/timestamp"},
     "checks": {
       "type": "object",
-      "required": ["manifest_valid", "mandatory_questions_terminal", "evidence_ledger_valid", "claim_references_resolved", "decisions_traceable", "requirements_testable", "rights_review_complete", "privacy_review_complete", "no_private_raw_in_git"],
-      "additionalProperties": {"type": "boolean"}
+      "required": ["manifest_valid", "mandatory_questions_terminal", "evidence_ledger_valid", "claim_references_resolved", "decisions_traceable", "requirements_testable", "rights_review_complete", "privacy_review_complete", "no_private_raw_in_git", "completion_report_terminal"],
+      "additionalProperties": false,
+      "properties": {
+        "manifest_valid": {"type": "boolean"},
+        "mandatory_questions_terminal": {"type": "boolean"},
+        "evidence_ledger_valid": {"type": "boolean"},
+        "claim_references_resolved": {"type": "boolean"},
+        "decisions_traceable": {"type": "boolean"},
+        "requirements_testable": {"type": "boolean"},
+        "rights_review_complete": {"type": "boolean"},
+        "privacy_review_complete": {"type": "boolean"},
+        "no_private_raw_in_git": {"type": "boolean"},
+        "completion_report_terminal": {"type": "boolean"}
+      }
     },
-    "gaps": {"type": "array", "items": {"type": "object", "required": ["id", "reason", "impact"], "properties": {"id": {"type": "string"}, "reason": {"type": "string"}, "impact": {"type": "string"}}}},
-    "blockers": {"type": "array", "items": {"type": "object", "required": ["id", "reason", "release_condition"], "properties": {"id": {"type": "string"}, "reason": {"type": "string"}, "release_condition": {"type": "string"}}}},
-    "reopen_triggers": {"type": "array", "items": {"type": "string"}}
+    "gaps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "reason", "impact"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+          "reason": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+          "impact": {"$ref": "common.schema.json#/$defs/nonEmptyString"}
+        }
+      }
+    },
+    "blockers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "reason", "release_condition"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+          "reason": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+          "release_condition": {"$ref": "common.schema.json#/$defs/nonEmptyString"}
+        }
+      }
+    },
+    "reopen_triggers": {
+      "type": "array",
+      "items": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+      "uniqueItems": true
+    }
   }
 }
-
