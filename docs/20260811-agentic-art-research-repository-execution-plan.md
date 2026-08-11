@@ -43,6 +43,7 @@ python3 tools/bundle.py project/harmony-study --audience human
 - [x] (2026-08-11) `GRAPH-001`: プロジェクトスコープの安定キーで証拠から受入試験までの依存グラフを生成。
 - [x] (2026-08-11) `BUNDLE-001`: 4 audience bundleの宣言済みソース解決、範囲制限、決定的生成を検証。
 - [x] (2026-08-11) `IMPACT-001`: upstream/downstream影響をJSONまたはMarkdownで出力。
+- [x] (2026-08-11) `AUDIT-001`: 孤立、出典偏り、鮮度、弱い判断、未実施試験を非ブロッキング警告として出力。
 - [ ] M1b: 全JSON Schema検証と参照整合性を実装。
 - [ ] M2: 依存グラフ、バンドル、影響分析、監査を実用レベルへ完成。
 - [ ] M3: 代表サンプルプロジェクトを固定fixtureで完走。
@@ -62,6 +63,7 @@ python3 tools/bundle.py project/harmony-study --audience human
 - 2026-08-11: 複数プロジェクトで同じローカルIDを使えるため、グラフの辺を裸のIDで保持すると別プロジェクトへ影響が漏れる。生成グラフでは `project/<slug>::<local-id>` をノードキーにした。
 - 2026-08-11: bundleが存在しない選択ソースを黙って飛ばすと、audienceごとの必要文脈が欠落したまま成功する。全宣言パスを解決できない場合はbundle生成を失敗させる。
 - 2026-08-11: 既存の影響分析は下流JSONだけで、判断や要件の根拠を遡れなかった。辺を反転したBFSとJSON/Markdown共通レポートを追加した。
+- 2026-08-11: 鮮度は入力に依存する時間変化する警告なので、`retention-policy.yaml` の証拠review日数と監査時刻を分離注入し、validatorのblocking判定には混ぜない。
 
 ## Decision Log
 
@@ -76,10 +78,11 @@ python3 tools/bundle.py project/harmony-study --audience human
 | 2026-08-11 | GRAPH-001の生成グラフはノードキーをプロジェクトIDとローカルIDの組にする | 同じIDを持つ複数プロジェクト間の誤接続を防ぎ、影響分析の決定性を保つため |
 | 2026-08-11 | BUNDLE-001はaudienceごとの固定相対パスを全件解決し、解決済みソース一覧をbundleへ出力する | 必要文脈の欠落を成功扱いにせず、bundleの範囲を監査可能にするため |
 | 2026-08-11 | IMPACT-001は同じレポートモデルをJSONとMarkdownへ変換し、上流・下流をともに深さ付きBFSで列挙する | CLI、機械処理、人間レビューで同じ影響範囲を再利用するため |
+| 2026-08-11 | AUDIT-001の鮮度判定は設定済みreview日数と注入可能な現在時刻で行い、監査結果はexit code 0の警告にする | 時間依存の品質確認を再現可能にし、調査途中のプロジェクトをcommit阻止しないため |
 
 ## Outcomes & Retrospective
 
-M0/M1a、`SCHEMA-001`、`VALIDATE-001`、`SECURITY-001`、`VALIDATE-002`、`TEST-001`、`GRAPH-001`、`BUNDLE-001`、`IMPACT-001`完了時点では、プロジェクト雛形の生成、Draft 2020-12スキーマ検証、JSONL行番号付きエラー、YAML重複キー検出、機密・秘密境界検査、参照整合性、状態遷移と試験接続の検査、blocking ruleの正常・失敗fixtureマトリクス、プロジェクトスコープで決定的な依存グラフ、4 audienceの範囲制限付きbundle生成、upstream/downstreamのJSON・Markdown影響分析、CI初期版が実行可能になる。サンプルE2E、調査Orchestratorと外部アダプタは未実装であり、「自律リサーチ完成」とはまだ呼ばない。
+M0/M1a、`SCHEMA-001`、`VALIDATE-001`、`SECURITY-001`、`VALIDATE-002`、`TEST-001`、`GRAPH-001`、`BUNDLE-001`、`IMPACT-001`、`AUDIT-001`完了時点では、プロジェクト雛形の生成、Draft 2020-12スキーマ検証、JSONL行番号付きエラー、YAML重複キー検出、機密・秘密境界検査、参照整合性、状態遷移と試験接続の検査、blocking ruleの正常・失敗fixtureマトリクス、プロジェクトスコープで決定的な依存グラフ、4 audienceの範囲制限付きbundle生成、upstream/downstreamのJSON・Markdown影響分析、出典偏り・鮮度・弱い判断・未実施試験の非ブロッキング監査、CI初期版が実行可能になる。サンプルE2E、調査Orchestratorと外部アダプタは未実装であり、「自律リサーチ完成」とはまだ呼ばない。
 
 ## Context and Orientation
 
