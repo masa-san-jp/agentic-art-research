@@ -1,5 +1,5 @@
 version: 1
-updated_at: "2026-08-11T18:00:00+09:00"
+updated_at: "2026-08-11T19:00:00+09:00"
 selection_policy: lowest_id_ready_with_dependencies_done
 allowed_statuses: [BACKLOG, READY, IN_PROGRESS, BLOCKED, DONE]
 tasks:
@@ -102,7 +102,7 @@ tasks:
   - id: INTEGRATION-001
     milestone: M5
     title: Add art-history-notes adapter
-    status: READY
+    status: DONE
     depends_on: [RUNTIME-004]
     acceptance: Stable IDs and source commit are imported without copying canonical data.
   - id: INTEGRATION-002
