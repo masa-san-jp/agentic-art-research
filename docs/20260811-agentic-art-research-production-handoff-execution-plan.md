@@ -1,7 +1,7 @@
 # Agentic Art Research 制作引き渡し拡張実行計画
 
 - 作成日: 2026-08-11
-- 状態: READY
+- 状態: IN_PROGRESS
 - 対応仕様: `docs/20260811-agentic-art-research-production-handoff-extension-specification.md`
 - 基点: `v1.0.1`以降の`main`
 - 想定リリース: 後方互換を保てる場合`v1.1.0`
@@ -24,9 +24,9 @@ python3 -m unittest discover -s tests -v
 ## Progress
 
 - [x] (2026-08-11) `EXTENSION-DESIGN-001`: 責任境界、成果物、契約、実装フェーズを確定。
-- [x] (2026-08-11 21:06 JST) `HANDOFF-SCHEMA-001`: 制作仮説、比較、Prototype Plan、handoff schema、語彙、後方互換manifest、雛形、正常・失敗fixtureを追加。69 testとvalidatorが合格。
-- [ ] `HANDOFF-VALIDATE-001`: 仮説、Prototype DAG、handoff参照・hash・安全境界を検証。
-- [ ] `HANDOFF-BUILD-001`: handoff生成、export、production-agent bundleを実装。
+- [x] (2026-08-11 21:06 JST) `HANDOFF-SCHEMA-001`: 制作仮説、比較、Prototype Plan、handoff schema、語彙、後方互換manifest、雛形、正常・失敗fixtureを追加。70 testとvalidatorが合格。
+- [x] (2026-08-11 21:40 JST) `HANDOFF-VALIDATE-001`: 仮説、Prototype DAG、handoff参照・hash・安全境界、外部schema fail-closed検査を実装。77 test、validator、docs checkが合格。
+- [ ] (2026-08-11 22:00 JST) `HANDOFF-BUILD-001`: handoff生成、export、production-agent bundleを実装中。
 - [ ] `FEEDBACK-IMPORT-001`: production resultのdry-run、取込、冪等性、影響分析を実装。
 - [ ] `HANDOFF-E2E-001`: cross-repo fixture、障害系、後方互換性評価を完成。
 - [ ] `HANDOFF-RELEASE-001`: 文書、release gate、互換性証拠を完成。
@@ -38,6 +38,10 @@ python3 -m unittest discover -s tests -v
 - 2026-08-11: 既存状態`READY_FOR_PRODUCTION`は自然な境界だが、制作側の長期状態を追加するとresearch完了条件と混線する。handoff状態を独立させる。
 - 2026-08-11: request/result schemaを片方のrepoだけで共同所有すると変更責任が曖昧になる。生成側を正本、受信側をcommit固定snapshotとする。
 - 2026-08-11: production repoは設計段階で、production result schemaの正本はまだ存在しない。researchが先行して外部snapshotを捏造せず、公開後の取込を`FEEDBACK-IMPORT-001`へ移す。
+- 2026-08-11: canonical hashはYAMLの表記揺れに依存させず、`integrity`を除いたhandoffをsorted-key・compact JSONのUTF-8 bytesへ正規化してSHA-256化する。正規化処理は`tools/canonical.py`へ集約した。
+- 2026-08-11: READY可否はgap文面の推測ではなく、schemaの`open_gaps[].blocking`で判定する。handoff payload上限は`config/handoff-policy.yaml`の262,144 bytesとする。
+- 2026-08-11: 不確実性が存在するだけではPrototype Planとの相互参照を保証できない。`PH → PP`と`PP → PH/U`の両方向を照合し、別仮説の不確実性や存在しないplanへの接続を拒否する必要がある。
+- 2026-08-11: 単純な部分文字列検査は`unrestricted`を`RESTRICTED`と誤認し、空白に続く単独の`/`を絶対pathと誤認する。禁止分類はtoken境界、絶対pathはslash後の非空pathを検査する。
 
 ## Decision Log
 
@@ -49,12 +53,19 @@ python3 -m unittest discover -s tests -v
 | 2026-08-11 | production resultは証拠候補として取込 | 判断・要件を直接更新 | 実施条件と不確実性を保持する |
 | 2026-08-11 | handoffのpayload hashを必須化 | commit SHAだけ | export後の内容改変を検出する |
 | 2026-08-11 | production result schema snapshotはH4で取得 | H1でconsumer側が仮schemaを作る | schema生成者を正本とする責任分界を守り、存在しない上流成果物を捏造しない |
+| 2026-08-11 | canonical hashは`integrity`を除くcompact sorted-key JSONのUTF-8 bytesへSHA-256を適用 | YAML textを直接hash | YAMLのインデント・key順・改行差を意味変更と誤認しないため |
+| 2026-08-11 | READYのblocking gapは`open_gaps[].blocking`で明示 | gap文面のキーワード推測 | validatorの判定を機械可読な正本フィールドに固定するため |
+| 2026-08-11 | handoff payload上限を262,144 bytesに設定 | 無制限 | 外部agentへ渡すデータ量とraw混入リスクをboundedにするため |
+| 2026-08-11 | 仮説の不確実性とPrototype Planを相互照合 | 各方向の参照存在だけを検査 | planが別仮説や別不確実性へ誤接続した状態を成功扱いにしないため |
+| 2026-08-11 | `supersedes`は現在handoffから過去handoffへの参照としてstatusと独立に扱う | `SUPERSEDED` statusだけで許可 | 後継handoffの`READY`または`ACCEPTED`状態と過去版参照を両立するため |
 
 ## Outcomes & Retrospective
 
 設計段階では、v1の追跡グラフを壊さずにproductionとの双方向境界を追加する方針を確定した。
 
-`HANDOFF-SCHEMA-001`では、四つのDraft 2020-12契約、共通語彙、`workflow_mode`による後方互換manifest、六つのproject雛形、正常・失敗fixtureを追加した。既存fixtureは`workflow_mode`未指定のまま有効で、新規projectは`RESEARCH_ONLY`を明示する。production result schemaは生成側未公開のため偽造せず、所有権とfail-closed方針を`schemas/external/README.md`へ固定した。全69 test、`tools/validate.py --check`、`git diff --check`が合格した。次の開始点は`HANDOFF-VALIDATE-001`である。
+`HANDOFF-SCHEMA-001`では、四つのDraft 2020-12契約、共通語彙、`workflow_mode`による後方互換manifest、六つのproject雛形、正常・失敗fixtureを追加した。既存fixtureは`workflow_mode`未指定のまま有効で、新規projectは`RESEARCH_ONLY`を明示する。production result schemaは生成側未公開のため偽造せず、所有権とfail-closed方針を`schemas/external/README.md`へ固定した。全70 test、`tools/validate.py --check`、`git diff --check`が合格した。次の開始点は`HANDOFF-VALIDATE-001`である。
+
+`HANDOFF-VALIDATE-001`では、新schemaを既存validatorへ接続し、仮説・比較・Prototype Plan・handoffの参照、重大な不確実性の処理、Prototype DAG、選択状態、supersede/revision、必須要件の完全なsnapshot、canonical hash、機密・秘密・path・signed URL・payload上限を検査する実装を追加した。仮説・不確実性・Prototype Planは相互参照を照合し、選択ID欠落とsnapshot上の判断・試験参照改変も拒否する。production result schemaはsnapshotまたは対応版設定がない状態でfeedbackが存在した場合に`EXTERNAL-SCHEMA`で拒否し、上流契約を捏造しない。正常系と各named blocking ruleの変異fixtureを追加し、77 test、`tools/validate.py --check`、`tools/docs_check.py --check`、`git diff --check`が合格した。次の開始点は`HANDOFF-BUILD-001`である。
 
 ## Context and Orientation
 
@@ -66,7 +77,7 @@ python3 -m unittest discover -s tests -v
 - 語彙: `config/vocabularies.yaml`
 - schema: `schemas/`
 - 雛形: `templates/project/`
-- validator: `tools/validate.py` と `tools/validation/`
+- validator: `tools/validate.py`、`tools/canonical.py` と `config/handoff-policy.yaml`
 - runtime: `tools/run_project.py` と`tools/runtime/`
 - traceability: `tools/build_graph.py`、`tools/impact.py`、`tools/bundle.py`
 
@@ -136,6 +147,7 @@ python3 -m unittest discover -s tests -v
 - 同じpayloadは同じhash、意味のある一文字変更は異なるhashになる。
 - 非対応schema versionは利用可能版を表示して失敗する。
 - `python3 tools/validate.py --check`がexit 0。
+- `PRODUCTION_HANDOFF`のnamed blocking ruleが`tests/fixtures/validation-matrix.yaml`と変異テストに登録されている。
 
 ### Milestone H3: Handoff generation and export
 

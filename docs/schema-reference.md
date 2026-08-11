@@ -41,6 +41,8 @@ production hypothesis + prototype plan + requirement + acceptance test → produ
 
 `MAJOR`または`CRITICAL`の制作仮説上の不確実性は、少なくとも一つの`prototype_plan_ids`か、空でない`external_validation_reason`を持つ。handoffの`prototype_plan_ids`自体は、重大な不確実性がない場合または外部検証へ明示的に委ねる場合は空配列でよい。`open_gaps`は各項目に`blocking`を持ち、`READY` handoffではblocking gapを許可しない。
 
+handoff hashは`tools/canonical.py`のcanonical JSON（`integrity`除外、sorted keys、compact UTF-8）から再計算し、payloadは`config/handoff-policy.yaml`の262,144 bytes上限を超えてはならない。
+
 ## 空、不明、未解決
 
 - 値そのものが不明: `null`

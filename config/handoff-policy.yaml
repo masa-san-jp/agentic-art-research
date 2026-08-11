@@ -1,0 +1,11 @@
+version: 1
+canonicalization: json-sort-keys-compact-utf8
+max_payload_bytes: 262144
+signed_url_markers:
+  - X-Amz-Signature
+  - AWSAccessKeyId
+  - Signature=
+  - sig=
+  - token=
+production_result_schema_path: schemas/external/production-result.v1.schema.json
+production_result_schema_versions: []
