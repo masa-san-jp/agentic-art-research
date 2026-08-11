@@ -5,8 +5,8 @@
 ## 判定
 
 - [x] 設計仕様書 §19.2 の10項目をチェック済み。
-- [x] `tools/release_check.py` が必要パス、workflow、offline fixture、5ゲートを確認する。
-- [x] CI相当のcompile、validator、unit、graph、evaluationを3回連続で実行する。
+- [x] `tools/release_check.py` が必要パス、workflow、offline fixture、5ゲート、運用文書を確認する。
+- [x] CI相当のcompile、validator、security、chaos、documentation、unit、graph、evaluationを3回連続で実行する。
 - [x] `PRIVATE_RAW` と `RESTRICTED` を保存せず、個人由来の派生シグナルだけを利用できる。
 
 ## 実行

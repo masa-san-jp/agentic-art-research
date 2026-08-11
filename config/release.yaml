@@ -25,10 +25,17 @@ required_paths:
   - tools/impact.py
   - tools/private_evidence.py
   - tools/evaluate.py
+  - tools/security_check.py
+  - tools/chaos_check.py
+  - tools/docs_check.py
+  - docs/operations.md
   - tests/fixtures/harmony
   - .github/workflows/validate.yml
 required_workflow_snippets:
   - python3 tools/validate.py --check
+  - python3 tools/security_check.py --check
+  - python3 tools/chaos_check.py
+  - python3 tools/docs_check.py --check
   - python3 -m unittest discover -s tests -v
   - python3 tools/build_graph.py --check
   - python3 tools/evaluate.py --offline-fixture tests/fixtures/harmony

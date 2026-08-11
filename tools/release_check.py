@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from _common import ROOT, load_yaml, stable_json
+from docs_check import check_documentation
 from evaluate import evaluate_offline_fixture
 
 
@@ -85,6 +86,9 @@ def _ci_runs(root: Path, fixture: Path, count: int) -> list[dict[str, Any]]:
     commands = [
         [sys.executable, "-m", "compileall", "-q", "tools", "tests"],
         [sys.executable, "tools/validate.py", "--root", str(root), "--check"],
+        [sys.executable, "tools/security_check.py", "--root", str(root), "--check"],
+        [sys.executable, "tools/chaos_check.py", "--root", str(root)],
+        [sys.executable, "tools/docs_check.py", "--root", str(root), "--check"],
         [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v"],
         [sys.executable, "tools/build_graph.py", "--root", str(root), "--check"],
         [sys.executable, "tools/evaluate.py", "--root", str(root), "--offline-fixture", str(fixture)],
@@ -106,6 +110,7 @@ def check_release(root: Path = ROOT, fixture: Path | None = None) -> dict[str, A
     schemas = _schema_paths(root, config)
     workflow = _workflow_check(root, config)
     spec = _spec_check(root, config)
+    documentation_findings = check_documentation(root)
     fixture_result = evaluate_offline_fixture(root, fixture)
     runs = _ci_runs(root, fixture, config["ci_runs"])
     path_check = all(item["present"] for item in required_paths)
@@ -122,6 +127,9 @@ def check_release(root: Path = ROOT, fixture: Path | None = None) -> dict[str, A
         {"id": "github-actions", "passed": workflow["passed"], "evidence": workflow["missing_snippets"]},
         {"id": "offline-sample", "passed": fixture_result["passed"], "evidence": ["tests/fixtures/harmony"]},
         {"id": "private-derived-signal", "passed": fixture_result["gates"]["privacy"]["passed"], "evidence": ["tools/private_evidence.py"]},
+        {"id": "advanced-security", "passed": ci_check, "evidence": ["tools/security_check.py --check"]},
+        {"id": "chaos-recovery", "passed": ci_check, "evidence": ["tools/chaos_check.py"]},
+        {"id": "operations-documentation", "passed": not documentation_findings, "evidence": documentation_findings or ["docs/operations.md"]},
     ]
     passed = spec["passed"] and ci_check and all(item["passed"] for item in mvp_items)
     return {
@@ -130,6 +138,7 @@ def check_release(root: Path = ROOT, fixture: Path | None = None) -> dict[str, A
         "mvp_items": mvp_items,
         "spec_mvp": spec,
         "workflow": workflow,
+        "documentation": {"passed": not documentation_findings, "findings": documentation_findings},
         "offline_fixture": {"name": fixture.name, "passed": fixture_result["passed"], "gates": fixture_result["gates"]},
         "ci_runs_requested": config["ci_runs"],
         "ci_runs": runs,

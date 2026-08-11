@@ -1,9 +1,9 @@
 version: 1
-updated_at: "2026-08-11T19:00:04+09:00"
+updated_at: "2026-08-11T19:02:56+09:00"
 current_milestone: M6
-next_task: RELEASE-002
-last_completed_task: DOCS-001
-terminal: false
+next_task: null
+last_completed_task: RELEASE-002
+terminal: true
 blocked_by: []
 resume_from:
   read:
@@ -11,4 +11,8 @@ resume_from:
     - docs/20260811-agentic-art-research-system-design-specification.md
     - docs/20260811-agentic-art-research-repository-execution-plan.md
     - execution/task-queue.yaml
-  action: Claim RELEASE-002, add security/chaos/documentation to the final release contract, and run the three-run gate.
+  action: No queued task remains. Additional live integrations or external publication require a separately approved task.
+last_verification:
+  result: PASS
+  command: .venv/bin/python tools/release_check.py --offline-fixture tests/fixtures/harmony
+  detail: Three CI-equivalent runs passed; MVP 10/10, advanced security, chaos recovery, and operations documentation passed.
