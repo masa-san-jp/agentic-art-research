@@ -1,5 +1,5 @@
 version: 1
-updated_at: "2026-08-11T14:46:48+09:00"
+updated_at: "2026-08-11T15:22:30+09:00"
 selection_policy: lowest_id_ready_with_dependencies_done
 allowed_statuses: [BACKLOG, READY, IN_PROGRESS, BLOCKED, DONE]
 tasks:
@@ -24,7 +24,7 @@ tasks:
   - id: VALIDATE-002
     milestone: M1
     title: Add cross-reference and lifecycle validation
-    status: READY
+    status: DONE
     depends_on: [VALIDATE-001]
     acceptance: Broken IDs, illegal transitions, and untestable mandatory requirements fail.
   - id: SECURITY-001
@@ -36,7 +36,7 @@ tasks:
   - id: TEST-001
     milestone: M1
     title: Build validation fixture matrix
-    status: BACKLOG
+    status: READY
     depends_on: [VALIDATE-002, SECURITY-001]
     acceptance: Normal and failure fixtures cover every blocking validation rule.
   - id: GRAPH-001
