@@ -86,7 +86,7 @@ python3 tools/validate.py --check
 
 H5のschema公開前段階では、`harmony-handoff` scenarioを使ってbundle manifestのpath・size・hash・file-set、PASS/FAIL/DEVIATION/CRITICAL result、fail-closed、後方互換性を研究側だけで検証し、production-owned schemaを捏造せずpendingとして扱った。その後の実schema取得・consumer E2E・release gate完了は次段落に記録する。
 
-Production result schemaのclean snapshot取得後、`HANDOFF-E2E-001`のrelease gateは`schema_snapshot_ready: true`で合格した。旧boundary probeを修正し、schema snapshotを一時的に除去したprobeが`EXTERNAL-SCHEMA`でfail-closedすること、result consumerのPASS/FAIL/DEVIATION/CRITICAL round-tripがschema 1.0.0で通ることを確認した。次の開始点は`HANDOFF-RELEASE-001`である。
+Production result schemaのclean snapshot取得後、`HANDOFF-E2E-001`のrelease gateは`schema_snapshot_ready: true`で合格した。旧boundary probeを修正し、schema snapshotを一時的に除去したprobeが`EXTERNAL-SCHEMA`でfail-closedすること、result consumerのPASS/FAIL/DEVIATION/CRITICAL round-tripがschema 1.0.0で通ることを確認した。`HANDOFF-RELEASE-001`まで完了し、検証済みcommitは人間承認後のpublicationへ引き渡せる状態である。
 
 ## Context and Orientation
 
