@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "project_id": "project/schema-template",
+  "status": "DRAFT",
+  "updated_at": "2026-08-11T00:00:00+09:00",
+  "current_task": null,
+  "last_event_id": null,
+  "blocked_by": [],
+  "resume_from": "Claim the next ready task."
+}

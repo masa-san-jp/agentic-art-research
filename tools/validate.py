@@ -32,6 +32,7 @@ SCHEMA_FOR_YAML_COLLECTION = {
     "05_production/production-requirements.yaml": ("requirements", "requirement"),
 }
 SCHEMA_FOR_JSON = {
+    "07_runtime/research-state.json": "research-state",
     "07_runtime/completion-report.json": "completion-report",
 }
 DOMAIN_SCHEMAS = (
@@ -41,6 +42,7 @@ DOMAIN_SCHEMAS = (
     "insight",
     "decision",
     "requirement",
+    "research-state",
     "completion-report",
 )
 RecordEntry = tuple[str, Path, int | None, dict[str, Any]]
