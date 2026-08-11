@@ -44,3 +44,19 @@ external_reference:
 
 同じentityのsource commitが変わったら、内容hashを比較し、関連claimとdecisionへ影響分析を走らせる。変更がない場合は再計算しない。
 
+## Read-only adapter
+
+adapterは`art-history-notes`のcheckoutから`data/graph.json`だけを読み、正本entity本文をこの
+repositoryへコピーしない。source commitは必須で、checkoutのHEADと一致しない場合はfail closedする。
+
+```bash
+python3 tools/art_history_adapter.py \
+  --root /path/to/art-history-notes \
+  --source-commit 5786bb651d7b21e9a1a609f09e57b156b4591ef6 \
+  --entity-id movement/surrealism \
+  --minimum-status draft \
+  --max-results 5
+```
+
+selectorは`entity_id`、`query`、`region`、`century`のいずれか1つ。出力はsource commit、安定
+entity ID、label、status、claims、出典URL、関係を含み、`hypothesis`などの確度を変換しない。
