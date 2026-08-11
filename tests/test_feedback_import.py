@@ -16,8 +16,11 @@ FIXTURE_ROOT = REPO_ROOT / "tests" / "fixtures"
 sys.path.insert(0, str(REPO_ROOT / "tools"))
 
 from build_handoff import build_handoff
+from build_graph import build_graph
 from canonical import payload_sha256
+from export_handoff import export_handoff
 from import_production_result import ResultImportError, import_production_result, result_sha256
+from impact import impact_report
 from new_project import create_project
 
 
@@ -309,6 +312,68 @@ class FeedbackImportContractTest(unittest.TestCase):
 
         with self.assertRaisesRegex(ResultImportError, "FEEDBACK-SECURITY"):
             import_production_result(root, result_path, dry_run=True)
+
+    def test_fixed_handoff_scenario_round_trips_to_result_graph_and_impact(self) -> None:
+        scenario = yaml.safe_load((FIXTURE_ROOT / "harmony-handoff" / "scenario.yaml").read_text(encoding="utf-8"))
+        root, project = self.make_project()
+        handoff_path = build_handoff(root, scenario["research_project_id"], generated_at=self.generated_at, research_commit=self.commit)
+        bundle_path = root / "data" / "handoffs" / "feedback-import"
+        export_handoff(root, scenario["research_project_id"], bundle_path, allow_dirty=True)
+        self.assertEqual(scenario["handoff"]["id"], yaml.safe_load(handoff_path.read_text(encoding="utf-8"))["handoff_id"])
+        for relative in scenario["handoff"]["expected_bundle_paths"]:
+            self.assertTrue((bundle_path / relative).is_file(), relative)
+
+        self.configure_result_schema(root)
+        result = self.make_result(project, result_id=scenario["feedback"]["result_id"])
+        result_path = self.write_result(root, result)
+        self.assertEqual(scenario["feedback"]["schema_version"], result["schema_version"])
+        summary = import_production_result(root, result_path, apply=True)
+        self.assertEqual("APPLIED", summary["status"])
+
+        graph = build_graph(root)
+        project_id = scenario["research_project_id"]
+        edges = {(edge["from"], edge["to"], edge["type"]) for edge in graph["edges"]}
+        expected_types = set(scenario["feedback"]["expected_graph_edges"])
+        observed_types = {
+            edge[2]
+            for edge in edges
+            if edge[0] == f"{project_id}::HO001"
+            or edge[0] == f"{project_id}::PR001"
+            or edge[0] == f"{project_id}::PR001/OB001"
+        }
+        self.assertTrue(expected_types.issubset(observed_types))
+        report = impact_report(graph, "PR001")
+        self.assertTrue(report["found"])
+        downstream_ids = {item["id"] for item in report["downstream"]}
+        self.assertIn("PR001/OB001", downstream_ids)
+        self.assertIn("EV003", downstream_ids)
+
+    def test_fixed_handoff_faults_are_named_and_corrupt_feedback_fails_closed(self) -> None:
+        root, project = self.make_project()
+        self.configure_result_schema(root)
+
+        unsupported = self.make_result(project)
+        unsupported["schema_version"] = "9.9.9"
+        unsupported["integrity"] = {"content_sha256": result_sha256(unsupported)}
+        unsupported_path = self.write_result(root, unsupported, "unsupported.json")
+        with self.assertRaisesRegex(ResultImportError, "EXTERNAL-SCHEMA"):
+            import_production_result(root, unsupported_path, dry_run=True)
+
+        tampered = self.make_result(project, result_id="PR002")
+        tampered["integrity"] = {"content_sha256": "sha256:" + "0" * 64}
+        tampered_path = self.write_result(root, tampered, "tampered.json")
+        with self.assertRaisesRegex(ResultImportError, "FEEDBACK-HASH"):
+            import_production_result(root, tampered_path, dry_run=True)
+
+        valid_path = self.write_result(root, self.make_result(project, result_id="PR003"), "valid.json")
+        import_production_result(root, valid_path, apply=True)
+        feedback_path = project / "07_runtime" / "production-feedback-imports.jsonl"
+        with feedback_path.open("a", encoding="utf-8") as handle:
+            handle.write("{broken-json\n")
+        with self.assertRaises(ResultImportError) as context:
+            import_production_result(root, valid_path, dry_run=True)
+        self.assertIn("FEEDBACK-RESEARCH-VALIDATION", str(context.exception))
+        self.assertIn("JSONL", str(context.exception))
 
 
 if __name__ == "__main__":

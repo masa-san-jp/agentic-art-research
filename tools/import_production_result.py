@@ -14,7 +14,7 @@ import yaml
 from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
 
-from _common import ROOT, atomic_write_text, load_json, load_yaml, read_jsonl, stable_json
+from _common import InputParseError, ROOT, atomic_write_text, load_json, load_yaml, read_jsonl, stable_json
 from build_graph import build_graph
 from canonical import canonical_sha256, payload_sha256
 from handoff_common import HandoffInputError, HandoffSources, load_handoff_sources
@@ -516,6 +516,20 @@ def _append_jsonl(path: Path, records: list[dict[str, Any]]) -> str:
     return current + "".join(json.dumps(record, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n" for record in records)
 
 
+def _read_import_jsonl(path: Path) -> list[dict[str, Any]]:
+    try:
+        return read_jsonl(path)
+    except InputParseError as exc:
+        line = f"line {exc.line}: " if exc.line else ""
+        raise ResultImportError(
+            f"{line}{exc.message}",
+            path=str(path),
+            field=exc.field or "$",
+            rule="FEEDBACK-INPUT",
+            remediation="Repair the JSONL record without deleting prior imported results, then retry.",
+        ) from exc
+
+
 def _snapshot(paths: list[Path]) -> dict[Path, bytes | None]:
     return {path: path.read_bytes() if path.exists() else None for path in paths}
 
@@ -597,7 +611,7 @@ def import_production_result(
     if integrity.get("content_sha256") != expected_hash:
         raise ResultImportError("result integrity hash does not match the canonical payload", path=str(input_path), field="integrity.content_sha256", rule="FEEDBACK-HASH", remediation="Recalculate the result hash with the production-owned canonical serializer.")
     feedback_path = sources.project / "07_runtime" / "production-feedback-imports.jsonl"
-    existing_feedback = read_jsonl(feedback_path)
+    existing_feedback = _read_import_jsonl(feedback_path)
     same_result_recorded, _ = _existing_result(existing_feedback, result, input_path)
     impact_level = _impact_level(result)
     prior_evidence = list(sources.evidence)
@@ -605,7 +619,7 @@ def import_production_result(
     change_records, change_ids = _change_records(result, sources, impact_level)
     impact = _impact_preview(root, target, provenance)
     human_approval_required = impact_level == "CRITICAL"
-    audit_events = read_jsonl(sources.project / "07_runtime" / "run-log.jsonl")
+    audit_events = _read_import_jsonl(sources.project / "07_runtime" / "run-log.jsonl")
     existing_audit = next(
         (event for event in audit_events if event.get("event_type") == "PRODUCTION_FEEDBACK_IMPORTED" and event.get("result_id") == result_id),
         None,
@@ -658,7 +672,7 @@ def import_production_result(
     before = _snapshot(paths)
     manifest = load_yaml(manifest_path) or {}
     state = load_json(state_path)
-    run_events = read_jsonl(run_log_path)
+    run_events = _read_import_jsonl(run_log_path)
     import_event_id = f"FEEDBACK-{result_id}-IMPORT"
     import_event_exists = any(event.get("event_id", event.get("id")) == import_event_id for event in run_events)
     transition_event: dict[str, Any] | None = None
