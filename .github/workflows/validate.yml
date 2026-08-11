@@ -25,4 +25,4 @@ jobs:
       - run: python3 tools/docs_check.py --check
       - run: python3 -m unittest discover -s tests -v
       - run: python3 tools/build_graph.py --check
-
+      - run: python3 tools/handoff_release_check.py -o /tmp/agentic-art-research-handoff-release-check.json

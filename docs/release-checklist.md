@@ -32,6 +32,7 @@ python3 tools/handoff_release_check.py \
 このgateの`passed: true`はresearch側のbundle、fail-closed、後方互換性を示す。
 `schema_snapshot_ready: false`はproduction-owned result schema未公開を明示する状態であり、
 `--require-schema-snapshot`を付けた場合だけ失敗として扱う。production schemaをresearch側で合成してはならない。
+通常のGitHub Actions検証でもこのresearch-side gateを実行し、production schema未公開の状態は明示的なpendingとして検査する。
 
 production側のclean commitが公開された後は、まず次でsnapshotとprovenanceを登録する。
 
