@@ -1,22 +1,24 @@
-# v1.0.0 release checklist
+# v1.0.1 release checklist
 
 このチェックリストは、公開・タグ作成・GitHub Releaseを実行せず、リポジトリ内のMVP完了条件だけを確認する。
 
 ## 判定
 
 - [x] 設計仕様書 §19.2 の10項目をチェック済み。
-- [x] `tools/release_check.py` が必要パス、workflow、offline fixture、5ゲート、運用文書を確認する。
-- [x] CI相当のcompile、validator、security、chaos、documentation、unit、graph、evaluationを3回連続で実行する。
+- [x] `tools/release_check.py` が必要パス、offline fixture、5ゲート、運用文書、追加hardeningを確認する。
+- [x] CI evidenceのvalidate成功3件に加え、security、chaos、documentationを検査する。
 - [x] `PRIVATE_RAW` と `RESTRICTED` を保存せず、個人由来の派生シグナルだけを利用できる。
 
 ## 実行
 
 ```bash
-python3 tools/release_check.py --offline-fixture tests/fixtures/harmony
+python3 tools/release_check.py \
+  --offline-fixture tests/fixtures/harmony \
+  --ci-evidence execution/ci-evidence.json
 ```
 
-成功条件は、出力JSONの`passed`が`true`で、`ci_runs`が3件すべて成功すること。失敗時は
-`mvp_items`、`spec_mvp`、`workflow`、または個別runの`output_tail`を確認する。
+成功条件は、出力JSONの`passed`が`true`で、`checks`内の11項目がすべて成功すること。
+失敗時は各checkの`details`を確認する。
 
 ## 境界
 

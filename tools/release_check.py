@@ -1,162 +1,221 @@
+#!/usr/bin/env python3
+"""Verify the repository-local v1.0.0 release gate."""
+
 from __future__ import annotations
 
 import argparse
-import re
-import subprocess
-import sys
+import json
+import shutil
+import tempfile
 from pathlib import Path
 from typing import Any
 
-from _common import ROOT, load_yaml, stable_json
+from _common import PROJECT_REQUIRED_FILES, ROOT, atomic_write_text, load_json, stable_json
+from build_graph import build_graph
+from bundle import build_bundle
+from chaos_check import run_chaos_suite
 from docs_check import check_documentation
 from evaluate import evaluate_offline_fixture
+from impact import impact_report
+from new_project import create_project
+from run_project import run_offline_fixture
+from security_check import scan_advanced_security
+from validate import validate_repository
+
+
+RELEASE_SCHEMA = "urn:agentic-art-research:release-check:v1"
+SCHEMA_NAMES = (
+    "project-manifest",
+    "evidence",
+    "claim",
+    "insight",
+    "decision",
+    "requirement",
+    "research-state",
+    "completion-report",
+)
+SPEC_PATH = "docs/20260811-agentic-art-research-system-design-specification.md"
+EXPECTED_CI_RUNS = 3
 
 
 class ReleaseCheckError(ValueError):
-    """Raised when the release policy is invalid."""
+    """Raised when release evidence cannot be evaluated."""
 
 
-def _config(root: Path) -> dict[str, Any]:
-    value = load_yaml(root / "config" / "release.yaml") or {}
-    if not isinstance(value, dict):
-        raise ReleaseCheckError("config/release.yaml must be a mapping")
-    for key in ("required_paths", "required_schema_paths", "required_workflow_snippets"):
-        if not isinstance(value.get(key), list) or any(not isinstance(item, str) or not item for item in value[key]):
-            raise ReleaseCheckError(f"config/release.yaml: {key} must be a string list")
-    runs = value.get("ci_runs")
-    if not isinstance(runs, int) or isinstance(runs, bool) or runs <= 0:
-        raise ReleaseCheckError("config/release.yaml: ci_runs must be a positive integer")
-    item_count = value.get("mvp_item_count")
-    if not isinstance(item_count, int) or isinstance(item_count, bool) or item_count <= 0:
-        raise ReleaseCheckError("config/release.yaml: mvp_item_count must be a positive integer")
-    return value
+def _check(name: str, passed: bool, details: list[str]) -> dict[str, Any]:
+    return {"id": name, "passed": passed, "details": details}
 
 
-def _safe_path(root: Path, relative: str) -> Path:
-    candidate = (root / relative).resolve()
-    if root.resolve() not in candidate.parents and candidate != root.resolve():
-        raise ReleaseCheckError(f"release path escapes repository: {relative}")
-    return candidate
+def _workspace(source_root: Path) -> tuple[tempfile.TemporaryDirectory, Path]:
+    temporary = tempfile.TemporaryDirectory(prefix="agentic-art-release-")
+    root = Path(temporary.name)
+    for name in ("templates", "config", "schemas"):
+        shutil.copytree(source_root / name, root / name)
+    (root / "projects").mkdir()
+    (root / "data").mkdir()
+    return temporary, root
 
 
-def _required_paths(root: Path, config: dict[str, Any]) -> list[dict[str, Any]]:
-    results = []
-    for relative in config["required_paths"]:
-        path = _safe_path(root, relative)
-        results.append({"path": relative, "present": path.exists()})
-    return results
-
-
-def _schema_paths(root: Path, config: dict[str, Any]) -> list[dict[str, Any]]:
-    results = []
-    for relative in config["required_schema_paths"]:
-        path = _safe_path(root, relative)
-        results.append({"path": relative, "present": path.is_file()})
-    return results
-
-
-def _workflow_check(root: Path, config: dict[str, Any]) -> dict[str, Any]:
-    workflow = _safe_path(root, ".github/workflows/validate.yml")
-    content = workflow.read_text(encoding="utf-8") if workflow.is_file() else ""
-    snippets = config["required_workflow_snippets"]
-    missing = [snippet for snippet in snippets if snippet not in content]
-    return {"path": ".github/workflows/validate.yml", "missing_snippets": missing, "passed": not missing and workflow.is_file()}
-
-
-def _spec_check(root: Path, config: dict[str, Any]) -> dict[str, Any]:
-    path = _safe_path(root, "docs/20260811-agentic-art-research-system-design-specification.md")
-    content = path.read_text(encoding="utf-8") if path.is_file() else ""
-    section = content.split("### 19.2 本システムのMVP完了", 1)
-    section_text = section[1].split("## 20.", 1)[0] if len(section) == 2 else ""
-    checked = len(re.findall(r"^- \[x\] ", section_text, flags=re.MULTILINE))
-    expected = config["mvp_item_count"]
-    return {"checked_items": checked, "expected_items": expected, "passed": checked == expected}
-
-
-def _command_result(root: Path, command: list[str]) -> dict[str, Any]:
-    completed = subprocess.run(command, cwd=root, capture_output=True, text=True, check=False)
-    result: dict[str, Any] = {"command": command, "returncode": completed.returncode, "passed": completed.returncode == 0}
-    if completed.returncode != 0:
-        combined = (completed.stdout + "\n" + completed.stderr).strip()
-        result["output_tail"] = combined[-2000:]
-    return result
-
-
-def _ci_runs(root: Path, fixture: Path, count: int) -> list[dict[str, Any]]:
-    commands = [
-        [sys.executable, "-m", "compileall", "-q", "tools", "tests"],
-        [sys.executable, "tools/validate.py", "--root", str(root), "--check"],
-        [sys.executable, "tools/security_check.py", "--root", str(root), "--check"],
-        [sys.executable, "tools/chaos_check.py", "--root", str(root)],
-        [sys.executable, "tools/docs_check.py", "--root", str(root), "--check"],
-        [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v"],
-        [sys.executable, "tools/build_graph.py", "--root", str(root), "--check"],
-        [sys.executable, "tools/evaluate.py", "--root", str(root), "--offline-fixture", str(fixture)],
+def _ci_check(path: Path) -> tuple[bool, list[str]]:
+    try:
+        evidence = load_json(path)
+    except Exception as exc:
+        return False, [f"could not read CI evidence: {exc}"]
+    runs = evidence.get("runs") if isinstance(evidence, dict) else None
+    workflow = evidence.get("workflow") if isinstance(evidence, dict) else None
+    if not isinstance(runs, list):
+        return False, ["CI evidence must contain a runs list"]
+    valid = [
+        run
+        for run in runs
+        if isinstance(run, dict)
+        and run.get("workflow", workflow) == "validate"
+        and run.get("conclusion") == "success"
+        and isinstance(run.get("id"), int)
+        and isinstance(run.get("url"), str)
     ]
-    runs: list[dict[str, Any]] = []
-    for number in range(1, count + 1):
-        commands_result = [_command_result(root, command) for command in commands]
-        runs.append({"run": number, "passed": all(item["passed"] for item in commands_result), "commands": commands_result})
-        if not runs[-1]["passed"]:
-            break
-    return runs
+    unique_ids = {run["id"] for run in valid}
+    passed = len(valid) >= EXPECTED_CI_RUNS and len(unique_ids) == len(valid)
+    return passed, [f"successful validate runs={len(valid)}", f"required={EXPECTED_CI_RUNS}"]
 
 
-def check_release(root: Path = ROOT, fixture: Path | None = None) -> dict[str, Any]:
+def _spec_check(root: Path) -> tuple[bool, list[str]]:
+    path = root / SPEC_PATH
+    if not path.is_file():
+        return False, [f"missing specification: {SPEC_PATH}"]
+    section = path.read_text(encoding="utf-8").split("### 19.2", 1)[-1].split("## 20", 1)[0]
+    checked = sum(line.startswith("- [x] ") for line in section.splitlines())
+    unchecked = sum(line.startswith("- [ ] ") for line in section.splitlines())
+    return checked >= 10 and unchecked == 0, [f"checked={checked}", f"unchecked={unchecked}"]
+
+
+def check_release(root: Path, fixture: Path, ci_evidence: Path) -> dict[str, Any]:
     root = root.resolve()
-    config = _config(root)
-    fixture = (fixture or root / "tests/fixtures/harmony").resolve()
-    required_paths = _required_paths(root, config)
-    schemas = _schema_paths(root, config)
-    workflow = _workflow_check(root, config)
-    spec = _spec_check(root, config)
+    fixture = fixture.resolve()
+    structure_paths = (
+        "AGENTS.md",
+        "PLANS.md",
+        "README.md",
+        "config",
+        "docs",
+        "execution",
+        "schemas",
+        "templates",
+        "tests",
+        "tools",
+    )
+    structure = _check(
+        "structure",
+        all((root / relative).exists() for relative in structure_paths),
+        [f"missing={relative}" for relative in structure_paths if not (root / relative).exists()],
+    )
+    schemas = _check(
+        "schemas",
+        all((root / "schemas" / f"{name}.schema.json").is_file() for name in SCHEMA_NAMES),
+        [f"missing={name}.schema.json" for name in SCHEMA_NAMES if not (root / "schemas" / f"{name}.schema.json").is_file()],
+    )
+
+    temporary, probe_root = _workspace(root)
+    try:
+        project = create_project(probe_root, "release-probe", "Release Probe", created_at="2026-08-11T00:00:00+00:00")
+        findings = validate_repository(probe_root)
+        new_project_check = _check(
+            "new_project_and_validate",
+            all((project / relative).exists() for relative in PROJECT_REQUIRED_FILES) and not findings,
+            [f"missing_or_invalid={len(findings)}"],
+        )
+        fixture_project = run_offline_fixture(probe_root, "harmony-study", fixture)
+        graph = build_graph(probe_root)
+        human = build_bundle(probe_root, "project/harmony-study", "human")
+        production = build_bundle(probe_root, "project/harmony-study", "production-agent")
+        bundle_check = _check(
+            "graph_bundle_impact",
+            bool(graph.get("nodes"))
+            and "Harmony Study" in human
+            and "RQ001" in production
+            and impact_report(graph, "EV001").get("found") is True,
+            [f"nodes={len(graph.get('nodes', []))}", f"human_bytes={len(human)}", f"production_bytes={len(production)}"],
+        )
+        completion = load_json(fixture_project / "07_runtime" / "completion-report.json")
+        sample_check = _check(
+            "sample_terminal",
+            completion.get("status") in {"COMPLETE", "COMPLETE_WITH_GAPS"},
+            [f"status={completion.get('status')}"],
+        )
+    finally:
+        temporary.cleanup()
+
+    evaluation_temporary, evaluation_root = _workspace(root)
+    try:
+        evaluation = evaluate_offline_fixture(evaluation_root, fixture)
+    finally:
+        evaluation_temporary.cleanup()
+    evaluation_check = _check(
+        "e2e_evaluation",
+        evaluation.get("passed") is True,
+        [f"passed_checks={sum(item.get('passed') is True for item in evaluation.get('checks', []))}"],
+    )
+    spec_passed, spec_details = _spec_check(root)
+    spec_check = _check("specification_mvp", spec_passed, spec_details)
+    ci_passed, ci_details = _ci_check(ci_evidence)
+    ci_check = _check("ci_three_runs", ci_passed, ci_details)
+    security_findings = scan_advanced_security(root)
+    security_check = _check(
+        "advanced_security",
+        not security_findings,
+        [f"findings={len(security_findings)}"] + [f"{finding.rule}: {finding.path}" for finding in security_findings],
+    )
+    chaos_result = run_chaos_suite(root)
+    chaos_check = _check(
+        "chaos_recovery",
+        chaos_result.get("passed") is True,
+        [f"scenarios={len(chaos_result.get('scenarios', []))}"],
+    )
     documentation_findings = check_documentation(root)
-    fixture_result = evaluate_offline_fixture(root, fixture)
-    runs = _ci_runs(root, fixture, config["ci_runs"])
-    path_check = all(item["present"] for item in required_paths)
-    schema_check = all(item["present"] for item in schemas)
-    ci_check = len(runs) == config["ci_runs"] and all(item["passed"] for item in runs)
-    mvp_items = [
-        {"id": "directory-structure", "passed": path_check, "evidence": [item["path"] for item in required_paths if not item["present"]]},
-        {"id": "seven-schemas", "passed": schema_check, "evidence": [item["path"] for item in schemas if not item["present"]]},
-        {"id": "new-project", "passed": path_check, "evidence": ["tools/new_project.py", "templates/project"]},
-        {"id": "validator", "passed": ci_check, "evidence": ["tools/validate.py --check"]},
-        {"id": "dependency-graph", "passed": ci_check, "evidence": ["tools/build_graph.py --check"]},
-        {"id": "bundles", "passed": path_check, "evidence": ["tools/bundle.py"]},
-        {"id": "impact", "passed": path_check, "evidence": ["tools/impact.py"]},
-        {"id": "github-actions", "passed": workflow["passed"], "evidence": workflow["missing_snippets"]},
-        {"id": "offline-sample", "passed": fixture_result["passed"], "evidence": ["tests/fixtures/harmony"]},
-        {"id": "private-derived-signal", "passed": fixture_result["gates"]["privacy"]["passed"], "evidence": ["tools/private_evidence.py"]},
-        {"id": "advanced-security", "passed": ci_check, "evidence": ["tools/security_check.py --check"]},
-        {"id": "chaos-recovery", "passed": ci_check, "evidence": ["tools/chaos_check.py"]},
-        {"id": "operations-documentation", "passed": not documentation_findings, "evidence": documentation_findings or ["docs/operations.md"]},
+    documentation_check = _check(
+        "operations_documentation",
+        not documentation_findings,
+        [f"findings={len(documentation_findings)}"] + documentation_findings,
+    )
+    checks = [
+        structure,
+        schemas,
+        new_project_check,
+        bundle_check,
+        sample_check,
+        evaluation_check,
+        spec_check,
+        ci_check,
+        security_check,
+        chaos_check,
+        documentation_check,
     ]
-    passed = spec["passed"] and ci_check and all(item["passed"] for item in mvp_items)
     return {
-        "version": 1,
-        "release_version": config["release_version"],
-        "mvp_items": mvp_items,
-        "spec_mvp": spec,
-        "workflow": workflow,
-        "documentation": {"passed": not documentation_findings, "findings": documentation_findings},
-        "offline_fixture": {"name": fixture.name, "passed": fixture_result["passed"], "gates": fixture_result["gates"]},
-        "ci_runs_requested": config["ci_runs"],
-        "ci_runs": runs,
-        "passed": passed,
+        "schema": RELEASE_SCHEMA,
+        "version": "1.0.1",
+        "passed": all(check["passed"] for check in checks),
+        "checks": checks,
+        "ci_evidence": ci_evidence.name,
     }
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run the local v1.0.0 release checklist without publishing anything.")
+    parser = argparse.ArgumentParser(description="Verify the repository-local v1.0.0 release gate.")
     parser.add_argument("--root", type=Path, default=ROOT)
-    parser.add_argument("--offline-fixture", type=Path)
+    parser.add_argument("--offline-fixture", type=Path, required=True)
+    parser.add_argument("--ci-evidence", type=Path, required=True)
+    parser.add_argument("-o", "--output", type=Path)
     args = parser.parse_args()
     try:
-        result = check_release(args.root, args.offline_fixture)
-    except (OSError, ReleaseCheckError, ValueError) as exc:
+        content = stable_json(check_release(args.root, args.offline_fixture, args.ci_evidence))
+    except (FileNotFoundError, ReleaseCheckError, ValueError) as exc:
         parser.error(str(exc))
-    print(stable_json(result), end="")
-    return 0 if result["passed"] else 1
+    if args.output:
+        atomic_write_text(args.output, content)
+        print(args.output)
+    else:
+        print(content, end="")
+    return 0
 
 
 if __name__ == "__main__":

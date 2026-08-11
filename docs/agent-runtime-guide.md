@@ -50,6 +50,17 @@ python3 tools/context_pack.py project/example TASK002 --role production-translat
 未知のrole、存在しないtask、欠損source、プロジェクト外へ解決されるsourceは失敗する。
 packは生成物であり、正本の代わりに編集してはならない。
 
+## 品質・安全性評価
+
+offline fixtureはcanonical rootを書き換えず、一時領域で正確性、追跡性、終端性、再開性、安全性を評価する。
+
+```bash
+python3 tools/evaluate.py --offline-fixture tests/fixtures/harmony
+python3 tools/security_check.py --check
+python3 tools/chaos_check.py
+python3 tools/docs_check.py --check
+```
+
 ## 共通起動プロンプト
 
 ```text

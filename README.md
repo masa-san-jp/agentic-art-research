@@ -40,7 +40,7 @@ python3 tools/audit.py
 python3 tools/security_check.py --check
 python3 tools/chaos_check.py
 python3 tools/docs_check.py --check
-python3 tools/release_check.py --offline-fixture tests/fixtures/harmony
+python3 tools/release_check.py --offline-fixture tests/fixtures/harmony --ci-evidence execution/ci-evidence.json
 python3 -m unittest discover -s tests -v
 ```
 
