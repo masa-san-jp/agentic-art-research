@@ -1,0 +1,26 @@
+{
+  "workflow": "validate",
+  "runs": [
+    {
+      "id": 31479330103,
+      "pr": 20,
+      "head_sha": "ea0333002b90b682016031d77550df0f6341ecb4",
+      "conclusion": "success",
+      "url": "https://github.com/masa-san-jp/agentic-art-research/actions/runs/31479330103"
+    },
+    {
+      "id": 31479829494,
+      "pr": 21,
+      "head_sha": "74d020eb617bb2783fdd7f62c44157d6bbf76916",
+      "conclusion": "success",
+      "url": "https://github.com/masa-san-jp/agentic-art-research/actions/runs/31479829494"
+    },
+    {
+      "id": 31480154049,
+      "pr": 22,
+      "head_sha": "06cb3c57c522bba45d53904491600d720c84786d",
+      "conclusion": "success",
+      "url": "https://github.com/masa-san-jp/agentic-art-research/actions/runs/31480154049"
+    }
+  ]
+}
