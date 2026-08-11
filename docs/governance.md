@@ -28,7 +28,12 @@
 - 権利不明資料はURLの記録に留め、snapshotを保存しない。
 - 削除は依存レポートと人間承認を必要とする。
 
+## 個人証拠アダプタ
+
+`tools/private_evidence.py` は個人ソースを解決・読取せず、設定済みschemeのopaque URI、sha256、権利・取得日時などの最小メタデータだけを受け取る。原文らしい入力フィールド、認証情報付きURI、path traversal、未承認の派生状態は拒否する。
+
+リポジトリへ書くのは、`PRIVATE_DERIVED` の evidence ledger record と、それを根拠にした `PREFERENCE_SIGNAL` claim のみである。再取込はURIとハッシュが一致し、派生claimも一致する場合だけ冪等にskipする。`PRIVATE_DERIVED` から `PROJECT_INTERNAL` または `PUBLIC_CITABLE` へ変更する場合は、設計仕様 §6.2 に従い人間承認を要する。
+
 ## エージェントの停止
 
 エージェントは失敗を無限に反復しない。既定再試行を使い切ったら、`BLOCKED` または `COMPLETE_WITH_GAPS` とし、原因、試行、解除条件を記録する。
-

@@ -1,0 +1,39 @@
+version: 1
+allowed_opaque_uri_schemes: [gdrive, private, pds]
+require_uri_authority: true
+allowed_sensitivities: [PRIVATE_DERIVED]
+derived_redistribution: prohibited
+derived_extraction_status: processed
+derived_claim_type: PREFERENCE_SIGNAL
+allowed_derived_epistemic_statuses: [SUPPORTED, WEAK, HYPOTHESIS, UNRESOLVED]
+max_signal_statement_length: 280
+derived_signal_fields: [statement, scope, epistemic_status, valid_from, review_after]
+metadata_required_fields:
+  - source_type
+  - source_location
+  - content_hash
+  - rights_status
+  - related_projects
+  - related_questions
+  - acquired_at
+metadata_optional_fields:
+  - creator
+  - created_at
+  - observed_by
+forbidden_input_fields:
+  - raw_content
+  - content
+  - body
+  - text
+  - bytes
+  - raw_bytes
+  - path
+  - filename
+  - email
+  - calendar
+  - audio
+  - attachment
+  - credential
+  - credentials
+  - password
+  - token
