@@ -118,6 +118,16 @@ def _handoff_fixture_contract(root: Path, fixture: Path) -> dict[str, Any]:
 def _feedback_schema_boundary(root: Path) -> dict[str, Any]:
     temporary, probe_root = _workspace(root)
     try:
+        # The boundary probe must exercise an unavailable production-owned
+        # schema even when the real research root has a valid snapshot. A
+        # missing result input tests FEEDBACK-INPUT, not EXTERNAL-SCHEMA.
+        policy_path = probe_root / "config" / "handoff-policy.yaml"
+        policy = load_yaml(policy_path) or {}
+        configured_schema = policy.get("production_result_schema_path") if isinstance(policy, dict) else None
+        if isinstance(configured_schema, str) and configured_schema:
+            schema_path = (probe_root / configured_schema).resolve()
+            if probe_root.resolve() in schema_path.parents and schema_path.is_file():
+                schema_path.unlink()
         try:
             import_production_result(probe_root, probe_root / "missing-production-result.json", dry_run=True)
         except ResultImportError as exc:

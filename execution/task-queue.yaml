@@ -1,5 +1,5 @@
 version: 2
-updated_at: "2026-08-12T07:01:00+09:00"
+updated_at: "2026-08-12T07:24:00+09:00"
 selection_policy: lowest_id_ready_with_dependencies_done
 allowed_statuses: [BACKLOG, READY, IN_PROGRESS, BLOCKED, DONE]
 tasks:
@@ -180,12 +180,12 @@ tasks:
   - id: HANDOFF-E2E-001
     milestone: H5
     title: Complete cross-repository handoff evaluation
-    status: IN_PROGRESS
+    status: DONE
     depends_on: [FEEDBACK-IMPORT-001]
     acceptance: Offline fixtures complete research-to-production-to-research flow with compatibility, tamper, failure, and backward-compatibility checks.
   - id: HANDOFF-RELEASE-001
     milestone: H5
     title: Release the production handoff extension
-    status: BACKLOG
+    status: DONE
     depends_on: [HANDOFF-E2E-001]
     acceptance: Documentation and release gates pass three consecutive times and the verified commit is ready for explicit human-approved publication.

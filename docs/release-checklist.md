@@ -39,7 +39,7 @@ production側のclean commitが公開された後は、まず次でsnapshotとpr
 ```bash
 python3 tools/snapshot_production_schema.py \
   --source-repo /path/to/agentic-art-production \
-  --source-schema schemas/external/production-result.v1.schema.json \
+  --source-schema schemas/production-result.schema.json \
   --source-repository masa-san-jp/agentic-art-production \
   --commit <40-character-production-commit> \
   --acquired-at 2026-08-12T00:00:00+09:00 \

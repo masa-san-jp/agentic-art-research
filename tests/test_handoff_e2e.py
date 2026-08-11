@@ -7,6 +7,7 @@ import sys
 import unittest
 from pathlib import Path
 
+from jsonschema import Draft202012Validator
 import yaml
 
 
@@ -99,6 +100,39 @@ class HandoffE2EContractTest(_FeedbackImportContractTest):
                 self.assertEqual([], validate_repository(root, "project/feedback-import"))
                 if scenario == "critical":
                     self.assertTrue(applied["human_approval_required"])
+
+    def test_actual_production_schema_dry_run_apply_and_idempotency(self) -> None:
+        root, project = self.make_project()
+        schema_path = root / "schemas" / "external" / "production-result.v1.schema.json"
+        shutil.copyfile(REPO_ROOT / "schemas" / "external" / "production-result.v1.schema.json", schema_path)
+        self.assertTrue(schema_path.is_file())
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        Draft202012Validator.check_schema(schema)
+        result = self.make_result(project)
+        errors = list(Draft202012Validator(schema).iter_errors(result))
+        self.assertEqual([], errors, "\n".join(error.message for error in errors))
+        result_path = self.write_result(root, result, "actual-production-result.json")
+        tracked = [
+            project / "02_evidence" / "evidence-ledger.jsonl",
+            project / "06_governance" / "production-change-requests.yaml",
+            project / "07_runtime" / "production-feedback-imports.jsonl",
+            project / "07_runtime" / "run-log.jsonl",
+            project / "manifest.yaml",
+            project / "07_runtime" / "research-state.json",
+        ]
+        before = {path: path.read_bytes() for path in tracked}
+
+        preview = import_production_result(root, result_path, dry_run=True)
+        self.assertEqual("DRY_RUN", preview["status"])
+        self.assertEqual("fb15f32bf1eef0155c853c4b7c4b94df6b1bd78b", preview["schema_snapshot"]["source_commit"])
+        self.assertEqual(before, {path: path.read_bytes() for path in tracked})
+
+        applied = import_production_result(root, result_path, apply=True)
+        self.assertEqual("APPLIED", applied["status"])
+        repeated_before = {path: path.read_bytes() for path in tracked}
+        repeated = import_production_result(root, result_path, apply=True)
+        self.assertEqual("ALREADY_APPLIED", repeated["status"])
+        self.assertEqual(repeated_before, {path: path.read_bytes() for path in tracked})
 
     def test_schema_mismatch_and_corrupt_feedback_fail_closed(self) -> None:
         root, project = self.make_project()

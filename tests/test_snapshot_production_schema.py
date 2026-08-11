@@ -59,6 +59,11 @@ class ProductionSchemaSnapshotTest(unittest.TestCase):
     def _research_root(self, temporary: tempfile.TemporaryDirectory) -> Path:
         root = Path(temporary.name) / "research"
         shutil.copytree(REPO_ROOT / "config", root / "config")
+        policy_path = root / "config" / "handoff-policy.yaml"
+        policy = yaml.safe_load(policy_path.read_text(encoding="utf-8"))
+        policy["production_result_schema_source"] = {}
+        policy["production_result_schema_versions"] = []
+        policy_path.write_text(yaml.safe_dump(policy, sort_keys=False, allow_unicode=True), encoding="utf-8")
         (root / "schemas").mkdir()
         return root
 

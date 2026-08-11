@@ -30,6 +30,9 @@ class FeedbackImportContractTest(unittest.TestCase):
         self.addCleanup(shutil.rmtree, temporary, True)
         for name in ("templates", "config", "schemas"):
             shutil.copytree(REPO_ROOT / name, temporary / name)
+        snapshot = temporary / "schemas" / "external" / "production-result.v1.schema.json"
+        if snapshot.exists():
+            snapshot.unlink()
         (temporary / "projects").mkdir()
         (temporary / "data").mkdir()
         return temporary

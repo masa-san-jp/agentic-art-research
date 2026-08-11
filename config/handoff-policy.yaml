@@ -6,11 +6,16 @@ generator_version: 1.0.0
 source_repository: masa-san-jp/agentic-art-research
 max_payload_bytes: 262144
 signed_url_markers:
-  - X-Amz-Signature
-  - AWSAccessKeyId
-  - Signature=
-  - sig=
-  - token=
+- X-Amz-Signature
+- AWSAccessKeyId
+- Signature=
+- sig=
+- token=
 production_result_schema_path: schemas/external/production-result.v1.schema.json
-production_result_schema_source: {}
-production_result_schema_versions: []
+production_result_schema_source:
+  repository: masa-san-jp/agentic-art-production
+  commit: fb15f32bf1eef0155c853c4b7c4b94df6b1bd78b
+  acquired_at: '2026-08-12T07:12:40+09:00'
+  sha256: sha256:5b69090476891629932e5b01260a6217273f8a4771cc004d4922fcd04a0a104a
+production_result_schema_versions:
+- 1.0.0
