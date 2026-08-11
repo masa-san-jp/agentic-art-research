@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/requirement.schema.json",
+  "title": "Production requirement",
+  "type": "object",
+  "required": ["id", "category", "statement", "source_decisions", "priority", "acceptance_test_ids", "status"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {"type": "string", "pattern": "^RQ[0-9]{3,}$"},
+    "category": {"type": "string", "minLength": 1},
+    "statement": {"type": "string", "minLength": 1},
+    "source_decisions": {"type": "array", "items": {"type": "string", "pattern": "^DC[0-9]{3,}$"}, "minItems": 1, "uniqueItems": true},
+    "priority": {"enum": ["mandatory", "preferred", "optional"]},
+    "acceptance_test_ids": {"type": "array", "items": {"type": "string", "pattern": "^AT[0-9]{3,}$"}, "uniqueItems": true},
+    "status": {"enum": ["PROPOSED", "ADOPTED", "REJECTED", "ON_HOLD", "INVALIDATED"]}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"priority": {"const": "mandatory"}}},
+      "then": {"properties": {"acceptance_test_ids": {"minItems": 1}}}
+    }
+  ]
+}
+

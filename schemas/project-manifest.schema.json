@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/project-manifest.schema.json",
+  "title": "Research project manifest",
+  "type": "object",
+  "required": ["project", "entry_points", "access"],
+  "additionalProperties": false,
+  "properties": {
+    "project": {
+      "type": "object",
+      "required": ["id", "title", "version", "status", "created_at", "updated_at"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"$ref": "common.schema.json#/$defs/projectId"},
+        "title": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+        "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+        "status": {"enum": ["DRAFT", "PLANNED", "COLLECTING", "NORMALIZING", "ANALYZING", "DECIDING", "READY_FOR_PRODUCTION", "VALIDATING", "COMPLETE", "COMPLETE_WITH_GAPS", "BLOCKED", "CANCELLED"]},
+        "creator_id": {"type": ["string", "null"]},
+        "created_at": {"$ref": "common.schema.json#/$defs/timestamp"},
+        "updated_at": {"$ref": "common.schema.json#/$defs/timestamp"}
+      }
+    },
+    "entry_points": {
+      "type": "object",
+      "required": ["human_summary", "research_plan", "evidence_ledger", "completion_report"],
+      "additionalProperties": {"type": "string"}
+    },
+    "access": {
+      "type": "object",
+      "required": ["classification"],
+      "properties": {
+        "classification": {"$ref": "common.schema.json#/$defs/accessClass"},
+        "allowed_agents": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}
+      }
+    }
+  }
+}
+

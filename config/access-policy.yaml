@@ -1,0 +1,33 @@
+version: 1
+git_storage:
+  PRIVATE_RAW: prohibited
+  PRIVATE_DERIVED: conditional
+  PROJECT_INTERNAL: allowed
+  PUBLIC_CITABLE: allowed
+  RESTRICTED: prohibited
+forbidden_extensions:
+  - .eml
+  - .mbox
+  - .ics
+  - .pst
+  - .ost
+  - .key
+  - .pem
+  - .p12
+  - .pfx
+  - .wav
+  - .m4a
+  - .mp3
+approved_snapshot_requires:
+  - rights_status
+  - redistribution
+  - content_hash
+  - acquired_at
+external_actions_requiring_human:
+  - publish
+  - submit
+  - send
+  - purchase
+  - contract
+  - delete
+

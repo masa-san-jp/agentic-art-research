@@ -1,0 +1,21 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.DS_Store
+projects/smoke-project/
+
+# Raw or secret-bearing formats are forbidden by policy as well as ignored here.
+*.eml
+*.mbox
+*.ics
+*.pst
+*.ost
+*.pem
+*.key
+*.p12
+*.pfx
+*.wav
+*.m4a
+*.mp3
+

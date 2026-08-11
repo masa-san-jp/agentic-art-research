@@ -1,0 +1,19 @@
+project:
+  id: project/__PROJECT_SLUG__
+  title: "__PROJECT_TITLE__"
+  version: 0.1.0
+  status: DRAFT
+  creator_id: __CREATOR_ID__
+  created_at: "__CREATED_AT__"
+  updated_at: "__CREATED_AT__"
+entry_points:
+  human_summary: 05_production/creative-direction.md
+  research_plan: 01_planning/research-plan.yaml
+  evidence_ledger: 02_evidence/evidence-ledger.jsonl
+  decision_log: 04_decisions/decision-log.yaml
+  production_requirements: 05_production/production-requirements.yaml
+  completion_report: 07_runtime/completion-report.json
+access:
+  classification: PROJECT_INTERNAL
+  allowed_agents: [orchestrator, planner, collector, curator, analyst, critic, production-translator, validator, auditor]
+

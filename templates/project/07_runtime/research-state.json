@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "project_id": "project/__PROJECT_SLUG__",
+  "status": "DRAFT",
+  "updated_at": "__CREATED_AT__",
+  "current_task": null,
+  "last_event_id": null,
+  "blocked_by": [],
+  "resume_from": "Complete 00_intake and 01_planning, then transition to PLANNED."
+}
+

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/evidence.schema.json",
+  "title": "Evidence",
+  "type": "object",
+  "required": ["id", "source_type", "source_location", "acquired_at", "content_hash", "rights_status", "sensitivity", "redistribution", "related_questions", "extraction_status"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {"type": "string", "pattern": "^EV[0-9]{3,}$"},
+    "source_type": {"type": "string", "minLength": 1},
+    "source_location": {"type": "string", "minLength": 1},
+    "creator": {"type": ["string", "null"]},
+    "created_at": {"type": ["string", "null"]},
+    "acquired_at": {"$ref": "common.schema.json#/$defs/timestamp"},
+    "content_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "rights_status": {"type": "string", "minLength": 1},
+    "sensitivity": {"$ref": "common.schema.json#/$defs/accessClass"},
+    "redistribution": {"enum": ["allowed", "prohibited", "conditional", "unknown"]},
+    "related_projects": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "related_questions": {"type": "array", "items": {"type": "string", "pattern": "^Q[0-9]{3,}$"}, "uniqueItems": true},
+    "extraction_status": {"enum": ["unprocessed", "processed", "excluded"]},
+    "direct_observation": {"type": "boolean"},
+    "observed_by": {"type": ["string", "null"]}
+  }
+}
+
