@@ -49,6 +49,20 @@ python3 tools/context_pack.py project/example TASK001 --role analyst
 導出する。許可されないkind、未解決ID、`PRIVATE_RAW` / `RESTRICTED` のレコードはエラーにし、
 全プロジェクトの無条件バンドルを生成しない。
 
+## 品質・安全性評価
+
+`EVAL-002` の評価器は、プロジェクトへ書き込まず、一時領域でoffline fixtureを再生成して
+accuracy、traceability、termination、resume、privacyの5ゲートを決定的なJSONで返す。
+
+```bash
+python3 tools/evaluate.py --offline-fixture tests/fixtures/harmony
+python3 tools/evaluate.py --root /path/to/repository --target project/example
+```
+
+traceabilityは必須要件から証拠までの逆向き到達性と合格済み受入試験を確認する。resumeは
+`run-log.jsonl`のライフサイクルreplayと`research-state.json`の再開点を確認し、privacyは
+validatorの境界検査に加えて個人証拠アダプタのホワイトリスト出力を合成入力で確認する。
+
 ## 共通起動プロンプト
 
 ```text

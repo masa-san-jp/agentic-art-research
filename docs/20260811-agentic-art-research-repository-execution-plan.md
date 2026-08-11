@@ -52,11 +52,12 @@ python3 tools/bundle.py project/harmony-study --audience human
 - [x] (2026-08-11) `RUNTIME-004`: ロール定義とタスク参照から、証拠・制約・受入試験を最小範囲で解決する決定的コンテキストパックを実装。
 - [x] (2026-08-11) `INTEGRATION-001`: `art-history-notes` の graph と Git HEAD を読み、本文を複製せず stable external-reference metadata を取り込むアダプタを実装。
 - [x] (2026-08-11) `INTEGRATION-002`: 個人ソースのopaque URI・sha256・最小メタデータと、承認済み`PREFERENCE_SIGNAL`だけを取り込むアダプタ境界を実装。
+- [x] (2026-08-11) `EVAL-002`: offline fixtureを一時領域で再生成し、正確性・追跡性・終端性・再開性・安全性の5ゲートを決定的に評価。
 - [ ] M1b: 全JSON Schema検証と参照整合性を実装。
 - [ ] M2: 依存グラフ、バンドル、影響分析、監査を実用レベルへ完成。
 - [ ] M3: 代表サンプルプロジェクトを固定fixtureで完走。
 - [ ] M4: 状態機械と自律Orchestratorを実装。
-- [ ] M5: `art-history-notes` と個人証拠保管先のアダプタを実装。
+- [x] M5: `art-history-notes` と個人証拠保管先のアダプタを実装。
 - [ ] M6: 評価、セキュリティ、回帰、リリース判定を完成。
 
 ## Surprises & Discoveries
@@ -80,6 +81,7 @@ python3 tools/bundle.py project/harmony-study --audience human
 - 2026-08-11: ロール別パックは audience bundle の全ファイル複製ではなく、タスクが宣言したIDから追跡連鎖を解決する必要がある。ロールの許可語彙外の参照と `PRIVATE_RAW` / `RESTRICTED` は、欠落を黙って補正せず生成を拒否する。
 - 2026-08-11: `art-history-notes` の正本は Markdown entity 本文ではなく生成済み `data/graph.json` のメタデータと Git commit で参照できる。アダプタは status 下限を適用し、stub を除外して URI・ID・commit・取得日時だけをプロジェクトへ書く。
 - 2026-08-11: 個人証拠アダプタは入力をホワイトリストで再構成し、認証情報付きURI、許可外scheme、path traversal、原文らしいフィールド、未承認のepistemic statusを拒否する。出力は`PRIVATE_DERIVED`の証拠と根拠付き`PREFERENCE_SIGNAL`だけに限定する。
+- 2026-08-11: 評価を本体プロジェクトへ直接適用するとテストがcanonical dataを変更し得るため、fixture再生成を一時rootへ隔離した。5ゲートの結果は時刻を含めず、同一入力でbyte-stableなJSONにした。
 
 ## Decision Log
 
@@ -105,7 +107,7 @@ python3 tools/bundle.py project/harmony-study --audience human
 
 ## Outcomes & Retrospective
 
-M0/M1a、`SCHEMA-001`、`VALIDATE-001`、`SECURITY-001`、`VALIDATE-002`、`TEST-001`、`GRAPH-001`、`BUNDLE-001`、`IMPACT-001`、`AUDIT-001`、`SAMPLE-001`、`COMPLETE-001`、`RUNTIME-001`、`RUNTIME-002`、`RUNTIME-003`、`RUNTIME-004`、`INTEGRATION-001`、`INTEGRATION-002`完了時点では、プロジェクト雛形の生成、Draft 2020-12スキーマ検証、JSONL行番号付きエラー、YAML重複キー検出、機密・秘密境界検査、参照整合性、状態遷移と試験接続の検査、blocking ruleの正常・失敗fixtureマトリクス、プロジェクトスコープで決定的な依存グラフ、4 audienceの範囲制限付きbundle生成、upstream/downstreamのJSON・Markdown影響分析、出典偏り・鮮度・弱い判断・未実施試験の非ブロッキング監査、固定offline fixtureからの`COMPLETE_WITH_GAPS` package再生成、両terminal statusの決定論的completion生成、状態機械とrun-log replay、依存DAG・lease・bounded retry・failure classification・resume、検索・資料・失敗・飽和の設定上限と質問終端化、タスク最小のロールコンテキストパック、外部KBのstable reference adapter、private-sourceのno-raw adapter、CI初期版が実行可能になる。EVAL-002以降の評価・リリース判定は未実装であり、「自律リサーチ完成」とはまだ呼ばない。
+M0/M1a、`SCHEMA-001`、`VALIDATE-001`、`SECURITY-001`、`VALIDATE-002`、`TEST-001`、`GRAPH-001`、`BUNDLE-001`、`IMPACT-001`、`AUDIT-001`、`SAMPLE-001`、`COMPLETE-001`、`RUNTIME-001`、`RUNTIME-002`、`RUNTIME-003`、`RUNTIME-004`、`INTEGRATION-001`、`INTEGRATION-002`、`EVAL-002`完了時点では、プロジェクト雛形の生成、Draft 2020-12スキーマ検証、JSONL行番号付きエラー、YAML重複キー検出、機密・秘密境界検査、参照整合性、状態遷移と試験接続の検査、blocking ruleの正常・失敗fixtureマトリクス、プロジェクトスコープで決定的な依存グラフ、4 audienceの範囲制限付きbundle生成、upstream/downstreamのJSON・Markdown影響分析、出典偏り・鮮度・弱い判断・未実施試験の非ブロッキング監査、固定offline fixtureからの`COMPLETE_WITH_GAPS` package再生成、両terminal statusの決定論的completion生成、状態機械とrun-log replay、依存DAG・lease・bounded retry・failure classification・resume、検索・資料・失敗・飽和の設定上限と質問終端化、タスク最小のロールコンテキストパック、外部KBのstable reference adapter、private-sourceのno-raw adapter、5ゲートの決定的評価、CI初期版が実行可能になる。RELEASE-001以降のリリース判定は未実装であり、「自律リサーチ完成」とはまだ呼ばない。
 
 ## Context and Orientation
 
