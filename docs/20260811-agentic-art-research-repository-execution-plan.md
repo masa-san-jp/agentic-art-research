@@ -38,6 +38,7 @@ python3 tools/bundle.py project/harmony-study --audience human
 - [x] (2026-08-11) `SCHEMA-001`: 7ドメインのDraft 2020-12スキーマ、正常fixture、規則別異常fixtureを追加。
 - [x] (2026-08-11) `VALIDATE-001`: JSON Schema、JSONL行番号、YAML重複キーの検証とremediation付きエラーを追加。
 - [x] (2026-08-11) `SECURITY-001`: 禁止ファイル名・拡張子、秘密パターン、私的スナップショット境界を検査。
+- [x] (2026-08-11) `VALIDATE-002`: 参照ID、重複／循環、質問終端、状態遷移、必須要件の試験接続を検査。
 - [ ] M1b: 全JSON Schema検証と参照整合性を実装。
 - [ ] M2: 依存グラフ、バンドル、影響分析、監査を実用レベルへ完成。
 - [ ] M3: 代表サンプルプロジェクトを固定fixtureで完走。
@@ -52,6 +53,7 @@ python3 tools/bundle.py project/harmony-study --audience human
 - 2026-08-11: 実行系モデルのベンダー差を吸収するには、モデル固有プロンプトより、短い恒久規則、自己完結計画、テスト、状態ファイルの組合せが重要。
 - 2026-08-11: スキーマのDraft 2020-12参照解決とfixture検証には `jsonschema` が必要だった。依存をrequirementsへ追加し、CLIへの統合は `VALIDATE-001` で行う。
 - 2026-08-11: 秘密スキャンは高信頼度パターンだけを設定から読み込み、合成秘密をテストコードへリテラル保存しない。一般語の検索だけでは誤検出が多く、単語＋代入形式に限定した。
+- 2026-08-11: 状態遷移はログから現在状態を推測せず、`research-state.json`を正本として、存在する遷移イベントだけを設定済みDAGと照合する。
 
 ## Decision Log
 
@@ -65,7 +67,7 @@ python3 tools/bundle.py project/harmony-study --audience human
 
 ## Outcomes & Retrospective
 
-M0/M1a、`SCHEMA-001`、`VALIDATE-001`、`SECURITY-001`完了時点では、プロジェクト雛形の生成、Draft 2020-12スキーマ検証、JSONL行番号付きエラー、YAML重複キー検出、機密・秘密境界検査、CI初期版が実行可能になる。参照整合性、調査Orchestratorと外部アダプタは未実装であり、「自律リサーチ完成」とはまだ呼ばない。
+M0/M1a、`SCHEMA-001`、`VALIDATE-001`、`SECURITY-001`、`VALIDATE-002`完了時点では、プロジェクト雛形の生成、Draft 2020-12スキーマ検証、JSONL行番号付きエラー、YAML重複キー検出、機密・秘密境界検査、参照整合性、状態遷移と試験接続の検査、CI初期版が実行可能になる。サンプルE2E、調査Orchestratorと外部アダプタは未実装であり、「自律リサーチ完成」とはまだ呼ばない。
 
 ## Context and Orientation
 

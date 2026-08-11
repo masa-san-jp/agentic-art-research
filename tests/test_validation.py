@@ -103,6 +103,118 @@ class ValidationErrorContractTest(unittest.TestCase):
         self.assertEqual(1, finding.line)
         self.assertIn("remediation:", finding.render())
 
+    def test_broken_cross_reference_fails(self) -> None:
+        root = self.make_root()
+        project = create_project(root, "broken-reference", "Broken Reference")
+        evidence = {
+            "id": "EV001",
+            "source_type": "primary_public",
+            "source_location": "https://example.invalid/source/001",
+            "created_at": "unknown",
+            "acquired_at": "2026-08-11T15:00:00+09:00",
+            "content_hash": "sha256:" + "0" * 64,
+            "rights_status": "public-use",
+            "sensitivity": "PUBLIC_CITABLE",
+            "redistribution": "allowed",
+            "related_projects": ["project/broken-reference"],
+            "related_questions": ["Q999"],
+            "extraction_status": "processed",
+            "direct_observation": False,
+            "observed_by": "collector",
+        }
+        (project / "02_evidence" / "evidence-ledger.jsonl").write_text(json.dumps(evidence) + "\n", encoding="utf-8")
+
+        findings = validate_repository(root)
+        finding = next(item for item in findings if item.rule == "CROSS-REFERENCE")
+        self.assertEqual("evidence-ledger.jsonl", Path(finding.path).name)
+        self.assertEqual("EV001.related_questions[0]", finding.field)
+
+    def test_mandatory_question_must_be_terminal(self) -> None:
+        root = self.make_root()
+        project = create_project(root, "open-question", "Open Question")
+        question_path = project / "01_planning" / "question-register.yaml"
+        question_path.write_text(
+            yaml.safe_dump(
+                {"questions": [{"id": "Q001", "text": "Question", "priority": "mandatory", "status": "OPEN"}]},
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+
+        findings = validate_repository(root)
+        finding = next(item for item in findings if item.rule == "QUESTION-TERMINAL")
+        self.assertEqual("Q001.status", finding.field)
+
+    def test_illegal_lifecycle_transition_fails(self) -> None:
+        root = self.make_root()
+        project = create_project(root, "illegal-transition", "Illegal Transition")
+        run_log = project / "07_runtime" / "run-log.jsonl"
+        run_log.write_text(
+            json.dumps({"event_id": "EVT001", "event_type": "STATE_TRANSITION", "from_status": "DRAFT", "to_status": "COMPLETE"}) + "\n",
+            encoding="utf-8",
+        )
+
+        findings = validate_repository(root)
+        finding = next(item for item in findings if item.rule == "LIFECYCLE-TRANSITION")
+        self.assertEqual(1, finding.line)
+        self.assertEqual("from_status/to_status", finding.field)
+
+    def test_mandatory_requirement_needs_resolved_acceptance_test(self) -> None:
+        root = self.make_root()
+        project = create_project(root, "untestable-requirement", "Untestable Requirement")
+        requirements_path = project / "05_production" / "production-requirements.yaml"
+        requirements_path.write_text(
+            yaml.safe_dump(
+                {
+                    "requirements": [
+                        {
+                            "id": "RQ001",
+                            "category": "visual",
+                            "statement": "A testable visual constraint.",
+                            "source_decisions": [],
+                            "priority": "mandatory",
+                            "acceptance_test_ids": [],
+                            "status": "ADOPTED",
+                        }
+                    ]
+                },
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+
+        findings = validate_repository(root)
+        finding = next(item for item in findings if item.rule == "REQUIREMENT-TEST")
+        self.assertEqual("RQ001.acceptance_test_ids", finding.field)
+
+    def test_duplicate_canonical_id_fails(self) -> None:
+        root = self.make_root()
+        project = create_project(root, "duplicate-id", "Duplicate ID")
+        base = {
+            "id": "EV001",
+            "source_type": "primary_public",
+            "source_location": "https://example.invalid/source/001",
+            "created_at": "unknown",
+            "acquired_at": "2026-08-11T15:00:00+09:00",
+            "content_hash": "sha256:" + "0" * 64,
+            "rights_status": "public-use",
+            "sensitivity": "PUBLIC_CITABLE",
+            "redistribution": "allowed",
+            "related_projects": ["project/duplicate-id"],
+            "related_questions": [],
+            "extraction_status": "processed",
+            "direct_observation": False,
+            "observed_by": "collector",
+        }
+        (project / "02_evidence" / "evidence-ledger.jsonl").write_text(
+            json.dumps(base) + "\n" + json.dumps(base) + "\n", encoding="utf-8"
+        )
+
+        findings = validate_repository(root)
+        finding = next(item for item in findings if item.rule == "DUPLICATE-ID")
+        self.assertEqual("id", finding.field)
+        self.assertIn("EV001", finding.message)
+
 
 if __name__ == "__main__":
     unittest.main()
