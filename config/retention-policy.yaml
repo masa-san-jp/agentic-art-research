@@ -1,5 +1,6 @@
 version: 1
 review_days:
+  evidence: 180
   long_term_aesthetic_signal: 180
   recent_interest: 30
   email_calendar_interest_min: 7
@@ -13,4 +14,3 @@ deletion:
   automatic: false
   require_dependency_report: true
   require_human_approval: true
-
