@@ -1,8 +1,8 @@
 version: 1
-updated_at: "2026-08-11T16:29:21+09:00"
+updated_at: "2026-08-11T16:34:52+09:00"
 current_milestone: M4
-next_task: RUNTIME-003
-last_completed_task: RUNTIME-002
+next_task: RUNTIME-004
+last_completed_task: RUNTIME-003
 terminal: false
 blocked_by: []
 resume_from:
@@ -11,4 +11,4 @@ resume_from:
     - docs/20260811-agentic-art-research-system-design-specification.md
     - docs/20260811-agentic-art-research-repository-execution-plan.md
     - execution/task-queue.yaml
-  action: Claim RUNTIME-003, mark it IN_PROGRESS, and implement stopping policy bounds and saturation termination.
+  action: Claim RUNTIME-004, mark it IN_PROGRESS, and implement role-specific minimal context packs.

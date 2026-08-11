@@ -22,6 +22,21 @@ workerが停止した場合は期限切れleaseだけが再取得対象になる
 同じ失敗を反復しない。完了効果にはタスク単位の決定的な`effect_key`を使い、同じ
 効果の再送は既存結果を返し、異なる効果キーの二重適用は拒否する。
 
+## 停止規則と飽和
+
+質問ごとの `SEARCH_ATTEMPTED`、`SOURCE_REVIEWED`、`ANSWER_FOUND`、
+`EVIDENCE_ROUND`、`SEARCH_FAILED` を `run-log.jsonl`へ記録し、次で評価・適用する。
+
+```bash
+python3 tools/stopping_policy.py project/example evaluate
+python3 tools/stopping_policy.py project/example apply --evaluated-at 2026-08-11T00:20:00+09:00
+```
+
+`ANSWER_FOUND` が十分数に達した場合は `ANSWERED` を優先する。それ以外は検索戦略、
+確認資料、同一失敗の反復、連続した新規証拠なしラウンドのいずれかが上限に達した時点で
+`UNRESOLVED` または `BLOCKED` に終端化する。applyは同じ入力へ再実行しても停止イベントを
+重複追記しない。
+
 ## 共通起動プロンプト
 
 ```text

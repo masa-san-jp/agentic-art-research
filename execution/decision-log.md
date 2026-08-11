@@ -19,3 +19,4 @@
 | 2026-08-11 | ED-013 | COMPLETE-001は既存または明示されたRFC 3339時刻をcompletion reportと状態更新へ使い、`VALIDATING`からterminal状態へのイベントを追記する | 完了判定を決定論的にし、状態機械と再開情報を同時に保持するため | `tools/complete.py`、`tests/test_complete.py` |
 | 2026-08-11 | ED-014 | RUNTIME-001は`config/vocabularies.yaml`からstate machineを構築し、実行時適用とrun-log replayで同じ遷移規則を利用する | validator、completion、将来のOrchestrator間でライフサイクル契約を分散させないため | `tools/state_machine.py`、`tests/test_state_machine.py` |
 | 2026-08-11 | ED-015 | RUNTIME-002は`research-plan.yaml`のタスク定義を`research-state.json.task_runtime`へ固定し、leaseとタスクイベントを既存`run-log.jsonl`へ記録する | 中断後に2ファイルだけで再開でき、期限切れworkerの再取得と`effect_key`による完了冪等性を同じ永続契約で検証するため | `tools/task_runtime.py`、`schemas/research-state.schema.json`、`tests/test_task_runtime.py` |
+| 2026-08-11 | ED-016 | RUNTIME-003は`run-log.jsonl`の質問イベントを設定済み上限へ集計し、成功条件を優先してから`UNRESOLVED`または`BLOCKED`へ停止し、質問台帳へのapplyを冪等にする | 有限の探索を再現可能に終端化し、既存ライフサイクルイベントとの誤認と二重記録を避けるため | `tools/stopping_policy.py`、`tests/test_stopping_policy.py` |

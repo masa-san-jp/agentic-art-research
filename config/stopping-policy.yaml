@@ -5,6 +5,7 @@ defaults:
   max_identical_failure_retries: 2
   saturation_rounds_without_new_evidence: 2
   minimum_independent_secondary_sources_when_no_primary: 2
+  default_sufficient_answers: 1
   allow_complete_with_gaps: true
   require_terminal_state: true
   task_runtime:
