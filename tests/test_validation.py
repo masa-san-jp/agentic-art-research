@@ -67,6 +67,42 @@ class ValidationErrorContractTest(unittest.TestCase):
         self.assertEqual("questions", finding.field)
         self.assertIn("remediation:", finding.render())
 
+    def test_forbidden_filename_fails_repository_boundary(self) -> None:
+        root = self.make_root()
+        project = create_project(root, "forbidden-name", "Forbidden Name")
+        env_path = project / ".env"
+        env_path.write_text("TOKEN=synthetic", encoding="utf-8")
+
+        findings = validate_repository(root)
+        finding = next(item for item in findings if item.path.endswith("/.env"))
+        self.assertEqual("DATA-BOUNDARY", finding.rule)
+        self.assertIn("remediation:", finding.render())
+
+    def test_likely_secret_reports_file_line_rule_and_remediation(self) -> None:
+        root = self.make_root()
+        project = create_project(root, "secret-scan", "Secret Scan")
+        source_path = project / "02_evidence" / "source.txt"
+        source_path.write_text("api_" + "key=" + "a" * 32 + "\n", encoding="utf-8")
+
+        findings = validate_repository(root)
+        finding = next(item for item in findings if item.rule == "SECRET-SCAN")
+        self.assertEqual("projects/secret-scan/02_evidence/source.txt", finding.path)
+        self.assertEqual(1, finding.line)
+        self.assertEqual("$", finding.field)
+        self.assertIn("remediation:", finding.render())
+
+    def test_private_record_in_approved_snapshot_fails(self) -> None:
+        root = self.make_root()
+        project = create_project(root, "private-snapshot", "Private Snapshot")
+        snapshot_path = project / "02_evidence" / "approved-snapshots" / "records.jsonl"
+        snapshot_path.parent.mkdir(parents=True)
+        snapshot_path.write_text(json.dumps({"sensitivity": "PRIVATE_RAW"}) + "\n", encoding="utf-8")
+
+        findings = validate_repository(root)
+        finding = next(item for item in findings if item.rule == "DATA-BOUNDARY" and item.field == "sensitivity")
+        self.assertEqual(1, finding.line)
+        self.assertIn("remediation:", finding.render())
+
 
 if __name__ == "__main__":
     unittest.main()

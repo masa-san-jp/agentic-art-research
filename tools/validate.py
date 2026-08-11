@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -276,6 +277,47 @@ def _validate_yaml_collection(
         findings.extend(_schema_findings(root, path, validator, record, field_prefix=f"{key}[{index}]"))
 
 
+def _secret_findings(root: Path, path: Path, patterns: list[dict[str, Any]]) -> list[Finding]:
+    try:
+        content = path.read_bytes()
+        if b"\x00" in content:
+            return []
+        text = content.decode("utf-8")
+    except (OSError, UnicodeDecodeError):
+        return []
+
+    findings: list[Finding] = []
+    compiled: list[tuple[str, re.Pattern[str]]] = []
+    for pattern in patterns:
+        if not isinstance(pattern, dict) or not isinstance(pattern.get("id"), str) or not isinstance(pattern.get("pattern"), str):
+            continue
+        try:
+            compiled.append((pattern["id"], re.compile(pattern["pattern"])))
+        except re.error:
+            findings.append(
+                Finding(
+                    _relative_path(root, path),
+                    "SECURITY-PATTERN",
+                    f"invalid secret pattern {pattern['id']!r}",
+                    remediation="Fix the regular expression in config/access-policy.yaml.",
+                )
+            )
+    for line_number, line in enumerate(text.splitlines(), 1):
+        for pattern_id, regex in compiled:
+            if regex.search(line):
+                findings.append(
+                    Finding(
+                        _relative_path(root, path),
+                        "SECRET-SCAN",
+                        f"likely secret matched pattern {pattern_id}",
+                        line=line_number,
+                        field="$",
+                        remediation="Remove the secret from the repository and rotate it in its source system.",
+                    )
+                )
+    return findings
+
+
 def validate_repository(root: Path) -> list[Finding]:
     findings: list[Finding] = []
     vocab_path = root / "config" / "vocabularies.yaml"
@@ -302,6 +344,8 @@ def validate_repository(root: Path) -> list[Finding]:
     schema_validators = _load_schema_validators(root, findings)
 
     forbidden = set(access.get("forbidden_extensions", [])) if isinstance(access, dict) else set()
+    forbidden_filenames = access.get("forbidden_filenames", []) if isinstance(access, dict) else []
+    secret_patterns = access.get("secret_patterns", []) if isinstance(access, dict) else []
     ignored_parts = {".git", ".venv", "__pycache__"}
     for path in root.rglob("*"):
         if not path.is_file() or ignored_parts.intersection(path.parts):
@@ -315,6 +359,16 @@ def validate_repository(root: Path) -> list[Finding]:
                     remediation="Remove the raw/private artifact from the repository and retain only permitted metadata.",
                 )
             )
+        if any(fnmatch.fnmatch(path.name, pattern) for pattern in forbidden_filenames if isinstance(pattern, str)):
+            findings.append(
+                Finding(
+                    _relative_path(root, path),
+                    "DATA-BOUNDARY",
+                    f"forbidden filename {path.name}",
+                    remediation="Remove the credential or private artifact and retain only permitted opaque metadata.",
+                )
+            )
+        findings.extend(_secret_findings(root, path, secret_patterns))
 
     statuses = set(vocab.get("project_statuses", [])) if isinstance(vocab, dict) else set()
     for project in iter_project_dirs(root):
