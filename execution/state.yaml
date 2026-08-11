@@ -1,9 +1,9 @@
 version: 1
-updated_at: "2026-08-11T16:55:09+09:00"
+updated_at: "2026-08-11T17:29:46+09:00"
 current_milestone: M6
-next_task: RELEASE-001
-last_completed_task: EVAL-002
-terminal: false
+next_task: null
+last_completed_task: RELEASE-001
+terminal: true
 blocked_by: []
 resume_from:
   read:
@@ -11,4 +11,4 @@ resume_from:
     - docs/20260811-agentic-art-research-system-design-specification.md
     - docs/20260811-agentic-art-research-repository-execution-plan.md
     - execution/task-queue.yaml
-  action: Claim RELEASE-001, mark it IN_PROGRESS, and complete the v1.0.0 checklist against the design specification.
+  action: No queued task remains. Preserve the release boundary; create a separately approved task before additional security, chaos, documentation, or public-release work.

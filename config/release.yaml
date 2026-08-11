@@ -1,0 +1,34 @@
+version: 1
+release_version: 1.0.0
+mvp_item_count: 10
+ci_runs: 3
+required_schema_paths:
+  - schemas/project-manifest.schema.json
+  - schemas/evidence.schema.json
+  - schemas/claim.schema.json
+  - schemas/insight.schema.json
+  - schemas/decision.schema.json
+  - schemas/requirement.schema.json
+  - schemas/research-state.schema.json
+required_paths:
+  - AGENTS.md
+  - PLANS.md
+  - docs/20260811-agentic-art-research-system-design-specification.md
+  - docs/20260811-agentic-art-research-repository-execution-plan.md
+  - config/vocabularies.yaml
+  - config/access-policy.yaml
+  - templates/project
+  - tools/new_project.py
+  - tools/validate.py
+  - tools/build_graph.py
+  - tools/bundle.py
+  - tools/impact.py
+  - tools/private_evidence.py
+  - tools/evaluate.py
+  - tests/fixtures/harmony
+  - .github/workflows/validate.yml
+required_workflow_snippets:
+  - python3 tools/validate.py --check
+  - python3 -m unittest discover -s tests -v
+  - python3 tools/build_graph.py --check
+  - python3 tools/evaluate.py --offline-fixture tests/fixtures/harmony

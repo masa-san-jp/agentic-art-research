@@ -23,3 +23,4 @@ jobs:
       - run: python3 -m unittest discover -s tests -v
       - run: python3 tools/build_graph.py --check
       - run: python3 tools/evaluate.py --offline-fixture tests/fixtures/harmony
+      - run: python3 tools/release_check.py --offline-fixture tests/fixtures/harmony
