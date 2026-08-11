@@ -11,3 +11,4 @@
 | 2026-08-11 | ED-005 | 秘密検出は高信頼度パターンを`access-policy.yaml`に置き、単語単独では拒否しない | 誤検出を抑えながらコミット前に明白な秘密を止めるため | `SECURITY-002`で検出範囲を再評価 |
 | 2026-08-11 | ED-006 | 参照整合性と状態遷移の規則をvalidatorで検査し、現在状態は`research-state.json`からのみ読む | ログの推測による状態逆行と孤立成果物を早期に拒否するため | `VALIDATE-002`、後続Orchestratorの契約 |
 | 2026-08-11 | ED-007 | TEST-001では正常生成プロジェクトへ単一変異を適用する動的fixtureと、既存スキーマfixtureを一つのYAMLマトリクスで管理 | 全blocking ruleを重複の少ない再現可能な入力として確認するため | `tests/fixtures/validation-matrix.yaml`、`tests/test_fixture_matrix.py` |
+| 2026-08-11 | ED-008 | グラフの辺はプロジェクトスコープの `project/<slug>::<local-id>` を参照し、裸のIDの影響分析は一意な場合だけ許可 | 複数プロジェクトに同じローカルIDが存在しても証拠の影響範囲を混同しないため | `tools/build_graph.py`、`tools/impact.py`、`tools/audit.py` |

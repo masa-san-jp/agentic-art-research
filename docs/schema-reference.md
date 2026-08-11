@@ -26,6 +26,8 @@ question → evidence → claim → insight → decision → requirement → acc
 
 下流オブジェクトが上流IDを持つ。逆参照は `build_graph.py` が生成する。生成された逆参照を正本へ書き戻さない。
 
+生成グラフのノードには、表示用のプロジェクト内 `id` と、衝突を避ける `key` を持たせる。`key` は `project/<slug>::<local-id>` であり、辺の `from` / `to` はこの値を使う。影響分析で裸のIDを渡せるのはリポジトリ内で一意な場合だけで、複数プロジェクトに存在するIDは完全な `key` を指定する。
+
 ## 空、不明、未解決
 
 - 値そのものが不明: `null`
@@ -48,4 +50,3 @@ question → evidence → claim → insight → decision → requirement → acc
 - キー重複を禁止する。
 - 日時は引用符付きRFC 3339。
 - 状態と語彙は `config/vocabularies.yaml` に限定する。
-
