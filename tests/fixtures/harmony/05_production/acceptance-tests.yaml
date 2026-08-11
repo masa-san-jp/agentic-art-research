@@ -1,0 +1,9 @@
+acceptance_tests:
+  - id: AT001
+    target_requirement: RQ001
+    method: frame_review
+    preconditions: Three fixed camera frames are available.
+    pass_condition: The interval and interruption are identified in all three frames.
+    evidence_to_record: reviewed-frame-list
+    executor: production-validator
+    result: PASS

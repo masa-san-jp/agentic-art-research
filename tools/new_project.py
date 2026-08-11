@@ -13,7 +13,13 @@ from _common import EMPTY_JSONL_FILES, ROOT, atomic_write_text, stable_json
 SLUG = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 
-def create_project(root: Path, slug: str, title: str, creator_id: str | None = None) -> Path:
+def create_project(
+    root: Path,
+    slug: str,
+    title: str,
+    creator_id: str | None = None,
+    created_at: str | None = None,
+) -> Path:
     if not SLUG.fullmatch(slug):
         raise ValueError("slug must be lower-case kebab-case")
     target = root / "projects" / slug
@@ -23,7 +29,7 @@ def create_project(root: Path, slug: str, title: str, creator_id: str | None = N
     if not template.exists():
         raise FileNotFoundError(f"project template not found: {template}")
 
-    created_at = datetime.now(ZoneInfo("Asia/Tokyo")).isoformat(timespec="seconds")
+    created_at = created_at or datetime.now(ZoneInfo("Asia/Tokyo")).isoformat(timespec="seconds")
     replacements = {
         "__PROJECT_SLUG__": slug,
         "__PROJECT_TITLE__": title,
@@ -71,4 +77,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

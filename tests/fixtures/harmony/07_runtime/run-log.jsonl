@@ -1,0 +1,8 @@
+{"event_id":"EVT001","event_type":"STATE_TRANSITION","from_status":"DRAFT","to_status":"PLANNED"}
+{"event_id":"EVT002","event_type":"STATE_TRANSITION","from_status":"PLANNED","to_status":"COLLECTING"}
+{"event_id":"EVT003","event_type":"STATE_TRANSITION","from_status":"COLLECTING","to_status":"NORMALIZING"}
+{"event_id":"EVT004","event_type":"STATE_TRANSITION","from_status":"NORMALIZING","to_status":"ANALYZING"}
+{"event_id":"EVT005","event_type":"STATE_TRANSITION","from_status":"ANALYZING","to_status":"DECIDING"}
+{"event_id":"EVT006","event_type":"STATE_TRANSITION","from_status":"DECIDING","to_status":"READY_FOR_PRODUCTION"}
+{"event_id":"EVT007","event_type":"STATE_TRANSITION","from_status":"READY_FOR_PRODUCTION","to_status":"VALIDATING"}
+{"event_id":"EVT008","event_type":"STATE_TRANSITION","from_status":"VALIDATING","to_status":"COMPLETE_WITH_GAPS"}
