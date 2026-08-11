@@ -20,6 +20,7 @@ from _common import (
     load_yaml,
     read_jsonl_with_lines,
 )
+from security_check import scan_advanced_security
 
 
 SCHEMA_FOR_JSONL = {
@@ -683,6 +684,25 @@ def validate_repository(root: Path) -> list[Finding]:
                 )
             )
         findings.extend(_secret_findings(root, path, secret_patterns))
+    try:
+        for security_finding in scan_advanced_security(root, access if isinstance(access, dict) else {}):
+            findings.append(
+                Finding(
+                    security_finding.path,
+                    security_finding.rule,
+                    security_finding.message,
+                    remediation=security_finding.remediation,
+                )
+            )
+    except Exception as exc:
+        findings.append(
+            Finding(
+                "config/access-policy.yaml",
+                "SECURITY-CONFIG",
+                str(exc),
+                remediation="Fix the advanced security policy and rerun validation.",
+            )
+        )
 
     statuses = set(vocab.get("project_statuses", [])) if isinstance(vocab, dict) else set()
     project_ids = {f"project/{project.name}" for project in iter_project_dirs(root)}

@@ -41,6 +41,11 @@ secret_patterns:
     pattern: '(?i)\bBearer\s+[A-Za-z0-9._-]{20,}'
   - id: generic-secret-assignment
     pattern: '(?i)\b(?:api[_-]?key|secret|token|password)\s*[:=]\s*[A-Za-z0-9/+=._-]{20,}'
+unsafe_archive_extensions: [.zip, .tar, .tar.gz, .tgz, .tar.bz2, .tbz2, .tar.xz, .txz]
+archive_limits:
+  max_members: 1000
+  max_archive_bytes: 52428800
+  max_member_bytes: 20971520
 approved_snapshot_requires:
   - rights_status
   - redistribution

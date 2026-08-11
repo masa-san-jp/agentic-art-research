@@ -9,8 +9,10 @@ AIエージェントがアート制作のための調査を、計画、証拠収
 - エージェント規則: [`AGENTS.md`](AGENTS.md)
 - 長期計画の書式: [`PLANS.md`](PLANS.md)
 - 機械可読キュー: [`execution/task-queue.yaml`](execution/task-queue.yaml)
+- 運用手順: [`docs/operations.md`](docs/operations.md)
+- リリース判定: [`docs/release-checklist.md`](docs/release-checklist.md)
 
-本ブートストラップはPhase 0を完了し、Phase 1を開始できる状態を作る。完成とは、サンプルプロジェクトが固定手順で `COMPLETE` または `COMPLETE_WITH_GAPS` に到達し、証拠から制作要件まで追跡できることをいう。
+MVP、個人証拠境界、品質評価、追加のリポジトリ安全検査、決定的chaos検査、運用文書、三回のCI相当リリースゲートを実装済み。サンプルプロジェクトは固定手順で `COMPLETE` または `COMPLETE_WITH_GAPS` に到達し、証拠から制作要件まで追跡できる。
 
 ## エージェントの開始手順
 
@@ -35,6 +37,10 @@ python3 tools/validate.py --check
 python3 tools/build_graph.py
 python3 tools/bundle.py project/example-project --audience human
 python3 tools/audit.py
+python3 tools/security_check.py --check
+python3 tools/chaos_check.py
+python3 tools/docs_check.py --check
+python3 tools/release_check.py --offline-fixture tests/fixtures/harmony --ci-evidence execution/ci-evidence.json
 python3 -m unittest discover -s tests -v
 ```
 
@@ -60,4 +66,3 @@ data/         正本から作る生成物。手編集禁止
 - 不明を推測で埋めない。未解決のまま有限時間で終了できる。
 - `data/` の生成物を手編集しない。
 - 設計変更はIssueへ理由と影響を書き、仕様書と検証を同じ変更で更新する。
-

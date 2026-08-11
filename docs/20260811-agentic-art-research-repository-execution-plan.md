@@ -1,7 +1,7 @@
 # Agentic Art Research リポジトリ完成実行計画
 
 - 作成日: 2026-08-11
-- 状態: ACTIVE
+- 状態: COMPLETE
 - 対応仕様: `docs/20260811-agentic-art-research-system-design-specification.md`
 - 実行対象: GPT-5.6 LunaまたはClaude Sonnet級の、ファイル編集・コマンド実行・Git操作が可能なエージェント
 
@@ -54,10 +54,14 @@ python3 tools/bundle.py project/harmony-study --audience human
 - [x] (2026-08-11) `INTEGRATION-002`: opaque URI、SHA-256、承認メタデータ、許可済み派生シグナルだけを通すprivate evidence adapterを実装。
 - [x] (2026-08-11) `EVAL-002`: synthetic offline fixtureで正確性、追跡性、終端性、再開性、安全性、監査の評価を実装。
 - [x] (2026-08-11) `RELEASE-001`: v1.0.0のローカルrelease gateとCI evidenceを固定し、GitHub Releaseを公開。
-- [ ] M1b: 全JSON Schema検証と参照整合性を実装。
-- [ ] M2: 依存グラフ、バンドル、影響分析、監査を実用レベルへ完成。
-- [ ] M3: 代表サンプルプロジェクトを固定fixtureで完走。
-- [ ] M4: 状態機械と自律Orchestratorを実装。
+- [x] (2026-08-11) `SECURITY-002`: symlink、外部path traversal、unsafe archiveの非展開検査をvalidatorとCIへ接続。
+- [x] (2026-08-11) `CHAOS-001`: API停止、破損JSONL、期限切れlease、重複effectを決定的に再現。
+- [x] (2026-08-11) `DOCS-001`: 導入、通常運用、障害対応、モデル別開始プロンプトを契約化。
+- [x] (2026-08-11) `RELEASE-002`: 追加hardeningを含むv1.0.1 release gateを3回連続で実行。
+- [x] M1b: 全JSON Schema検証と参照整合性を実装。
+- [x] M2: 依存グラフ、バンドル、影響分析、監査を実用レベルへ完成。
+- [x] M3: 代表サンプルプロジェクトを固定fixtureで完走。
+- [x] M4: 状態機械と自律Orchestratorを実装。
 - [x] M5: `art-history-notes` と個人証拠保管先のアダプタを実装。
 - [x] M6: 評価、セキュリティ、回帰、リリース判定を完成。
 
@@ -82,6 +86,7 @@ python3 tools/bundle.py project/harmony-study --audience human
 - 2026-08-11: 私的証拠の連携境界は、`PRIVATE_RAW`を`PRIVATE_DERIVED`へ変換する場所にしない。上流の同意・承認済み派生結果だけを、opaque URI、ハッシュ、監査メタデータ、制御語彙のシグナルとして受け取り、未知フィールドをfail closedする。
 - 2026-08-11: E2E評価は、単体テストの件数だけでなく、固定fixtureの期待トレース、state replay、期限切れleaseの再取得、重複効果抑止、private adapter拒否境界、固定時刻監査を同じレポートで合格判定する。評価rootは不足ディレクトリだけを初期化し、既存プロジェクトは上書きしない。
 - 2026-08-11: MVPのrelease gateはローカルで再実行可能なチェックと公開CI run metadataまでを自動化し、GitHub Releaseの作成・告知は外部公開として分離する。チェック成功だけでは公開承認を推測しない。
+- 2026-08-11: v1.0.0公開後のhardeningを最新mainへ再適用する際、重複した機能実装の履歴をマージせず、追加差分だけをmain基点へ移植してリリース差分を限定した。
 - 2026-08-11: 明示承認後のGitHub Release v1.0.0は、検証済みmain commit `d0f2df8d2e6b639d0c5a45104368943ebfb7d1e7`へ固定して公開し、公開後に完了状態を記録する。承認前後の境界を分離することで、公開対象と完了記録を追跡可能にした。
 
 ## Decision Log
@@ -106,11 +111,17 @@ python3 tools/bundle.py project/harmony-study --audience human
 | 2026-08-11 | INTEGRATION-002は上流で承認済みの`PRIVATE_DERIVED`だけを受け付け、opaque URI・SHA-256・承認参照・固定カテゴリの派生シグナルへ正規化する。`PRIVATE_RAW`、`RESTRICTED`、原文相当の未知フィールドは拒否する | 私的原文をrepoやログへ漏らさず、派生結果の出所と承認を再検証可能にするため |
 | 2026-08-11 | EVAL-002は固定offline fixtureの期待トレースとruntime/privacy probeを、決定論的な評価レポートへ集約する | 正確性、追跡性、終端性、再開性、安全性を個別テストの存在ではなく同一の受入結果で確認するため |
 | 2026-08-11 | RELEASE-001はディレクトリ、schema、雛形、validator、graph/bundle/impact、sample、E2E、仕様チェック、成功CI 3件をローカル判定する。GitHub Release公開は人間承認後に行う | 再現可能な品質判定と外部公開の承認を分離し、公開を自動推測しないため |
+| 2026-08-11 | ED-022 | SECURITY-002はリポジトリ内symlinkを一律監査し、アーカイブを展開せずmemberのtraversal・link・special file・境界違反・サイズ超過を検査する | 展開による書き込みやパス逸脱を避け、CIでも同じ安全境界を再現するため |
+| 2026-08-11 | ED-023 | CHAOS-001は外部依存をfake faultとして注入し、API停止・破損JSONL・期限切れlease・同一effect再実行を個別の一時rootで実行する | 実サービスへ接続せず、停止・再開・冪等性の失敗契約を同じ入力で再現するため |
+| 2026-08-11 | ED-024 | DOCS-001の運用文書は必須見出しを設定ファイルで宣言し、存在・見出し・リポジトリ内パスを専用CLIで検査する | 新しいエージェントが会話履歴なしで導入・通常運用・障害対応・起動を再現できることをCIで保証するため |
+| 2026-08-11 | ED-025 | RELEASE-002は追加hardening検査をrelease checkへ含め、既存の公開・タグ作成なしのrelease契約を維持する | security、chaos、documentationの実装後も最終判定の抜けを作らず、外部公開の人間承認境界を越えないため |
 | 2026-08-11 | 明示承認後、v1.0.0を検証済みmain commit `d0f2df8d2e6b639d0c5a45104368943ebfb7d1e7`へ固定して公開し、release taskとstateをterminalへ更新する | 公開対象を検証済みcommitへ固定し、承認済み外部操作と完了記録を追跡可能にするため |
 
 ## Outcomes & Retrospective
 
 M0/M1a、`SCHEMA-001`、`VALIDATE-001`、`SECURITY-001`、`VALIDATE-002`、`TEST-001`、`GRAPH-001`、`BUNDLE-001`、`IMPACT-001`、`AUDIT-001`、`SAMPLE-001`、`COMPLETE-001`、`RUNTIME-001`、`RUNTIME-002`、`RUNTIME-003`、`RUNTIME-004`、`INTEGRATION-001`、`INTEGRATION-002`、`EVAL-002`、`RELEASE-001`のローカルrelease gate・CI evidence・GitHub Release公開まで完了した。プロジェクト雛形の生成、Draft 2020-12スキーマ検証、JSONL行番号付きエラー、YAML重複キー検出、機密・秘密境界検査、参照整合性、状態機械と試験接続の検査、blocking ruleの正常・失敗fixtureマトリクス、プロジェクトスコープで決定的な依存グラフ、4 audienceの範囲制限付きbundle生成、upstream/downstreamのJSON・Markdown影響分析、出典偏り・鮮度・弱い判断・未実施試験の非ブロッキング監査、固定offline fixtureからの`COMPLETE_WITH_GAPS` package再生成、両terminal statusの決定論的completion生成、状態機械とrun-log replay、依存DAG・lease・bounded retry・failure classification・resume、検索・資料・失敗・飽和の設定上限と質問終端化、task・role固有source・制約・受入試験だけを含むcontext pack、source commit固定のart-history-notes read-only adapter、opaque URI・ハッシュ・承認参照・制御語彙シグナルだけを通すprivate evidence adapter、固定offline fixtureの期待トレース・runtime再開・privacy境界・監査を含むE2E評価、仕様MVPチェック10項目、成功CI 3件のevidence、CI初期版が実行可能になる。GitHub Release v1.0.0は検証済みmain commit `d0f2df8d2e6b639d0c5a45104368943ebfb7d1e7`へ固定され、stateはterminalとなった。追加の変更は新しいreleaseまたはpost-release fixとして再開する。
+
+v1.0.1候補では、symlink・path traversal・unsafe archive検査、停止・破損・中断・重複のchaos検査、運用文書契約を追加し、release check 11項目と67テストをmain基点で再確認した。
 
 ## Context and Orientation
 
@@ -247,6 +258,7 @@ fixtureから同じ完了パッケージを再生成でき、採用要件の追�
 3. `CHAOS-001`: API停止、壊れたJSONL、途中kill、重複実行の試験。
 4. `DOCS-001`: 導入、運用、障害対応、モデル別開始プロンプト。
 5. `RELEASE-001`: v1.0.0チェックリスト。
+6. `RELEASE-002`: v1.0.1追加hardeningを含む最終リリースゲート。
 
 ### Acceptance
 

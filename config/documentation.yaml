@@ -1,0 +1,14 @@
+version: 1
+documents:
+  - path: docs/operations.md
+    required_sections:
+      - "# Operations"
+      - "## Onboarding"
+      - "## Normal run"
+      - "## Incident response"
+      - "## Model startup prompt"
+  - path: docs/agent-runtime-guide.md
+    required_sections:
+      - "# Agent runtime guide"
+      - "## タスクDAGの実行と再開"
+      - "## 品質・安全性評価"

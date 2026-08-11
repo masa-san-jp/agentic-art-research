@@ -7,7 +7,7 @@
   "additionalProperties": false,
   "properties": {
     "schema": {"const": "urn:agentic-art-research:release-check:v1"},
-    "version": {"const": "1.0.0"},
+    "version": {"const": "1.0.1"},
     "passed": {"type": "boolean"},
     "ci_evidence": {"type": "string", "minLength": 1},
     "checks": {
@@ -18,7 +18,7 @@
         "required": ["id", "passed", "details"],
         "additionalProperties": false,
         "properties": {
-          "id": {"enum": ["structure", "schemas", "new_project_and_validate", "graph_bundle_impact", "sample_terminal", "e2e_evaluation", "specification_mvp", "ci_three_runs"]},
+          "id": {"enum": ["structure", "schemas", "new_project_and_validate", "graph_bundle_impact", "sample_terminal", "e2e_evaluation", "specification_mvp", "ci_three_runs", "advanced_security", "chaos_recovery", "operations_documentation"]},
           "passed": {"type": "boolean"},
           "details": {"type": "array", "items": {"type": "string"}}
         }

@@ -13,10 +13,13 @@ from typing import Any
 from _common import PROJECT_REQUIRED_FILES, ROOT, atomic_write_text, load_json, stable_json
 from build_graph import build_graph
 from bundle import build_bundle
+from chaos_check import run_chaos_suite
+from docs_check import check_documentation
 from evaluate import evaluate_offline_fixture
 from impact import impact_report
 from new_project import create_project
 from run_project import run_offline_fixture
+from security_check import scan_advanced_security
 from validate import validate_repository
 
 
@@ -156,10 +159,40 @@ def check_release(root: Path, fixture: Path, ci_evidence: Path) -> dict[str, Any
     spec_check = _check("specification_mvp", spec_passed, spec_details)
     ci_passed, ci_details = _ci_check(ci_evidence)
     ci_check = _check("ci_three_runs", ci_passed, ci_details)
-    checks = [structure, schemas, new_project_check, bundle_check, sample_check, evaluation_check, spec_check, ci_check]
+    security_findings = scan_advanced_security(root)
+    security_check = _check(
+        "advanced_security",
+        not security_findings,
+        [f"findings={len(security_findings)}"] + [f"{finding.rule}: {finding.path}" for finding in security_findings],
+    )
+    chaos_result = run_chaos_suite(root)
+    chaos_check = _check(
+        "chaos_recovery",
+        chaos_result.get("passed") is True,
+        [f"scenarios={len(chaos_result.get('scenarios', []))}"],
+    )
+    documentation_findings = check_documentation(root)
+    documentation_check = _check(
+        "operations_documentation",
+        not documentation_findings,
+        [f"findings={len(documentation_findings)}"] + documentation_findings,
+    )
+    checks = [
+        structure,
+        schemas,
+        new_project_check,
+        bundle_check,
+        sample_check,
+        evaluation_check,
+        spec_check,
+        ci_check,
+        security_check,
+        chaos_check,
+        documentation_check,
+    ]
     return {
         "schema": RELEASE_SCHEMA,
-        "version": "1.0.0",
+        "version": "1.0.1",
         "passed": all(check["passed"] for check in checks),
         "checks": checks,
         "ci_evidence": ci_evidence.name,

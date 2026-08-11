@@ -1,8 +1,8 @@
 version: 1
-updated_at: "2026-08-11T19:38:00+09:00"
+updated_at: "2026-08-11T20:04:00+09:00"
 current_milestone: M6
 next_task: null
-last_completed_task: RELEASE-001
+last_completed_task: RELEASE-002
 terminal: true
 blocked_by: []
 resume_from:
@@ -11,4 +11,8 @@ resume_from:
     - docs/20260811-agentic-art-research-system-design-specification.md
     - docs/20260811-agentic-art-research-repository-execution-plan.md
     - execution/task-queue.yaml
-  action: v1.0.0 is published at https://github.com/masa-san-jp/agentic-art-research/releases/tag/v1.0.0; resume only for a new release or post-release fix.
+  action: v1.0.0 is published; v1.0.1 post-hardening release candidate is prepared from current main.
+last_verification:
+  result: PASS
+  command: /Users/masa/マイドライブ/Dev/agentic-art-research/.venv/bin/python tools/release_check.py --offline-fixture tests/fixtures/harmony --ci-evidence execution/ci-evidence.json
+  detail: 67 tests passed; release check passed three times with 11 checks including security, chaos, and operations documentation.
