@@ -46,12 +46,16 @@ class HandoffE2EContractTest(FeedbackImportContractTest):
         return files
 
     def test_handoff_bundle_is_self_contained_and_tamper_evident(self) -> None:
+        scenario = yaml.safe_load((REPO_ROOT / "tests" / "fixtures" / "harmony-handoff" / "scenario.yaml").read_text(encoding="utf-8"))
         root, project = self.make_project()
-        output = root / "data" / "handoffs" / "feedback-import"
-        export_handoff(root, "project/feedback-import", output, allow_dirty=True)
+        output = root / "data" / "handoffs" / scenario["scenario"]
+        export_handoff(root, scenario["research_project_id"], output, allow_dirty=True)
         files = self._bundle_files(output)
-        self.assertIn("production-handoff.yaml", files)
-        self.assertIn("schemas/production-handoff.schema.json", files)
+        for relative in scenario["handoff"]["expected_bundle_paths"]:
+            if relative == "manifest.yaml":
+                self.assertTrue((output / relative).is_file())
+            else:
+                self.assertIn(relative, files)
         source_index = files["artifacts/source-ref-index.yaml"]
         self.assertNotIn(b"source_location", source_index)
         self.assertNotIn(b"PRIVATE_RAW", source_index)
