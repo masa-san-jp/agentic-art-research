@@ -14,12 +14,13 @@ def audit_graph(graph: dict) -> list[str]:
     findings: list[str] = []
     for node in graph.get("nodes", []):
         identifier = node["id"]
+        key = node.get("key", identifier)
         kind = node["kind"]
-        if kind in {"claim", "insight", "decision", "requirement", "acceptance_test"} and incoming[identifier] == 0:
+        if kind in {"claim", "insight", "decision", "requirement", "acceptance_test"} and incoming[key] == 0:
             findings.append(f"ORPHAN: {kind} {identifier} has no upstream basis")
-        if kind == "evidence" and outgoing[identifier] == 0:
+        if kind == "evidence" and outgoing[key] == 0:
             findings.append(f"UNUSED: evidence {identifier} has no downstream use")
-        if kind == "requirement" and outgoing[identifier] == 0:
+        if kind == "requirement" and outgoing[key] == 0:
             findings.append(f"UNTESTED: requirement {identifier} has no acceptance test")
     return sorted(findings)
 
@@ -47,4 +48,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
