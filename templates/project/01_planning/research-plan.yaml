@@ -17,10 +17,16 @@ status: DRAFT
 tasks:
   - id: TASK001
     title: Validate intake and research plan
+    role: planner
     depends_on: []
+    question_ids: []
   - id: TASK002
     title: Collect and normalize evidence
+    role: collector
     depends_on: [TASK001]
+    question_ids: []
   - id: TASK003
     title: Analyze evidence and derive production requirements
+    role: analyst
     depends_on: [TASK002]
+    question_ids: []

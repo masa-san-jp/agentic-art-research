@@ -37,6 +37,18 @@ python3 tools/stopping_policy.py project/example apply --evaluated-at 2026-08-11
 `UNRESOLVED` または `BLOCKED` に終端化する。applyは同じ入力へ再実行しても停止イベントを
 重複追記しない。
 
+## ロール別コンテキストパック
+
+タスクに `role` と参照IDを宣言し、後続workerへ必要な追跡連鎖だけを渡す。
+
+```bash
+python3 tools/context_pack.py project/example TASK001 --role analyst
+```
+
+`config/role-context.yaml` の許可kindに基づき、質問から証拠・主張・判断・要件・受入試験を
+導出する。許可されないkind、未解決ID、`PRIVATE_RAW` / `RESTRICTED` のレコードはエラーにし、
+全プロジェクトの無条件バンドルを生成しない。
+
 ## 共通起動プロンプト
 
 ```text

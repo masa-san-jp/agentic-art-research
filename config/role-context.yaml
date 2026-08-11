@@ -1,0 +1,52 @@
+version: 1
+roles:
+  orchestrator:
+    description: Manage lifecycle, task decomposition, budgets, and termination.
+    prohibitions: [finalize_claim_without_evidence]
+    allowed_kinds: [tasks, questions, state, completion]
+    file_paths: [01_planning/research-plan.yaml, 01_planning/question-register.yaml, 07_runtime/research-state.json, 07_runtime/completion-report.json]
+  planner:
+    description: Convert creative intent into bounded questions and a research plan.
+    prohibitions: [add_unbounded_questions]
+    allowed_kinds: [intent, constraints, tasks, questions, plan]
+    file_paths: [00_intake/creative-intent.md, 00_intake/constraints.yaml, 01_planning/research-plan.yaml, 01_planning/question-register.yaml]
+  collector:
+    description: Retrieve material only from permitted sources.
+    prohibitions: [bypass_access_control]
+    allowed_kinds: [constraints, questions, plan, evidence, sources]
+    file_paths: [00_intake/constraints.yaml, 01_planning/question-register.yaml, 01_planning/research-plan.yaml]
+  curator:
+    description: Deduplicate material and attach provenance, rights, and sensitivity metadata.
+    prohibitions: [promote_raw_material_to_public]
+    allowed_kinds: [constraints, evidence, sources, rights, privacy]
+    file_paths: [00_intake/constraints.yaml, 02_evidence/evidence-ledger.jsonl, 02_evidence/source-ledger.jsonl, 06_governance/rights-register.yaml, 06_governance/privacy-review.yaml]
+  analyst:
+    description: Extract observations, claims, relations, and counterevidence.
+    prohibitions: [mix_fact_and_interpretation]
+    allowed_kinds: [questions, evidence, observations, claims, relationships, contradictions, external_references]
+    file_paths: [01_planning/question-register.yaml, 02_evidence/evidence-ledger.jsonl, 03_knowledge/observations.jsonl, 03_knowledge/claims.jsonl, 03_knowledge/relationships.jsonl, 03_knowledge/contradictions.jsonl, 03_knowledge/external-references.jsonl]
+  critic:
+    description: Inspect counterevidence, alternative interpretations, repetition, and familiarity.
+    prohibitions: [reject_by_score_alone]
+    allowed_kinds: [questions, claims, contradictions, insights, decisions, uncertainty]
+    file_paths: [01_planning/question-register.yaml, 03_knowledge/claims.jsonl, 03_knowledge/contradictions.jsonl, 04_decisions/insight-register.yaml, 04_decisions/decision-log.yaml, 04_decisions/uncertainty-register.yaml]
+  decision-translator:
+    description: Convert insights into traceable production decisions.
+    prohibitions: [invent_creator_intent]
+    allowed_kinds: [claims, insights, decisions, uncertainty]
+    file_paths: [03_knowledge/claims.jsonl, 04_decisions/insight-register.yaml, 04_decisions/decision-log.yaml, 04_decisions/uncertainty-register.yaml]
+  production-translator:
+    description: Convert decisions into testable production requirements.
+    prohibitions: [make_untestable_mandatory_requirement]
+    allowed_kinds: [intent, constraints, decisions, requirements, acceptance_tests, prototype_backlog]
+    file_paths: [00_intake/creative-intent.md, 00_intake/constraints.yaml, 04_decisions/decision-log.yaml, 05_production/production-requirements.yaml, 05_production/acceptance-tests.yaml, 05_production/prototype-backlog.yaml]
+  validator:
+    description: Check schema, references, rights, privacy, and lifecycle contracts.
+    prohibitions: [silently_correct_errors]
+    allowed_kinds: [manifest, state, requirements, acceptance_tests, rights, privacy]
+    file_paths: [manifest.yaml, 05_production/production-requirements.yaml, 05_production/acceptance-tests.yaml, 06_governance/rights-register.yaml, 06_governance/privacy-review.yaml, 07_runtime/research-state.json]
+  auditor:
+    description: Report change impact, bias, and unresolved work without editing source.
+    prohibitions: [edit_canonical_or_generated_source]
+    allowed_kinds: [evidence, claims, decisions, requirements, acceptance_tests, rights, privacy, state]
+    file_paths: [02_evidence/evidence-ledger.jsonl, 03_knowledge/claims.jsonl, 04_decisions/decision-log.yaml, 05_production/production-requirements.yaml, 05_production/acceptance-tests.yaml, 06_governance/rights-register.yaml, 06_governance/privacy-review.yaml, 07_runtime/research-state.json]
