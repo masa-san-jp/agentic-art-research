@@ -2,7 +2,7 @@
 
 ## Mission
 
-設計仕様に従い、証拠から制作仮説、試作計画、制作要件、後続制作システムへの引き渡しまで追跡可能なAgentic Art Researchを完成させる。
+設計仕様に従い、証拠から制作要件まで追跡可能なAgentic Art Researchを完成させる。
 
 ## Repository/output boundary
 
@@ -14,16 +14,14 @@
 ## Read order
 
 1. `docs/20260811-agentic-art-research-system-design-specification.md`
-2. `docs/20260811-agentic-art-research-production-handoff-extension-specification.md`
-3. `docs/20260811-agentic-art-research-repository-execution-plan.md`
-4. `docs/20260811-agentic-art-research-production-handoff-execution-plan.md`
-5. `PLANS.md`
-6. `execution/task-queue.yaml`
-7. 変更対象に最も近い文書とテスト
+2. `docs/20260811-agentic-art-research-repository-execution-plan.md`
+3. `PLANS.md`
+4. `execution/task-queue.yaml`
+5. 変更対象に最も近い文書とテスト
 
 ## Work protocol
 
-- 複雑な変更は `PLANS.md` に従うExecPlanとして実行する。v1基盤はリポジトリ完成実行計画、制作引き渡し拡張は制作引き渡し拡張実行計画を正本とする。
+- 複雑な変更は `PLANS.md` に従うExecPlanとして実行する。現在の正本は上記実行計画。
 - 依存関係が完了した最小IDの `READY` タスクを選び、原則1タスクずつ完了させる。
 - 実装中に実行計画の `Progress`、`Surprises & Discoveries`、`Decision Log`、`Outcomes` を更新する。
 - セッション記憶を前提にしない。別のGPT-5.6 LunaまたはClaude Sonnet級エージェントが、リポジトリだけで再開できる状態を残す。
