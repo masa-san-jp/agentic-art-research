@@ -57,6 +57,12 @@
       "type": "integer",
       "minimum": 0,
       "maximum": 2
+    },
+    "taskStatus": {
+      "enum": ["PENDING", "RUNNING", "SUCCEEDED", "FAILED", "BLOCKED"]
+    },
+    "taskFailureClass": {
+      "enum": ["TRANSIENT", "TIMEOUT", "RATE_LIMIT", "LEASE_EXPIRED", "PERMANENT", "VALIDATION", "AUTHORIZATION", "DEPENDENCY_FAILED"]
     }
   }
 }

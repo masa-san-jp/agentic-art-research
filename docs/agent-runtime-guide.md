@@ -4,6 +4,24 @@
 
 ファイル編集、コマンド実行、Git差分確認が可能なGPT-5.6 LunaまたはClaude Sonnet級のコーディングエージェント。モデル識別子、認証、推論設定は実行環境側で設定し、リポジトリへ固定しない。
 
+## タスクDAGの実行と再開
+
+`RUNTIME-002` のタスク定義はプロジェクトの `01_planning/research-plan.yaml` に置く。
+各タスクは `id`、`depends_on`、任意の `max_attempts` を持ち、初期化後のsnapshotは
+`07_runtime/research-state.json.task_runtime`、claim・lease期限・retry・完了は
+`07_runtime/run-log.jsonl`へ記録する。
+
+```bash
+python3 tools/task_runtime.py project/example init --now 2026-08-11T00:00:00+09:00
+python3 tools/task_runtime.py project/example claim --worker-id worker-a
+python3 tools/task_runtime.py project/example resume --now 2026-08-11T00:10:00+09:00
+```
+
+workerが停止した場合は期限切れleaseだけが再取得対象になる。失敗は設定済みの
+`TRANSIENT`、`TIMEOUT`、`RATE_LIMIT`などの分類を必須とし、最大試行回数を超えて
+同じ失敗を反復しない。完了効果にはタスク単位の決定的な`effect_key`を使い、同じ
+効果の再送は既存結果を返し、異なる効果キーの二重適用は拒否する。
+
 ## 共通起動プロンプト
 
 ```text
@@ -64,4 +82,3 @@ checkpointは、テスト可能な状態、queue更新、state更新、短い判
 - 実行したテストと結果
 - 残るgapまたはblocker
 - 次のtask IDと最初の1操作
-

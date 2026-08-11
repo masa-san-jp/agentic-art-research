@@ -14,4 +14,13 @@ budget:
 stopping_policy: config/stopping-policy.yaml
 source_priority: [primary, independent-secondary, approved-personal-derived, simulation]
 status: DRAFT
-
+tasks:
+  - id: TASK001
+    title: Validate intake and research plan
+    depends_on: []
+  - id: TASK002
+    title: Collect and normalize evidence
+    depends_on: [TASK001]
+  - id: TASK003
+    title: Analyze evidence and derive production requirements
+    depends_on: [TASK002]

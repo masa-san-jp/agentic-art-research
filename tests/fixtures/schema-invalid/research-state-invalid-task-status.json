@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "project_id": "project/schema-template",
+  "status": "DRAFT",
+  "updated_at": "2026-08-11T00:00:00+09:00",
+  "current_task": null,
+  "last_event_id": null,
+  "blocked_by": [],
+  "resume_from": "Claim the next ready task.",
+  "task_runtime": {
+    "version": 1,
+    "initialized_at": "2026-08-11T00:00:00+09:00",
+    "tasks": {
+      "TASK001": {
+        "depends_on": [],
+        "max_attempts": 3,
+        "status": "UNKNOWN",
+        "attempts": 0,
+        "lease": null,
+        "result": null,
+        "failure": null,
+        "effect_key": null
+      }
+    }
+  }
+}

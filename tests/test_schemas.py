@@ -56,6 +56,11 @@ SCHEMA_CASES = {
         "invalid": "completion-invalid-status.json",
         "rule": "enum",
     },
+    "research-state": {
+        "valid": "research-state.json",
+        "invalid": "research-state-invalid-task-status.json",
+        "rule": "enum",
+    },
 }
 
 
