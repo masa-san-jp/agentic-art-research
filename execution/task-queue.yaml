@@ -1,5 +1,5 @@
 version: 1
-updated_at: "2026-08-11T16:34:52+09:00"
+updated_at: "2026-08-11T18:00:00+09:00"
 selection_policy: lowest_id_ready_with_dependencies_done
 allowed_statuses: [BACKLOG, READY, IN_PROGRESS, BLOCKED, DONE]
 tasks:
@@ -96,19 +96,19 @@ tasks:
   - id: RUNTIME-004
     milestone: M4
     title: Implement role context packs
-    status: READY
+    status: DONE
     depends_on: [RUNTIME-003]
     acceptance: Workers receive task-minimal evidence, constraints, and acceptance tests.
   - id: INTEGRATION-001
     milestone: M5
     title: Add art-history-notes adapter
-    status: BACKLOG
+    status: READY
     depends_on: [RUNTIME-004]
     acceptance: Stable IDs and source commit are imported without copying canonical data.
   - id: INTEGRATION-002
     milestone: M5
     title: Add private evidence adapter contract
-    status: BACKLOG
+    status: READY
     depends_on: [RUNTIME-004]
     acceptance: Only opaque URI, hash, metadata, and approved derived signal enter repository.
   - id: EVAL-002
