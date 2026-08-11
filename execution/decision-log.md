@@ -26,3 +26,4 @@
 | 2026-08-11 | ED-020 | EVAL-002は固定offline fixtureの期待トレース、state replay、期限切れlease再取得、重複効果抑止、private adapter境界、固定時刻監査を決定論的な評価レポートへ集約する | 単体テストの存在だけでなく、MVPの品質・安全ゲートを同一の受入結果で確認するため | `tools/evaluate.py`、`schemas/evaluation.schema.json`、`tests/test_evaluation.py` |
 | 2026-08-11 | ED-021 | RELEASE-001はローカルrelease gateと公開CI run metadataを検証するが、GitHub Releaseの作成・告知は人間承認なしに実行しない | 再現可能な品質判定と外部公開の承認を分離するため | `tools/release_check.py`、`schemas/release-check.schema.json`、`execution/ci-evidence.json`、`docs/release-checklist.md` |
 | 2026-08-11 | ED-022 | 明示承認後、v1.0.0を検証済みmain commit `d0f2df8d2e6b639d0c5a45104368943ebfb7d1e7`へ固定して公開し、release taskとstateをterminalへ更新する | 公開対象を検証済みcommitへ固定し、承認済み外部操作と完了記録を追跡可能にするため | GitHub Release v1.0.0、`execution/state.yaml` |
+| 2026-08-11 | ED-023 | プロトコルrepositoryと実プロジェクト成果物を分離し、生成物はプロジェクトID単位で外部のAgentic-Art-Outputへ保存する | canonical repositoryを再現可能なプロトコルの正本に保ち、デモ・実データ・生成graphの混入を防ぐため | AGENTS.md、README.md、docs/project-output-boundary.md |
