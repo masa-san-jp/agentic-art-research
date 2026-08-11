@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/hypothesis-comparison.schema.json",
+  "title": "Production hypothesis comparison",
+  "type": "object",
+  "required": ["id", "hypothesis_ids", "axes", "recommended_hypothesis_id", "reason", "status"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {"type": "string", "pattern": "^HC[0-9]{3,}$"},
+    "hypothesis_ids": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^PH[0-9]{3,}$"},
+      "minItems": 2,
+      "uniqueItems": true
+    },
+    "axes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "assessments"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+          "assessments": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "object",
+              "required": ["hypothesis_id", "statement"],
+              "additionalProperties": false,
+              "properties": {
+                "hypothesis_id": {"type": "string", "pattern": "^PH[0-9]{3,}$"},
+                "statement": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+                "rating": {"type": "integer", "minimum": 1, "maximum": 5}
+              }
+            }
+          }
+        }
+      }
+    },
+    "recommended_hypothesis_id": {
+      "oneOf": [
+        {"type": "string", "pattern": "^PH[0-9]{3,}$"},
+        {"type": "null"}
+      ]
+    },
+    "reason": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "status": {"enum": ["DRAFT", "COMPLETE", "HUMAN_SELECTION_REQUIRED"]}
+  }
+}

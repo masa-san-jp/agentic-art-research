@@ -250,6 +250,8 @@ research側では、担当者名、購入先、正確な価格、確定日時を
 ```yaml
 schema_version: 1.0.0
 handoff_id: HO001
+revision: 1
+status: READY
 research_project_id: project/harmony-study
 research_project_version: 1.1.0
 research_commit: "<40-character-git-sha>"
@@ -298,7 +300,7 @@ source_refs:
   evidence_ids: [EV001, EV002]
 
 integrity:
-  content_sha256: "<sha256-of-canonical-payload>"
+  content_sha256: "sha256:<64-lowercase-hex-of-canonical-payload>"
 ```
 
 ### 8.3 含めてよい情報

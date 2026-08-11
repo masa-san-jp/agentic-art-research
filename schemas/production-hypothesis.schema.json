@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/production-hypothesis.schema.json",
+  "title": "Production hypothesis",
+  "type": "object",
+  "required": [
+    "id",
+    "title",
+    "proposition",
+    "source_decision_ids",
+    "source_insight_ids",
+    "intended_experience",
+    "includes",
+    "excludes",
+    "differentiation",
+    "feasibility",
+    "uncertainties",
+    "recommendation",
+    "status"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "id": {"type": "string", "pattern": "^PH[0-9]{3,}$"},
+    "title": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "proposition": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "source_decision_ids": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^DC[0-9]{3,}$"},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "source_insight_ids": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^IN[0-9]{3,}$"},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "intended_experience": {
+      "type": "array",
+      "items": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "includes": {
+      "type": "array",
+      "items": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "excludes": {
+      "type": "array",
+      "items": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+      "uniqueItems": true
+    },
+    "differentiation": {
+      "type": "object",
+      "required": ["precedent_refs", "statement"],
+      "additionalProperties": false,
+      "properties": {
+        "precedent_refs": {
+          "type": "array",
+          "items": {"type": "string", "pattern": "^XR[0-9]{3,}$"},
+          "uniqueItems": true
+        },
+        "statement": {"$ref": "common.schema.json#/$defs/nonEmptyString"}
+      }
+    },
+    "feasibility": {
+      "type": "object",
+      "required": ["technical", "cost_band", "duration_band", "venue_dependency", "rights_status", "safety_status"],
+      "additionalProperties": false,
+      "properties": {
+        "technical": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+        "cost_band": {"$ref": "common.schema.json#/$defs/costBand"},
+        "duration_band": {"$ref": "common.schema.json#/$defs/durationBand"},
+        "venue_dependency": {"$ref": "common.schema.json#/$defs/dependencyLevel"},
+        "rights_status": {"$ref": "common.schema.json#/$defs/reviewStatus"},
+        "safety_status": {"$ref": "common.schema.json#/$defs/reviewStatus"}
+      }
+    },
+    "uncertainties": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "statement", "severity", "prototype_plan_ids"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string", "pattern": "^U[0-9]{3,}$"},
+          "statement": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+          "severity": {"$ref": "common.schema.json#/$defs/uncertaintySeverity"},
+          "prototype_plan_ids": {
+            "type": "array",
+            "items": {"type": "string", "pattern": "^PP[0-9]{3,}$"},
+            "uniqueItems": true
+          }
+        }
+      }
+    },
+    "recommendation": {"$ref": "common.schema.json#/$defs/hypothesisRecommendation"},
+    "single_hypothesis_rationale": {"type": ["string", "null"], "minLength": 1},
+    "status": {"$ref": "common.schema.json#/$defs/decisionStatus"}
+  }
+}

@@ -24,7 +24,7 @@ python3 -m unittest discover -s tests -v
 ## Progress
 
 - [x] (2026-08-11) `EXTENSION-DESIGN-001`: 責任境界、成果物、契約、実装フェーズを確定。
-- [ ] `HANDOFF-SCHEMA-001`: schema、語彙、雛形、fixtureを追加。
+- [x] (2026-08-11 21:06 JST) `HANDOFF-SCHEMA-001`: 制作仮説、比較、Prototype Plan、handoff schema、語彙、後方互換manifest、雛形、正常・失敗fixtureを追加。69 testとvalidatorが合格。
 - [ ] `HANDOFF-VALIDATE-001`: 仮説、Prototype DAG、handoff参照・hash・安全境界を検証。
 - [ ] `HANDOFF-BUILD-001`: handoff生成、export、production-agent bundleを実装。
 - [ ] `FEEDBACK-IMPORT-001`: production resultのdry-run、取込、冪等性、影響分析を実装。
@@ -37,6 +37,7 @@ python3 -m unittest discover -s tests -v
 - 2026-08-11: `templates/project/05_production/prototype-backlog.yaml`は空雛形であり、代表fixtureには対応ファイルがない。既存プロジェクトを壊さない移行が必要。
 - 2026-08-11: 既存状態`READY_FOR_PRODUCTION`は自然な境界だが、制作側の長期状態を追加するとresearch完了条件と混線する。handoff状態を独立させる。
 - 2026-08-11: request/result schemaを片方のrepoだけで共同所有すると変更責任が曖昧になる。生成側を正本、受信側をcommit固定snapshotとする。
+- 2026-08-11: production repoは設計段階で、production result schemaの正本はまだ存在しない。researchが先行して外部snapshotを捏造せず、公開後の取込を`FEEDBACK-IMPORT-001`へ移す。
 
 ## Decision Log
 
@@ -47,10 +48,13 @@ python3 -m unittest discover -s tests -v
 | 2026-08-11 | handoff request schemaはresearchが正本 | 第三のcontract repo | 二repo段階で運用対象を増やさない |
 | 2026-08-11 | production resultは証拠候補として取込 | 判断・要件を直接更新 | 実施条件と不確実性を保持する |
 | 2026-08-11 | handoffのpayload hashを必須化 | commit SHAだけ | export後の内容改変を検出する |
+| 2026-08-11 | production result schema snapshotはH4で取得 | H1でconsumer側が仮schemaを作る | schema生成者を正本とする責任分界を守り、存在しない上流成果物を捏造しない |
 
 ## Outcomes & Retrospective
 
-設計段階では、v1の追跡グラフを壊さずにproductionとの双方向境界を追加する方針を確定した。実装完了時に、観察可能な動作、未完了、互換性、release判断を追記する。
+設計段階では、v1の追跡グラフを壊さずにproductionとの双方向境界を追加する方針を確定した。
+
+`HANDOFF-SCHEMA-001`では、四つのDraft 2020-12契約、共通語彙、`workflow_mode`による後方互換manifest、六つのproject雛形、正常・失敗fixtureを追加した。既存fixtureは`workflow_mode`未指定のまま有効で、新規projectは`RESEARCH_ONLY`を明示する。production result schemaは生成側未公開のため偽造せず、所有権とfail-closed方針を`schemas/external/README.md`へ固定した。全69 test、`tools/validate.py --check`、`git diff --check`が合格した。次の開始点は`HANDOFF-VALIDATE-001`である。
 
 ## Context and Orientation
 
@@ -95,7 +99,7 @@ python3 -m unittest discover -s tests -v
 1. `schemas/production-hypothesis.schema.json`を追加する。
 2. `schemas/prototype-plan.schema.json`を追加する。
 3. `schemas/production-handoff.schema.json`を追加する。
-4. production result v1 schemaのcommit固定snapshotとprovenance manifestを`schemas/external/`へ追加する。
+4. `schemas/external/README.md`へ外部schemaの所有権、snapshot要件、未公開時のfail-closed方針を記録する。
 5. `project-manifest.schema.json`へ任意の`workflow_mode`を追加する。
 6. ID、状態、コスト帯、期間帯、選択状態を`config/vocabularies.yaml`へ追加する。
 7. `templates/project/`へ仮説、比較、Prototype Plan、handoff、変更要求、取込ログの空雛形を追加する。
@@ -105,8 +109,8 @@ python3 -m unittest discover -s tests -v
 
 - Draft 2020-12として全schemaが自己検証できる。
 - `RESEARCH_ONLY`の既存fixtureはbyte変更なしで合格する。
-- `PRODUCTION_HANDOFF` fixtureは新成果物がなければ意図した一規則だけで失敗する。
-- schema snapshotはsource repository、commit、取得日時、SHA-256を持つ。
+- `PRODUCTION_HANDOFF` manifest fixtureは拡張entry pointがなければ`required`で失敗する。
+- production result schemaが未公開であることと、公開後に必要なsource repository、commit、取得日時、SHA-256が明記されている。
 
 ### Milestone H2: Validation and lifecycle
 
@@ -167,14 +171,15 @@ PH001 + PP001 + RQ001 + AT001 ─────────→ HO001
 
 #### Work
 
-1. `tools/import_production_result.py`へ`--dry-run`と`--apply`を実装する。
-2. result schema、source commit、accepted handoff ID/hash、payload hashを検証する。
-3. assetを複製せずURI、hash、版、権利区分として登録する。
-4. 観察と試験結果をproduction由来のevidence candidateへ変換する。
-5. change request、deviation、incidentをgovernance正本へ記録する。
-6. result ID/hashをeffect keyとして冪等適用する。
-7. `NONE`、`MINOR`、`MAJOR`、`CRITICAL`の影響を既存state machineへ接続する。
-8. crash後の再実行と同一ID異内容拒否をテストする。
+1. productionが公開したresult schemaをcommit固定snapshotとして取得し、source repository、commit、取得日時、SHA-256を記録する。
+2. `tools/import_production_result.py`へ`--dry-run`と`--apply`を実装する。
+3. result schema、source commit、accepted handoff ID/hash、payload hashを検証する。
+4. assetを複製せずURI、hash、版、権利区分として登録する。
+5. 観察と試験結果をproduction由来のevidence candidateへ変換する。
+6. change request、deviation、incidentをgovernance正本へ記録する。
+7. result ID/hashをeffect keyとして冪等適用する。
+8. `NONE`、`MINOR`、`MAJOR`、`CRITICAL`の影響を既存state machineへ接続する。
+9. crash後の再実行と同一ID異内容拒否をテストする。
 
 #### Acceptance
 

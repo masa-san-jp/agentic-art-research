@@ -30,6 +30,22 @@ normal:
     kind: schema
     schema: requirement
     fixture: schema-valid/requirement.json
+  - id: schema-production-hypothesis
+    kind: schema
+    schema: production-hypothesis
+    fixture: schema-valid/production-hypothesis.json
+  - id: schema-hypothesis-comparison
+    kind: schema
+    schema: hypothesis-comparison
+    fixture: schema-valid/hypothesis-comparison.json
+  - id: schema-prototype-plan
+    kind: schema
+    schema: prototype-plan
+    fixture: schema-valid/prototype-plan.json
+  - id: schema-production-handoff
+    kind: schema
+    schema: production-handoff
+    fixture: schema-valid/production-handoff.json
   - id: schema-completion-report
     kind: schema
     schema: completion-report
@@ -65,6 +81,26 @@ failure:
     schema: requirement
     fixture: schema-invalid/requirement-mandatory-without-test.json
     rule: SCHEMA:minItems
+  - id: schema-production-hypothesis-min-items
+    kind: schema
+    schema: production-hypothesis
+    fixture: schema-invalid/production-hypothesis-without-decision.json
+    rule: SCHEMA:minItems
+  - id: schema-hypothesis-comparison-min-items
+    kind: schema
+    schema: hypothesis-comparison
+    fixture: schema-invalid/hypothesis-comparison-single-candidate.json
+    rule: SCHEMA:minItems
+  - id: schema-prototype-plan-min-items
+    kind: schema
+    schema: prototype-plan
+    fixture: schema-invalid/prototype-plan-without-tasks.json
+    rule: SCHEMA:minItems
+  - id: schema-production-handoff-pattern
+    kind: schema
+    schema: production-handoff
+    fixture: schema-invalid/production-handoff-invalid-commit.json
+    rule: SCHEMA:pattern
   - id: schema-completion-enum
     kind: schema
     schema: completion-report

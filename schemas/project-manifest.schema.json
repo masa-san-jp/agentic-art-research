@@ -6,6 +6,7 @@
   "required": ["project", "entry_points", "access"],
   "additionalProperties": false,
   "properties": {
+    "workflow_mode": {"$ref": "common.schema.json#/$defs/workflowMode"},
     "project": {
       "type": "object",
       "required": ["id", "title", "version", "status", "created_at", "updated_at"],
@@ -13,10 +14,7 @@
       "properties": {
         "id": {"$ref": "common.schema.json#/$defs/projectId"},
         "title": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
-        "version": {
-          "type": "string",
-          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
-        },
+        "version": {"$ref": "common.schema.json#/$defs/semver"},
         "status": {"$ref": "common.schema.json#/$defs/projectStatus"},
         "creator_id": {"type": ["string", "null"], "minLength": 1},
         "created_at": {"$ref": "common.schema.json#/$defs/timestamp"},
@@ -33,6 +31,12 @@
         "evidence_ledger": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
         "decision_log": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
         "production_requirements": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+        "production_hypotheses": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+        "hypothesis_comparison": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+        "prototype_plans": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+        "production_handoff": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+        "production_change_requests": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+        "production_feedback_imports": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
         "completion_report": {"$ref": "common.schema.json#/$defs/nonEmptyString"}
       }
     },
@@ -49,5 +53,27 @@
         }
       }
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": ["workflow_mode"],
+        "properties": {"workflow_mode": {"const": "PRODUCTION_HANDOFF"}}
+      },
+      "then": {
+        "properties": {
+          "entry_points": {
+            "required": [
+              "production_hypotheses",
+              "hypothesis_comparison",
+              "prototype_plans",
+              "production_handoff",
+              "production_change_requests",
+              "production_feedback_imports"
+            ]
+          }
+        }
+      }
+    }
+  ]
 }

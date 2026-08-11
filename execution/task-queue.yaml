@@ -1,5 +1,5 @@
 version: 2
-updated_at: "2026-08-11T22:00:00+09:00"
+updated_at: "2026-08-11T21:06:46+09:00"
 selection_policy: lowest_id_ready_with_dependencies_done
 allowed_statuses: [BACKLOG, READY, IN_PROGRESS, BLOCKED, DONE]
 tasks:
@@ -156,13 +156,13 @@ tasks:
   - id: HANDOFF-SCHEMA-001
     milestone: H1
     title: Add hypothesis prototype and handoff contracts
-    status: READY
+    status: DONE
     depends_on: [EXTENSION-DESIGN-001]
-    acceptance: New schemas, vocabularies, templates, provenance snapshots, normal fixtures, and named invalid fixtures validate without breaking v1 projects.
+    acceptance: New outbound schemas, vocabularies, templates, normal fixtures, and named invalid fixtures validate without breaking v1 projects; inbound result ownership remains explicit until production publishes its schema.
   - id: HANDOFF-VALIDATE-001
     milestone: H2
     title: Validate handoff traceability integrity and safety
-    status: BACKLOG
+    status: READY
     depends_on: [HANDOFF-SCHEMA-001]
     acceptance: References, prototype DAGs, lifecycle, hashes, schema compatibility, and private-data boundaries fail with actionable diagnostics.
   - id: HANDOFF-BUILD-001

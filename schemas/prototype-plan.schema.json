@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/prototype-plan.schema.json",
+  "title": "Prototype plan",
+  "type": "object",
+  "required": [
+    "id",
+    "hypothesis_id",
+    "question",
+    "uncertainty_ids",
+    "method",
+    "inputs",
+    "constraints",
+    "tasks",
+    "acceptance_test_ids",
+    "expected_evidence",
+    "estimated_cost_band",
+    "estimated_duration_band",
+    "executor_capability",
+    "status"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "id": {"type": "string", "pattern": "^PP[0-9]{3,}$"},
+    "hypothesis_id": {"type": "string", "pattern": "^PH[0-9]{3,}$"},
+    "question": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "uncertainty_ids": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^U[0-9]{3,}$"},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "method": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "inputs": {
+      "type": "array",
+      "items": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "constraints": {
+      "type": "array",
+      "items": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+      "uniqueItems": true
+    },
+    "tasks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "depends_on", "completion_condition"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string", "pattern": "^PT[0-9]{3,}$"},
+          "title": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+          "depends_on": {
+            "type": "array",
+            "items": {"type": "string", "pattern": "^PT[0-9]{3,}$"},
+            "uniqueItems": true
+          },
+          "completion_condition": {"$ref": "common.schema.json#/$defs/nonEmptyString"}
+        }
+      }
+    },
+    "acceptance_test_ids": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^AT[0-9]{3,}$"},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "expected_evidence": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "estimated_cost_band": {"$ref": "common.schema.json#/$defs/costBand"},
+    "estimated_duration_band": {"$ref": "common.schema.json#/$defs/durationBand"},
+    "executor_capability": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "external_validation_reason": {"type": ["string", "null"], "minLength": 1},
+    "status": {"$ref": "common.schema.json#/$defs/prototypeStatus"}
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "HC001",
+  "hypothesis_ids": ["PH001", "PH002"],
+  "axes": [
+    {
+      "name": "viewer experience",
+      "assessments": [
+        {
+          "hypothesis_id": "PH001",
+          "statement": "The interruption is discovered through movement.",
+          "rating": 5
+        },
+        {
+          "hypothesis_id": "PH002",
+          "statement": "The interruption is announced by a fixed light cue.",
+          "rating": 3
+        }
+      ]
+    }
+  ],
+  "recommended_hypothesis_id": "PH001",
+  "reason": "PH001 preserves discovery without explanatory signaling.",
+  "status": "COMPLETE"
+}

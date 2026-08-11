@@ -1,0 +1,16 @@
+{
+  "id": "HC001",
+  "hypothesis_ids": ["PH001"],
+  "axes": [
+    {
+      "name": "viewer experience",
+      "assessments": [
+        {"hypothesis_id": "PH001", "statement": "Movement reveals the interruption."},
+        {"hypothesis_id": "PH002", "statement": "Light reveals the interruption."}
+      ]
+    }
+  ],
+  "recommended_hypothesis_id": "PH001",
+  "reason": "Only one candidate was declared.",
+  "status": "COMPLETE"
+}
