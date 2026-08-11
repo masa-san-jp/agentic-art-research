@@ -12,4 +12,4 @@ resume_from:
     - docs/20260811-agentic-art-research-system-design-specification.md
     - docs/20260811-agentic-art-research-repository-execution-plan.md
     - execution/task-queue.yaml
-  action: After explicit human approval, create GitHub Release v1.0.0 from main commit dda3bf6e3f9700cdf3849325aafcda4951adcb15; do not publish before approval.
+  action: After explicit human approval, create GitHub Release v1.0.0 from main commit 672cbc4b98545ae82c1008052ef68565353cf093; do not publish before approval.
