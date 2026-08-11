@@ -7,7 +7,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from jsonschema import Draft202012Validator, RefResolver
+from jsonschema import Draft202012Validator
+from referencing import Registry, Resource
 import yaml
 
 
@@ -66,8 +67,8 @@ def load_json(path: Path) -> dict:
 def validator_for(schema_name: str) -> Draft202012Validator:
     schema = load_json(SCHEMA_ROOT / f"{schema_name}.schema.json")
     common = load_json(SCHEMA_ROOT / "common.schema.json")
-    resolver = RefResolver.from_schema(schema, store={common["$id"]: common})
-    validator = Draft202012Validator(schema, resolver=resolver)
+    registry = Registry().with_resource(common["$id"], Resource.from_contents(common))
+    validator = Draft202012Validator(schema, registry=registry)
     validator.check_schema(schema)
     return validator
 

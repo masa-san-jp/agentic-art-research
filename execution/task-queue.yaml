@@ -1,5 +1,5 @@
 version: 1
-updated_at: "2026-08-11T15:00:00+09:00"
+updated_at: "2026-08-11T14:41:25+09:00"
 selection_policy: lowest_id_ready_with_dependencies_done
 allowed_statuses: [BACKLOG, READY, IN_PROGRESS, BLOCKED, DONE]
 tasks:
@@ -18,7 +18,7 @@ tasks:
   - id: VALIDATE-001
     milestone: M1
     title: Add full schema and JSONL validation
-    status: READY
+    status: DONE
     depends_on: [SCHEMA-001]
     acceptance: Errors include file, line or field, rule, and remediation.
   - id: VALIDATE-002
@@ -30,7 +30,7 @@ tasks:
   - id: SECURITY-001
     milestone: M1
     title: Enforce repository data boundary
-    status: BACKLOG
+    status: READY
     depends_on: [VALIDATE-001]
     acceptance: Forbidden raw/private artifacts and likely secrets fail before commit.
   - id: TEST-001

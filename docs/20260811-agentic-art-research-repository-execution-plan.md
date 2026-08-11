@@ -36,6 +36,7 @@ python3 tools/bundle.py project/harmony-study --audience human
 - [x] (2026-08-11) M0: リポジトリ骨格、エージェント規則、実行計画、設定、初期スキーマを作成。
 - [x] (2026-08-11) M1a: `new_project.py`、基礎validator、テスト、CIの初期版を作成。
 - [x] (2026-08-11) `SCHEMA-001`: 7ドメインのDraft 2020-12スキーマ、正常fixture、規則別異常fixtureを追加。
+- [x] (2026-08-11) `VALIDATE-001`: JSON Schema、JSONL行番号、YAML重複キーの検証とremediation付きエラーを追加。
 - [ ] M1b: 全JSON Schema検証と参照整合性を実装。
 - [ ] M2: 依存グラフ、バンドル、影響分析、監査を実用レベルへ完成。
 - [ ] M3: 代表サンプルプロジェクトを固定fixtureで完走。
@@ -62,7 +63,7 @@ python3 tools/bundle.py project/harmony-study --audience human
 
 ## Outcomes & Retrospective
 
-M0/M1aと`SCHEMA-001`完了時点では、プロジェクト雛形の生成、構造検査、Draft 2020-12スキーマの契約テスト、CI初期版が実行可能になる。JSONL検証、参照整合性、調査Orchestratorと外部アダプタは未実装であり、「自律リサーチ完成」とはまだ呼ばない。
+M0/M1a、`SCHEMA-001`、`VALIDATE-001`完了時点では、プロジェクト雛形の生成、Draft 2020-12スキーマ検証、JSONL行番号付きエラー、YAML重複キー検出、CI初期版が実行可能になる。参照整合性、機密・秘密検査、調査Orchestratorと外部アダプタは未実装であり、「自律リサーチ完成」とはまだ呼ばない。
 
 ## Context and Orientation
 
