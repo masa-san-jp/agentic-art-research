@@ -57,6 +57,23 @@ def _workspace(source_root: Path) -> tuple[tempfile.TemporaryDirectory, Path]:
     return temporary, root
 
 
+def _workspace_relative_error(exc: ResultImportError, root: Path) -> str:
+    """Render probe errors without leaking a nondeterministic temporary path."""
+
+    rendered = str(exc)
+    raw_path = str(getattr(exc, "path", ""))
+    if not raw_path:
+        return rendered
+    try:
+        path = Path(raw_path).resolve()
+        workspace = root.resolve()
+        if path.is_relative_to(workspace):
+            return rendered.replace(raw_path, path.relative_to(workspace).as_posix(), 1)
+    except (OSError, RuntimeError, ValueError):
+        pass
+    return rendered.replace(str(root.resolve()), "<workspace>", 1)
+
+
 def _handoff_fixture_contract(root: Path, fixture: Path) -> dict[str, Any]:
     path = fixture / "scenario.yaml"
     try:
@@ -136,7 +153,7 @@ def _feedback_schema_boundary(root: Path) -> dict[str, Any]:
                 "feedback_schema_boundary",
                 passed,
                 "FAIL_CLOSED" if passed else "WRONG_FAILURE",
-                [f"rule={exc.rule}", str(exc)],
+                [f"rule={exc.rule}", _workspace_relative_error(exc, probe_root)],
                 required_for_research_gate=True,
             )
         return _check(

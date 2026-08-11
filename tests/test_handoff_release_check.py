@@ -31,6 +31,13 @@ class HandoffReleaseCheckContractTest(unittest.TestCase):
         self.assertEqual(CHECK_SCHEMA, result["schema"])
         self.assertTrue(result["passed"])
         self.assertTrue(result["schema_snapshot_ready"])
+        repeat = check_handoff_release(
+            REPO_ROOT,
+            REPO_ROOT / "tests" / "fixtures" / "harmony",
+            REPO_ROOT / "tests" / "fixtures" / "harmony-handoff",
+            REPO_ROOT / "execution" / "ci-evidence.json",
+        )
+        self.assertEqual(result, repeat)
         self.assertEqual(
             "SNAPSHOT_VALID",
             next(item for item in result["checks"] if item["id"] == "production_result_schema_snapshot")["status"],
@@ -115,6 +122,13 @@ class HandoffReleaseCheckContractTest(unittest.TestCase):
             result = _feedback_schema_boundary(root)
             self.assertTrue(result["passed"])
             self.assertEqual("FAIL_CLOSED", result["status"])
+
+    def test_feedback_boundary_report_has_no_temporary_absolute_path(self) -> None:
+        result = _feedback_schema_boundary(REPO_ROOT)
+        self.assertTrue(result["passed"])
+        detail = "\n".join(result["details"])
+        self.assertIn("schemas/external/production-result.v1.schema.json", detail)
+        self.assertNotIn("agentic-art-handoff-release-", detail)
 
 
 if __name__ == "__main__":
