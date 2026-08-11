@@ -1,5 +1,5 @@
 version: 1
-updated_at: "2026-08-11T17:29:46+09:00"
+updated_at: "2026-08-11T18:55:00+09:00"
 selection_policy: lowest_id_ready_with_dependencies_done
 allowed_statuses: [BACKLOG, READY, IN_PROGRESS, BLOCKED, DONE]
 tasks:
@@ -123,3 +123,27 @@ tasks:
     status: DONE
     depends_on: [EVAL-002]
     acceptance: Design specification section 19.2 is fully checked and CI passes three times.
+  - id: SECURITY-002
+    milestone: M6
+    title: Add advanced repository security inspection
+    status: DONE
+    depends_on: [EVAL-002]
+    acceptance: Symlink, path traversal, and unsafe archive inputs fail before commit.
+  - id: CHAOS-001
+    milestone: M6
+    title: Add deterministic chaos and recovery checks
+    status: READY
+    depends_on: [SECURITY-002]
+    acceptance: API stop, broken JSONL, interrupted lease, and duplicate effect scenarios are reproducible.
+  - id: DOCS-001
+    milestone: M6
+    title: Complete operations and recovery documentation
+    status: BACKLOG
+    depends_on: [CHAOS-001]
+    acceptance: Onboarding, operations, incident response, and model startup guidance are present.
+  - id: RELEASE-002
+    milestone: M6
+    title: Run final post-hardening release gate
+    status: BACKLOG
+    depends_on: [DOCS-001]
+    acceptance: All security, chaos, documentation, MVP, and three-run CI-equivalent gates pass.
