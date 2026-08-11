@@ -1,0 +1,180 @@
+version: 1
+description: >-
+  Every blocking validator rule has one normal or failure fixture entry. Repository
+  cases start from a generated project and apply only the named mutation.
+normal:
+  - id: generated-project
+    kind: repository
+    fixture: templates/project
+  - id: schema-project-manifest
+    kind: schema
+    schema: project-manifest
+    fixture: schema-valid/project-manifest.json
+  - id: schema-evidence
+    kind: schema
+    schema: evidence
+    fixture: schema-valid/evidence.json
+  - id: schema-claim
+    kind: schema
+    schema: claim
+    fixture: schema-valid/claim.json
+  - id: schema-insight
+    kind: schema
+    schema: insight
+    fixture: schema-valid/insight.json
+  - id: schema-decision
+    kind: schema
+    schema: decision
+    fixture: schema-valid/decision.json
+  - id: schema-requirement
+    kind: schema
+    schema: requirement
+    fixture: schema-valid/requirement.json
+  - id: schema-completion-report
+    kind: schema
+    schema: completion-report
+    fixture: schema-valid/completion-report.json
+failure:
+  - id: schema-project-required
+    kind: schema
+    schema: project-manifest
+    fixture: schema-invalid/project-manifest-missing-access.json
+    rule: SCHEMA:required
+  - id: schema-evidence-pattern
+    kind: schema
+    schema: evidence
+    fixture: schema-invalid/evidence-invalid-hash.json
+    rule: SCHEMA:pattern
+  - id: schema-claim-enum
+    kind: schema
+    schema: claim
+    fixture: schema-invalid/claim-invalid-type.json
+    rule: SCHEMA:enum
+  - id: schema-insight-min-items
+    kind: schema
+    schema: insight
+    fixture: schema-invalid/insight-empty-claims.json
+    rule: SCHEMA:minItems
+  - id: schema-decision-any-of
+    kind: schema
+    schema: decision
+    fixture: schema-invalid/decision-without-basis.json
+    rule: SCHEMA:anyOf
+  - id: schema-requirement-min-items
+    kind: schema
+    schema: requirement
+    fixture: schema-invalid/requirement-mandatory-without-test.json
+    rule: SCHEMA:minItems
+  - id: schema-completion-enum
+    kind: schema
+    schema: completion-report
+    fixture: schema-invalid/completion-invalid-status.json
+    rule: SCHEMA:enum
+  - id: jsonl-syntax
+    kind: repository
+    setup: malformed-jsonl
+    rule: JSONL
+  - id: yaml-duplicate-key
+    kind: repository
+    setup: duplicate-yaml
+    rule: YAML
+  - id: data-boundary-filename
+    kind: repository
+    setup: forbidden-filename
+    rule: DATA-BOUNDARY
+  - id: data-boundary-private-snapshot
+    kind: repository
+    setup: private-snapshot
+    rule: DATA-BOUNDARY
+  - id: secret-scan
+    kind: repository
+    setup: likely-secret
+    rule: SECRET-SCAN
+  - id: project-structure
+    kind: repository
+    setup: missing-required-file
+    rule: PROJECT-STRUCTURE
+  - id: project-id
+    kind: repository
+    setup: wrong-project-id
+    rule: PROJECT-ID
+  - id: project-status
+    kind: repository
+    setup: invalid-project-status
+    rule: PROJECT-STATUS
+  - id: state-sync
+    kind: repository
+    setup: runtime-manifest-mismatch
+    rule: STATE-SYNC
+  - id: cross-reference
+    kind: repository
+    setup: broken-reference
+    rule: CROSS-REFERENCE
+  - id: duplicate-id
+    kind: repository
+    setup: duplicate-canonical-id
+    rule: DUPLICATE-ID
+  - id: question-status
+    kind: repository
+    setup: invalid-question-status
+    rule: QUESTION-STATUS
+  - id: question-terminal
+    kind: repository
+    setup: open-mandatory-question
+    rule: QUESTION-TERMINAL
+  - id: dependency-cycle
+    kind: repository
+    setup: claim-cycle
+    rule: DEPENDENCY-CYCLE
+  - id: requirement-test
+    kind: repository
+    setup: untestable-mandatory-requirement
+    rule: REQUIREMENT-TEST
+  - id: lifecycle-status
+    kind: repository
+    setup: invalid-runtime-status
+    rule: LIFECYCLE-STATUS
+  - id: lifecycle-state-sync
+    kind: repository
+    setup: terminal-report-mismatch
+    rule: LIFECYCLE-STATE-SYNC
+  - id: duplicate-event-id
+    kind: repository
+    setup: duplicate-event-id
+    rule: DUPLICATE-EVENT-ID
+  - id: lifecycle-transition
+    kind: repository
+    setup: illegal-transition
+    rule: LIFECYCLE-TRANSITION
+  - id: lifecycle-sequence
+    kind: repository
+    setup: discontinuous-transitions
+    rule: LIFECYCLE-SEQUENCE
+  - id: yaml-structure
+    kind: repository
+    setup: invalid-yaml-collection
+    rule: STRUCTURE:type
+  - id: json-syntax
+    kind: repository
+    setup: malformed-json
+    rule: JSON
+  - id: schema-json
+    kind: repository
+    setup: malformed-schema-json
+    rule: SCHEMA-JSON
+  - id: schema-meta
+    kind: repository
+    setup: missing-schema-meta
+    rule: SCHEMA-META
+  - id: schema-definition
+    kind: repository
+    setup: invalid-schema-definition
+    rule: SCHEMA-DEFINITION
+  - id: schema-missing
+    kind: repository
+    setup: missing-domain-schema
+    rule: SCHEMA-MISSING
+  - id: security-pattern
+    kind: repository
+    setup: invalid-secret-pattern
+    rule: SECURITY-PATTERN
