@@ -1,5 +1,5 @@
 version: 1
-updated_at: "2026-08-11T15:22:30+09:00"
+updated_at: "2026-08-11T15:44:21+09:00"
 selection_policy: lowest_id_ready_with_dependencies_done
 allowed_statuses: [BACKLOG, READY, IN_PROGRESS, BLOCKED, DONE]
 tasks:
@@ -36,13 +36,13 @@ tasks:
   - id: TEST-001
     milestone: M1
     title: Build validation fixture matrix
-    status: READY
+    status: DONE
     depends_on: [VALIDATE-002, SECURITY-001]
     acceptance: Normal and failure fixtures cover every blocking validation rule.
   - id: GRAPH-001
     milestone: M2
     title: Build deterministic dependency graph
-    status: BACKLOG
+    status: READY
     depends_on: [TEST-001]
     acceptance: Evidence-to-test chain is deterministic and fully linked.
   - id: BUNDLE-001
