@@ -1,0 +1,44 @@
+{
+  "schema_version": "1.0.0",
+  "handoff_id": "HO001",
+  "revision": 1,
+  "status": "READY",
+  "research_project_id": "project/harmony-study",
+  "research_project_version": "1.1.0",
+  "research_commit": "not-a-commit",
+  "generated_at": "2026-08-11T21:00:00+09:00",
+  "selection": {
+    "status": "AGENT_RECOMMENDED",
+    "selected_hypothesis_id": "PH001",
+    "alternative_hypothesis_ids": [],
+    "authority": "agent-recommended",
+    "human_approval_required": false
+  },
+  "creative_direction_ref": "05_production/creative-direction.md",
+  "requirements": [
+    {
+      "id": "RQ001",
+      "statement": "Make the interruption observable.",
+      "priority": "mandatory",
+      "source_decision_ids": ["DC001"],
+      "acceptance_test_ids": ["AT001"]
+    }
+  ],
+  "prototype_plan_ids": ["PP001"],
+  "constraints": {
+    "rights": [],
+    "safety": [],
+    "privacy": [],
+    "prohibited_actions": ["Do not publish without human approval."]
+  },
+  "open_gaps": [],
+  "replan_triggers": ["Mandatory test failure"],
+  "source_refs": {
+    "decision_ids": ["DC001"],
+    "insight_ids": ["IN001"],
+    "evidence_ids": []
+  },
+  "integrity": {
+    "content_sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  }
+}

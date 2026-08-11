@@ -1,0 +1,25 @@
+{
+  "id": "PH001",
+  "title": "Interrupted interval installation",
+  "proposition": "A single omission becomes visible through viewer movement.",
+  "source_decision_ids": [],
+  "source_insight_ids": ["IN001"],
+  "intended_experience": ["Discover one interruption."],
+  "includes": ["Repeated physical elements"],
+  "excludes": [],
+  "differentiation": {
+    "precedent_refs": [],
+    "statement": "Uses movement to expose the interruption."
+  },
+  "feasibility": {
+    "technical": "A paper model can test the relation.",
+    "cost_band": "LOW",
+    "duration_band": "DAYS",
+    "venue_dependency": "MEDIUM",
+    "rights_status": "CLEAR",
+    "safety_status": "REVIEW_REQUIRED"
+  },
+  "uncertainties": [],
+  "recommendation": "RECOMMENDED",
+  "status": "ADOPTED"
+}

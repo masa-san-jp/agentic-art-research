@@ -44,3 +44,9 @@
 - `PRIVATE_RAW`、`RESTRICTED`、認証情報、個人メール本文、カレンダー詳細、非公開音声をGitへ入れない。
 - 外部送信、公開、応募、購入、契約、削除は実行しない。
 - 権利不明素材は採用せず、理由付きの棄却またはギャップとして残す。
+
+## Production handoff extension
+
+- `EXTENSION-*`、`HANDOFF-*`、`FEEDBACK-*`タスクでは、基礎仕様の後に`docs/20260811-agentic-art-research-production-handoff-extension-specification.md`を読む。
+- 同タスクのExecPlan正本は`docs/20260811-agentic-art-research-production-handoff-execution-plan.md`とする。
+- 実装開始点は`execution/task-queue.yaml`にある依存完了済みの最小ID `READY`タスクとし、基礎M0〜M6を再オープンしない。

@@ -1,3 +1,4 @@
+workflow_mode: RESEARCH_ONLY
 project:
   id: project/__PROJECT_SLUG__
   title: "__PROJECT_TITLE__"
@@ -12,8 +13,13 @@ entry_points:
   evidence_ledger: 02_evidence/evidence-ledger.jsonl
   decision_log: 04_decisions/decision-log.yaml
   production_requirements: 05_production/production-requirements.yaml
+  production_hypotheses: 04_decisions/production-hypotheses.yaml
+  hypothesis_comparison: 04_decisions/hypothesis-comparison.yaml
+  prototype_plans: 05_production/prototype-plans.yaml
+  production_handoff: 05_production/production-handoff.yaml
+  production_change_requests: 06_governance/production-change-requests.yaml
+  production_feedback_imports: 07_runtime/production-feedback-imports.jsonl
   completion_report: 07_runtime/completion-report.json
 access:
   classification: PROJECT_INTERNAL
   allowed_agents: [orchestrator, planner, collector, curator, analyst, critic, production-translator, validator, auditor]
-

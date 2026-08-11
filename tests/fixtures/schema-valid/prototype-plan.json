@@ -1,0 +1,30 @@
+{
+  "id": "PP001",
+  "hypothesis_id": "PH001",
+  "question": "Can the interruption be identified from three fixed viewpoints?",
+  "uncertainty_ids": ["U001"],
+  "method": "Observe a one-tenth scale model under fixed lighting from three viewpoints.",
+  "inputs": ["Twelve paper elements", "Three fixed cameras"],
+  "constraints": ["Do not record identifiable people"],
+  "tasks": [
+    {
+      "id": "PT001",
+      "title": "Build the scale model",
+      "depends_on": [],
+      "completion_condition": "Twelve positions with one omitted element are fixed."
+    },
+    {
+      "id": "PT002",
+      "title": "Record three viewpoints",
+      "depends_on": ["PT001"],
+      "completion_condition": "Three frames with identical exposure are available."
+    }
+  ],
+  "acceptance_test_ids": ["AT001"],
+  "expected_evidence": "fixed-camera-frame-set",
+  "estimated_cost_band": "LOW",
+  "estimated_duration_band": "HOURS",
+  "executor_capability": "physical-prototype-agent",
+  "external_validation_reason": null,
+  "status": "PLANNED"
+}

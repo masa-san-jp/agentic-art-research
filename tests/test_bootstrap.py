@@ -39,6 +39,18 @@ class BootstrapTest(unittest.TestCase):
         project = create_project(root, "harmony-study", "Harmony Study", "creator/test")
         self.assertTrue((project / "manifest.yaml").exists())
         self.assertTrue((project / "02_evidence" / "evidence-ledger.jsonl").exists())
+        manifest = yaml.safe_load((project / "manifest.yaml").read_text(encoding="utf-8"))
+        self.assertEqual("RESEARCH_ONLY", manifest["workflow_mode"])
+        for relative in (
+            "04_decisions/production-hypotheses.yaml",
+            "04_decisions/hypothesis-comparison.yaml",
+            "05_production/prototype-plans.yaml",
+            "05_production/production-handoff.yaml",
+            "06_governance/production-change-requests.yaml",
+            "07_runtime/production-feedback-imports.jsonl",
+        ):
+            with self.subTest(relative=relative):
+                self.assertTrue((project / relative).exists())
         self.assertEqual([], validate_repository(root))
         with self.assertRaises(FileExistsError):
             create_project(root, "harmony-study", "Second Title")
@@ -85,4 +97,3 @@ class BootstrapTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

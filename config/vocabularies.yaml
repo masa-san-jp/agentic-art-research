@@ -1,4 +1,4 @@
-version: 1
+version: 2
 project_statuses:
   - DRAFT
   - PLANNED
@@ -37,3 +37,14 @@ test_results: [NOT_RUN, PASS, FAIL, EXTERNAL_VALIDATION_REQUIRED, BLOCKED]
 impact_levels: [NONE, MINOR, MAJOR, CRITICAL]
 task_statuses: [PENDING, RUNNING, SUCCEEDED, FAILED, BLOCKED]
 task_failure_classes: [TRANSIENT, TIMEOUT, RATE_LIMIT, LEASE_EXPIRED, PERMANENT, VALIDATION, AUTHORIZATION, DEPENDENCY_FAILED]
+workflow_modes: [RESEARCH_ONLY, PRODUCTION_HANDOFF]
+cost_bands: [LOW, MEDIUM, HIGH, UNKNOWN]
+duration_bands: [HOURS, DAYS, WEEKS, MONTHS, UNKNOWN]
+dependency_levels: [NONE, LOW, MEDIUM, HIGH, UNKNOWN]
+review_statuses: [CLEAR, REVIEW_REQUIRED, BLOCKED, UNKNOWN]
+hypothesis_recommendations: [RECOMMENDED, ALTERNATIVE, REJECTED, ON_HOLD]
+uncertainty_severities: [MINOR, MAJOR, CRITICAL]
+prototype_statuses: [PLANNED, READY, EXTERNAL_VALIDATION_REQUIRED, COMPLETED, FAILED, BLOCKED, CANCELLED]
+handoff_selection_statuses: [AGENT_RECOMMENDED, HUMAN_SELECTED, HUMAN_SELECTION_REQUIRED]
+selection_authorities: [agent-recommended, human-approved, policy-derived]
+handoff_statuses: [DRAFT, READY, ACCEPTED, REJECTED, SUPERSEDED, CANCELLED]

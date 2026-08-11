@@ -312,3 +312,13 @@ python3 tools/validate.py --check
 - ID: `<prefix><zero-padded-number>` または `project/<slug>`。正規表現はschemaを正本にする。
 - 時刻: RFC 3339、タイムゾーン必須。
 - JSONL: 1行1object、UTF-8、行順は生成時にIDで安定化する。
+
+## Post-v1 Extension Routing
+
+v1.0.1以後の制作仮説、Prototype Plan、`agentic-art-production`へのhandoff、production result還流は、次を正本として実装する。
+
+- 設計仕様: `docs/20260811-agentic-art-research-production-handoff-extension-specification.md`
+- 実行計画: `docs/20260811-agentic-art-research-production-handoff-execution-plan.md`
+- 実行順序: `execution/task-queue.yaml`の`H0`以降
+
+既存M0〜M6は完了状態を維持し、拡張タスクの都合で再オープンしない。共有schema、validator、runtimeへ変更が必要な場合も、H系タスクの変更として追跡し、v1回帰試験を必須にする。

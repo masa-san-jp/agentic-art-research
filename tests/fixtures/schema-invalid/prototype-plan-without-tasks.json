@@ -1,0 +1,16 @@
+{
+  "id": "PP001",
+  "hypothesis_id": "PH001",
+  "question": "Can the interruption be identified?",
+  "uncertainty_ids": ["U001"],
+  "method": "Observe a scale model.",
+  "inputs": ["Paper model"],
+  "constraints": [],
+  "tasks": [],
+  "acceptance_test_ids": ["AT001"],
+  "expected_evidence": "frame-set",
+  "estimated_cost_band": "LOW",
+  "estimated_duration_band": "HOURS",
+  "executor_capability": "physical-prototype-agent",
+  "status": "PLANNED"
+}

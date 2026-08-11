@@ -51,6 +51,26 @@ SCHEMA_CASES = {
         "invalid": "requirement-mandatory-without-test.json",
         "rule": "minItems",
     },
+    "production-hypothesis": {
+        "valid": "production-hypothesis.json",
+        "invalid": "production-hypothesis-without-decision.json",
+        "rule": "minItems",
+    },
+    "hypothesis-comparison": {
+        "valid": "hypothesis-comparison.json",
+        "invalid": "hypothesis-comparison-single-candidate.json",
+        "rule": "minItems",
+    },
+    "prototype-plan": {
+        "valid": "prototype-plan.json",
+        "invalid": "prototype-plan-without-tasks.json",
+        "rule": "minItems",
+    },
+    "production-handoff": {
+        "valid": "production-handoff.json",
+        "invalid": "production-handoff-invalid-commit.json",
+        "rule": "pattern",
+    },
     "completion-report": {
         "valid": "completion-report.json",
         "invalid": "completion-invalid-status.json",
@@ -117,6 +137,53 @@ class SchemaContractTest(unittest.TestCase):
             completion_errors = list(validator_for("completion-report").iter_errors(completion_report))
             self.assertEqual([], manifest_errors, "\n".join(error.message for error in manifest_errors))
             self.assertEqual([], completion_errors, "\n".join(error.message for error in completion_errors))
+
+    def test_manifest_modes_preserve_v1_and_require_handoff_entry_points(self) -> None:
+        validator = validator_for("project-manifest")
+        legacy = load_json(FIXTURE_ROOT / "schema-valid" / "project-manifest.json")
+        handoff = load_json(FIXTURE_ROOT / "schema-valid" / "project-manifest-handoff.json")
+        incomplete = load_json(
+            FIXTURE_ROOT / "schema-invalid" / "project-manifest-handoff-missing-entry-points.json"
+        )
+
+        self.assertEqual([], list(validator.iter_errors(legacy)))
+        self.assertEqual([], list(validator.iter_errors(handoff)))
+        errors = list(validator.iter_errors(incomplete))
+        self.assertTrue(any(error.validator == "required" for error in errors), errors)
+
+    def test_extension_vocabularies_match_common_schema(self) -> None:
+        common = load_json(SCHEMA_ROOT / "common.schema.json")
+        vocab = yaml.safe_load((REPO_ROOT / "config" / "vocabularies.yaml").read_text(encoding="utf-8"))
+        pairs = {
+            "workflowMode": "workflow_modes",
+            "costBand": "cost_bands",
+            "durationBand": "duration_bands",
+            "dependencyLevel": "dependency_levels",
+            "reviewStatus": "review_statuses",
+            "hypothesisRecommendation": "hypothesis_recommendations",
+            "uncertaintySeverity": "uncertainty_severities",
+            "prototypeStatus": "prototype_statuses",
+            "handoffSelectionStatus": "handoff_selection_statuses",
+            "selectionAuthority": "selection_authorities",
+            "handoffStatus": "handoff_statuses",
+        }
+        for definition, vocabulary in pairs.items():
+            with self.subTest(definition=definition, vocabulary=vocabulary):
+                self.assertEqual(common["$defs"][definition]["enum"], vocab[vocabulary])
+
+    def test_handoff_contract_represents_external_validation_and_non_blocking_gaps(self) -> None:
+        hypothesis = load_json(FIXTURE_ROOT / "schema-valid" / "production-hypothesis.json")
+        uncertainty = hypothesis["uncertainties"][0]
+        uncertainty["prototype_plan_ids"] = []
+        uncertainty["external_validation_reason"] = "The venue must be measured by the production team."
+        self.assertEqual([], list(validator_for("production-hypothesis").iter_errors(hypothesis)))
+
+        uncertainty["external_validation_reason"] = None
+        self.assertTrue(list(validator_for("production-hypothesis").iter_errors(hypothesis)))
+
+        handoff = load_json(FIXTURE_ROOT / "schema-valid" / "production-handoff.json")
+        handoff["prototype_plan_ids"] = []
+        self.assertEqual([], list(validator_for("production-handoff").iter_errors(handoff)))
 
 
 if __name__ == "__main__":

@@ -63,6 +63,47 @@
     },
     "taskFailureClass": {
       "enum": ["TRANSIENT", "TIMEOUT", "RATE_LIMIT", "LEASE_EXPIRED", "PERMANENT", "VALIDATION", "AUTHORIZATION", "DEPENDENCY_FAILED"]
+    },
+    "semver": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+    },
+    "gitSha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "workflowMode": {
+      "enum": ["RESEARCH_ONLY", "PRODUCTION_HANDOFF"]
+    },
+    "costBand": {
+      "enum": ["LOW", "MEDIUM", "HIGH", "UNKNOWN"]
+    },
+    "durationBand": {
+      "enum": ["HOURS", "DAYS", "WEEKS", "MONTHS", "UNKNOWN"]
+    },
+    "dependencyLevel": {
+      "enum": ["NONE", "LOW", "MEDIUM", "HIGH", "UNKNOWN"]
+    },
+    "reviewStatus": {
+      "enum": ["CLEAR", "REVIEW_REQUIRED", "BLOCKED", "UNKNOWN"]
+    },
+    "hypothesisRecommendation": {
+      "enum": ["RECOMMENDED", "ALTERNATIVE", "REJECTED", "ON_HOLD"]
+    },
+    "uncertaintySeverity": {
+      "enum": ["MINOR", "MAJOR", "CRITICAL"]
+    },
+    "prototypeStatus": {
+      "enum": ["PLANNED", "READY", "EXTERNAL_VALIDATION_REQUIRED", "COMPLETED", "FAILED", "BLOCKED", "CANCELLED"]
+    },
+    "handoffSelectionStatus": {
+      "enum": ["AGENT_RECOMMENDED", "HUMAN_SELECTED", "HUMAN_SELECTION_REQUIRED"]
+    },
+    "selectionAuthority": {
+      "enum": ["agent-recommended", "human-approved", "policy-derived"]
+    },
+    "handoffStatus": {
+      "enum": ["DRAFT", "READY", "ACCEPTED", "REJECTED", "SUPERSEDED", "CANCELLED"]
     }
   }
 }

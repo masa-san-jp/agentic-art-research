@@ -15,6 +15,13 @@ JSON Schemaを構造の正本、本文を意味と運用規律の正本とする
 | requirement | `RQ001` |
 | acceptance test | `AT001` |
 | external reference | `XR001` |
+| production hypothesis | `PH001` |
+| hypothesis comparison | `HC001` |
+| hypothesis uncertainty | `U001` |
+| prototype plan | `PP001` |
+| prototype task | `PT001` |
+| production handoff | `HO001` |
+| production gap | `GP001` |
 
 一度公開されたIDは変更しない。表示名の変更でIDを変えない。
 
@@ -22,11 +29,17 @@ JSON Schemaを構造の正本、本文を意味と運用規律の正本とする
 
 ```text
 question → evidence → claim → insight → decision → requirement → acceptance test
+                                      └→ production hypothesis → prototype plan
+production hypothesis + prototype plan + requirement + acceptance test → production handoff
 ```
 
 下流オブジェクトが上流IDを持つ。逆参照は `build_graph.py` が生成する。生成された逆参照を正本へ書き戻さない。
 
 生成グラフのノードには、表示用のプロジェクト内 `id` と、衝突を避ける `key` を持たせる。`key` は `project/<slug>::<local-id>` であり、辺の `from` / `to` はこの値を使う。影響分析で裸のIDを渡せるのはリポジトリ内で一意な場合だけで、複数プロジェクトに存在するIDは完全な `key` を指定する。
+
+制作引き渡し拡張のschema正本は`production-hypothesis.schema.json`、`hypothesis-comparison.schema.json`、`prototype-plan.schema.json`、`production-handoff.schema.json`とする。production result schemaはproduction repoが正本であり、公開前にconsumer側で仮定義しない。
+
+`MAJOR`または`CRITICAL`の制作仮説上の不確実性は、少なくとも一つの`prototype_plan_ids`か、空でない`external_validation_reason`を持つ。handoffの`prototype_plan_ids`自体は、重大な不確実性がない場合または外部検証へ明示的に委ねる場合は空配列でよい。`open_gaps`は各項目に`blocking`を持ち、`READY` handoffではblocking gapを許可しない。
 
 ## 空、不明、未解決
 

@@ -1,0 +1,22 @@
+{
+  "workflow_mode": "PRODUCTION_HANDOFF",
+  "project": {
+    "id": "project/harmony-study",
+    "title": "Harmony Study",
+    "version": "1.1.0",
+    "status": "READY_FOR_PRODUCTION",
+    "created_at": "2026-08-11T15:00:00+09:00",
+    "updated_at": "2026-08-11T21:00:00+09:00"
+  },
+  "entry_points": {
+    "human_summary": "05_production/creative-direction.md",
+    "research_plan": "01_planning/research-plan.yaml",
+    "evidence_ledger": "02_evidence/evidence-ledger.jsonl",
+    "decision_log": "04_decisions/decision-log.yaml",
+    "production_requirements": "05_production/production-requirements.yaml",
+    "completion_report": "07_runtime/completion-report.json"
+  },
+  "access": {
+    "classification": "PROJECT_INTERNAL"
+  }
+}

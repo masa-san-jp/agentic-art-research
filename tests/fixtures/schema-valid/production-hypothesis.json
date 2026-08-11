@@ -1,0 +1,34 @@
+{
+  "id": "PH001",
+  "title": "Interrupted interval installation",
+  "proposition": "A single omission in a repeated structure becomes visible through viewer movement.",
+  "source_decision_ids": ["DC001"],
+  "source_insight_ids": ["IN001"],
+  "intended_experience": ["Notice order first and discover one interruption after moving."],
+  "includes": ["Repeated physical elements", "One omitted element"],
+  "excludes": ["Explanatory text that identifies the omission"],
+  "differentiation": {
+    "precedent_refs": ["XR001"],
+    "statement": "The omission is discovered through parallax rather than sound."
+  },
+  "feasibility": {
+    "technical": "A paper scale model can test the spatial relation.",
+    "cost_band": "LOW",
+    "duration_band": "DAYS",
+    "venue_dependency": "MEDIUM",
+    "rights_status": "CLEAR",
+    "safety_status": "REVIEW_REQUIRED"
+  },
+  "uncertainties": [
+    {
+      "id": "U001",
+      "statement": "The interruption may not be visible from all required viewpoints.",
+      "severity": "MAJOR",
+      "prototype_plan_ids": ["PP001"],
+      "external_validation_reason": null
+    }
+  ],
+  "recommendation": "RECOMMENDED",
+  "single_hypothesis_rationale": null,
+  "status": "ADOPTED"
+}
