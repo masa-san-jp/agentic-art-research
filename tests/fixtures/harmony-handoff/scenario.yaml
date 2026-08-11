@@ -1,0 +1,19 @@
+scenario: harmony-handoff
+version: 1
+source_fixture: ../harmony
+research_project_id: project/feedback-import
+handoff:
+  id: HO001
+  expected_bundle_paths:
+    - manifest.yaml
+    - production-handoff.yaml
+    - provenance.yaml
+    - schemas/production-handoff.schema.json
+feedback:
+  result_id: PR001
+  schema_version: 1.0.0
+  expected_graph_edges:
+    - feedback_result
+    - contains_observation
+    - derived_as
+    - derived_test_evidence

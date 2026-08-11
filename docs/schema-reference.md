@@ -43,6 +43,30 @@ production hypothesis + prototype plan + requirement + acceptance test → produ
 
 handoff hashは`tools/canonical.py`のcanonical JSON（`integrity`除外、sorted keys、compact UTF-8）から再計算し、payloadは`config/handoff-policy.yaml`の262,144 bytes上限を超えてはならない。
 
+## Handoff bundle
+
+`tools/export_handoff.py` が生成するproduction向けbundleは、production側がresearch作業ツリーを参照せず検証できる自己完結snapshotである。
+
+```text
+handoff-bundle/
+├── manifest.yaml
+├── production-handoff.yaml
+├── provenance.yaml
+├── schemas/
+│   ├── common.schema.json
+│   └── production-handoff.schema.json ほかrequest schema
+└── artifacts/
+    ├── production-hypotheses.yaml
+    ├── hypothesis-comparison.yaml
+    ├── production-requirements.yaml
+    ├── acceptance-tests.yaml
+    ├── prototype-plans.yaml
+    ├── source-ref-index.yaml
+    └── creative-direction.md
+```
+
+`manifest.yaml` はbundle内の全ファイルのraw-byte hashとfile-set hashを持つ。`source-ref-index.yaml` はdecision、insight、evidenceのID、project-relative source path、record hash、安全な短いsummaryだけを持ち、原証拠本文を複製しない。
+
 ## 空、不明、未解決
 
 - 値そのものが不明: `null`

@@ -20,6 +20,34 @@ python3 tools/release_check.py \
 成功条件は、出力JSONの`passed`が`true`で、`checks`内の11項目がすべて成功すること。
 失敗時は各checkの`details`を確認する。
 
+制作引き渡し拡張のresearch-side gateは次で確認する。
+
+```bash
+python3 tools/handoff_release_check.py \
+  --offline-fixture tests/fixtures/harmony \
+  --handoff-fixture tests/fixtures/harmony-handoff \
+  --ci-evidence execution/ci-evidence.json
+```
+
+このgateの`passed: true`はresearch側のbundle、fail-closed、後方互換性を示す。
+`schema_snapshot_ready: false`はproduction-owned result schema未公開を明示する状態であり、
+`--require-schema-snapshot`を付けた場合だけ失敗として扱う。production schemaをresearch側で合成してはならない。
+通常のGitHub Actions検証でもこのresearch-side gateを実行し、production schema未公開の状態は明示的なpendingとして検査する。
+
+production側のclean commitが公開された後は、まず次でsnapshotとprovenanceを登録する。
+
+```bash
+python3 tools/snapshot_production_schema.py \
+  --source-repo /path/to/agentic-art-production \
+  --source-schema schemas/production-result.schema.json \
+  --source-repository masa-san-jp/agentic-art-production \
+  --commit <40-character-production-commit> \
+  --acquired-at 2026-08-12T00:00:00+09:00 \
+  --version 1.0.0
+```
+
+このCLIはdirty worktree、commit不一致、schema不正、path逸脱、既存snapshotの上書きを拒否する。
+
 ## 境界
 
 このタスクでは、外部公開、タグ作成、GitHub Release、配布、購入、契約、送信は行わない。

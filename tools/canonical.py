@@ -26,13 +26,25 @@ def canonical_sha256(value: Any) -> str:
     return f"sha256:{digest}"
 
 
+def integrity_payload(value: dict[str, Any]) -> dict[str, Any]:
+    """Return a payload without its self-referential top-level integrity block."""
+
+    return {key: item for key, item in value.items() if key != "integrity"}
+
+
+def payload_sha256(value: dict[str, Any]) -> str:
+    """Hash a structured payload after removing its top-level integrity block."""
+
+    return canonical_sha256(integrity_payload(value))
+
+
 def handoff_hash_payload(handoff: dict[str, Any]) -> dict[str, Any]:
     """Return the handoff payload whose hash excludes its self-referential integrity block."""
 
-    return {key: value for key, value in handoff.items() if key != "integrity"}
+    return integrity_payload(handoff)
 
 
 def handoff_sha256(handoff: dict[str, Any]) -> str:
     """Hash a handoff without allowing the integrity field to hash itself."""
 
-    return canonical_sha256(handoff_hash_payload(handoff))
+    return payload_sha256(handoff)

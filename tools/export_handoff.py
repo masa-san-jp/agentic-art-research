@@ -1,0 +1,362 @@
+from __future__ import annotations
+
+import argparse
+import hashlib
+import os
+import re
+import shutil
+import subprocess
+import tempfile
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+from _common import ROOT, load_yaml
+from canonical import canonical_sha256
+from handoff_common import HandoffInputError, HandoffSources, collection_yaml, load_handoff_sources, yaml_text
+from validate import validate_repository
+
+
+PROHIBITED_CLASSIFICATION_PATTERN = re.compile(r"(?<![A-Z0-9_])(?:PRIVATE_RAW|RESTRICTED)(?![A-Z0-9_])", re.IGNORECASE)
+ABSOLUTE_PATH_PATTERN = re.compile(
+    r"(?:^|[\s\"'(=:])(?:/(?!/)\S+|[A-Za-z]:[\\/]\S*|~[\\/]\S*|file://\S+)",
+    re.IGNORECASE,
+)
+
+
+class HandoffExportError(ValueError):
+    """Raised when a handoff bundle cannot be exported safely."""
+
+
+def _sha256_bytes(value: bytes) -> str:
+    return f"sha256:{hashlib.sha256(value).hexdigest()}"
+
+
+def _source_maps(sources: HandoffSources) -> dict[str, dict[str, dict[str, Any]]]:
+    return {
+        "decision": {str(record.get("id")): record for record in sources.decisions},
+        "insight": {str(record.get("id")): record for record in sources.insights},
+        "evidence": {str(record.get("id")): record for record in sources.evidence},
+    }
+
+
+def _summary(kind: str, record: dict[str, Any]) -> str:
+    if kind == "evidence":
+        source_type = record.get("source_type", "unknown-source")
+        rights = record.get("rights_status", "unknown-rights")
+        sensitivity = record.get("sensitivity", "unknown-sensitivity")
+        return f"{source_type}; rights_status={rights}; sensitivity={sensitivity}"
+    value = record.get("reason") if kind == "decision" else record.get("statement")
+    if not isinstance(value, str) or not value.strip():
+        value = record.get("selected_option") or record.get("question") or "No public summary recorded."
+    return " ".join(str(value).split())[:280]
+
+
+def source_ref_index(sources: HandoffSources, handoff: dict[str, Any]) -> dict[str, Any]:
+    maps = _source_maps(sources)
+    source_fields = {
+        "decision_ids": ("decision", "04_decisions/decision-log.yaml"),
+        "insight_ids": ("insight", "04_decisions/insight-register.yaml"),
+        "evidence_ids": ("evidence", "02_evidence/evidence-ledger.jsonl"),
+    }
+    records: list[dict[str, Any]] = []
+    source_refs = handoff.get("source_refs") if isinstance(handoff.get("source_refs"), dict) else {}
+    for field, (kind, source_path) in source_fields.items():
+        ids = source_refs.get(field, [])
+        if not isinstance(ids, list):
+            raise HandoffExportError(f"handoff source_refs.{field} must be a list")
+        for record_id in ids:
+            record = maps[kind].get(record_id)
+            if record is None:
+                raise HandoffExportError(f"handoff source_refs.{field} references missing {kind} {record_id!r}")
+            if kind == "evidence" and record.get("sensitivity") in {"PRIVATE_RAW", "RESTRICTED"}:
+                raise HandoffExportError(
+                    f"handoff source_refs.{field} includes prohibited evidence classification {record.get('sensitivity')!r}"
+                )
+            records.append(
+                {
+                    "id": record_id,
+                    "kind": kind,
+                    "source_path": source_path,
+                    "record_sha256": canonical_sha256(record),
+                    "summary": _summary(kind, record),
+                }
+            )
+    return {"source_project": sources.project_id, "records": sorted(records, key=lambda item: (item["kind"], item["id"]))}
+
+
+def _git_state(root: Path) -> bool | None:
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(root), "status", "--porcelain", "--untracked-files=all"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return not bool(result.stdout.strip())
+
+
+def _policy(sources: HandoffSources) -> dict[str, Any]:
+    path = sources.root / "config" / "handoff-policy.yaml"
+    value = load_yaml(path)
+    if not isinstance(value, dict):
+        raise HandoffExportError(f"{path}: handoff policy must be a mapping")
+    return value
+
+
+def _security_scan(files: dict[str, bytes], sources: HandoffSources) -> None:
+    policy = _policy(sources)
+    access_path = sources.root / "config" / "access-policy.yaml"
+    access = load_yaml(access_path) or {}
+    patterns = access.get("secret_patterns", []) if isinstance(access, dict) else []
+    compiled: list[tuple[str, re.Pattern[str]]] = []
+    for pattern in patterns:
+        if not isinstance(pattern, dict) or not isinstance(pattern.get("id"), str) or not isinstance(pattern.get("pattern"), str):
+            continue
+        try:
+            compiled.append((pattern["id"], re.compile(pattern["pattern"])))
+        except re.error as exc:
+            raise HandoffExportError(f"{access_path}: invalid secret pattern {pattern['id']!r}") from exc
+    markers = [str(marker).lower() for marker in policy.get("signed_url_markers", []) if isinstance(marker, str)]
+    for relative, raw in files.items():
+        if relative.startswith("schemas/"):
+            # Schema snapshots intentionally enumerate prohibited classifications
+            # as contract vocabulary; they are not project payloads.
+            continue
+        try:
+            text = raw.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise HandoffExportError(f"bundle file is not UTF-8 text: {relative}") from exc
+        if PROHIBITED_CLASSIFICATION_PATTERN.search(text):
+            raise HandoffExportError(f"bundle file contains a prohibited classification: {relative}")
+        if ABSOLUTE_PATH_PATTERN.search(text):
+            raise HandoffExportError(f"bundle file contains an absolute or local path: {relative}")
+        lowered = text.lower()
+        if any(marker in lowered for marker in markers):
+            raise HandoffExportError(f"bundle file contains a signed URL marker: {relative}")
+        for pattern_id, regex in compiled:
+            if regex.search(text):
+                raise HandoffExportError(f"bundle file matches secret pattern {pattern_id}: {relative}")
+
+
+def _media_type(relative: str) -> str:
+    if relative.endswith(".yaml"):
+        return "application/yaml"
+    if relative.endswith(".json"):
+        return "application/json"
+    if relative.endswith(".md"):
+        return "text/markdown; charset=utf-8"
+    raise HandoffExportError(f"unsupported bundle file type: {relative}")
+
+
+def _role(relative: str) -> str:
+    if relative == "production-handoff.yaml":
+        return "HANDOFF"
+    if relative == "provenance.yaml":
+        return "PROVENANCE"
+    if relative.startswith("schemas/"):
+        return "SCHEMA"
+    return "ARTIFACT"
+
+
+def _bundle_files(sources: HandoffSources, handoff: dict[str, Any]) -> dict[str, bytes]:
+    project = sources.project
+    creative_path = (project / "05_production" / "creative-direction.md").resolve()
+    if project.resolve() not in creative_path.parents or not creative_path.is_file():
+        raise HandoffExportError("05_production/creative-direction.md is required for the handoff bundle")
+    schema_names = (
+        "common.schema.json",
+        "production-hypothesis.schema.json",
+        "hypothesis-comparison.schema.json",
+        "prototype-plan.schema.json",
+        "production-handoff.schema.json",
+    )
+    files: dict[str, bytes] = {
+        "production-handoff.yaml": yaml_text(handoff).encode("utf-8"),
+        "artifacts/production-hypotheses.yaml": collection_yaml(sources.hypotheses_document, "hypotheses").encode("utf-8"),
+        "artifacts/hypothesis-comparison.yaml": collection_yaml(sources.comparison_document, "comparisons").encode("utf-8"),
+        "artifacts/production-requirements.yaml": collection_yaml(sources.requirements_document, "requirements").encode("utf-8"),
+        "artifacts/acceptance-tests.yaml": collection_yaml(sources.acceptance_tests_document, "acceptance_tests").encode("utf-8"),
+        "artifacts/prototype-plans.yaml": collection_yaml(sources.prototype_document, "prototype_plans").encode("utf-8"),
+        "artifacts/source-ref-index.yaml": yaml_text(source_ref_index(sources, handoff)).encode("utf-8"),
+        "artifacts/creative-direction.md": creative_path.read_bytes(),
+    }
+    for schema_name in schema_names:
+        schema_path = sources.root / "schemas" / schema_name
+        if not schema_path.is_file():
+            raise HandoffExportError(f"schema snapshot is missing: {schema_path}")
+        files[f"schemas/{schema_name}"] = schema_path.read_bytes()
+    _security_scan(files, sources)
+    return dict(sorted(files.items()))
+
+
+def _provenance(sources: HandoffSources, handoff: dict[str, Any], files: dict[str, bytes], clean: bool) -> bytes:
+    policy = _policy(sources)
+    schema_bytes = files["schemas/production-handoff.schema.json"]
+    value = {
+        "source_repository": policy.get("source_repository", "masa-san-jp/agentic-art-research"),
+        "source_commit": handoff.get("research_commit"),
+        "source_tree_clean": clean,
+        "source_schema": {
+            "path": "schemas/production-handoff.schema.json",
+            "version": handoff.get("schema_version"),
+            "sha256": _sha256_bytes(schema_bytes),
+        },
+        "source_project": {
+            "id": sources.project_id,
+            "version": sources.project_data.get("version"),
+        },
+        "generator": {
+            "name": "agentic-art-research/export_handoff",
+            "version": policy.get("generator_version", "1.0.0"),
+        },
+        "canonicalization": policy.get("canonicalization", "json-sort-keys-compact-utf8-v1"),
+        "generated_at": handoff.get("generated_at"),
+    }
+    return yaml_text(value).encode("utf-8")
+
+
+def _manifest(handoff: dict[str, Any], files: dict[str, bytes], *, schema_version: str) -> bytes:
+    entries = [
+        {
+            "path": relative,
+            "role": _role(relative),
+            "media_type": _media_type(relative),
+            "size_bytes": len(raw),
+            "sha256": _sha256_bytes(raw),
+        }
+        for relative, raw in sorted(files.items())
+    ]
+    file_set = canonical_sha256(
+        [{"path": item["path"], "size_bytes": item["size_bytes"], "sha256": item["sha256"]} for item in entries]
+    )
+    value = {
+        "bundle_schema_version": schema_version,
+        "bundle_id": f"HB-{handoff['handoff_id']}-R{handoff['revision']}",
+        "entrypoint": "production-handoff.yaml",
+        "handoff_key": {"handoff_id": handoff["handoff_id"], "revision": handoff["revision"]},
+        "files": entries,
+        "integrity": {"file_set_sha256": file_set},
+    }
+    return yaml_text(value).encode("utf-8")
+
+
+def _file_map(path: Path) -> dict[str, bytes]:
+    if not path.is_dir() or path.is_symlink():
+        raise HandoffExportError(f"export destination is not a regular directory: {path}")
+    result: dict[str, bytes] = {}
+    for candidate in path.rglob("*"):
+        if candidate.is_symlink():
+            raise HandoffExportError(f"export destination contains an unsafe object: {candidate}")
+        if candidate.is_dir():
+            continue
+        if not candidate.is_file():
+            raise HandoffExportError(f"export destination contains an unsafe object: {candidate}")
+        result[candidate.relative_to(path).as_posix()] = candidate.read_bytes()
+    return result
+
+
+def _is_generated_bundle(file_map: dict[str, bytes]) -> bool:
+    required = {"manifest.yaml", "provenance.yaml", "production-handoff.yaml"}
+    if not required.issubset(file_map):
+        return False
+    try:
+        manifest = load_yaml_bytes(file_map["manifest.yaml"])
+    except HandoffExportError:
+        return False
+    return (
+        isinstance(manifest, dict)
+        and manifest.get("entrypoint") == "production-handoff.yaml"
+        and isinstance(manifest.get("bundle_id"), str)
+        and manifest["bundle_id"].startswith("HB-")
+    )
+
+
+def load_yaml_bytes(raw: bytes) -> Any:
+    try:
+        value = yaml.safe_load(raw.decode("utf-8"))
+    except (UnicodeDecodeError, OSError, yaml.YAMLError) as exc:
+        raise HandoffExportError("existing export manifest is not valid UTF-8 YAML") from exc
+    return value
+
+
+def export_handoff(root: Path, target: str, output: Path, *, force: bool = False, allow_dirty: bool = False) -> Path:
+    sources = load_handoff_sources(root, target)
+    findings = validate_repository(sources.root, f"project/{sources.project.name}")
+    if findings:
+        rendered = "\n".join(finding.render() for finding in findings)
+        raise HandoffExportError(f"handoff export requires a cleanly validated project:\n{rendered}")
+    output = output.resolve()
+    if sources.project.resolve() == output or sources.project.resolve() in output.parents:
+        raise HandoffExportError("export destination must not be inside the canonical project")
+    clean = _git_state(sources.root)
+    if clean is not True and not allow_dirty:
+        raise HandoffExportError("source Git tree is not provably clean; commit the generator and sources or pass --allow-dirty for a fixture")
+    clean_value = clean is True
+    handoff = sources.handoff
+    files = _bundle_files(sources, handoff)
+    files["provenance.yaml"] = _provenance(sources, handoff, files, clean_value)
+    files = dict(sorted(files.items()))
+    files["manifest.yaml"] = _manifest(
+        handoff,
+        files,
+        schema_version=str(_policy(sources).get("bundle_schema_version", "1.0.0")),
+    )
+    _security_scan(files, sources)
+    expected = dict(sorted(files.items()))
+
+    if output.exists():
+        actual = _file_map(output)
+        if actual == expected:
+            return output
+        if not force:
+            raise HandoffExportError("export destination contains different bytes; use --force only after reviewing the destination")
+        if not _is_generated_bundle(actual):
+            raise HandoffExportError("--force is restricted to a previously generated handoff bundle")
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    temporary = Path(tempfile.mkdtemp(prefix=f".{output.name}.", dir=output.parent))
+    try:
+        for relative, raw in expected.items():
+            path = temporary / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(raw)
+        if output.exists():
+            if output.is_symlink() or not output.is_dir():
+                raise HandoffExportError(f"export destination is not a replaceable directory: {output}")
+            shutil.rmtree(output)
+        os.replace(temporary, output)
+    except Exception:
+        if temporary.exists():
+            shutil.rmtree(temporary)
+        raise
+    return output
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Export a self-contained, deterministic production handoff bundle.")
+    parser.add_argument("target", help="project/<slug>")
+    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--root", type=Path, default=ROOT)
+    parser.add_argument("--force", action="store_true", help="replace a different generated destination after review")
+    parser.add_argument("--allow-dirty", action="store_true", help="allow an uncommitted or fixture root; provenance records source_tree_clean=false")
+    args = parser.parse_args()
+    try:
+        path = export_handoff(
+            args.root.resolve(),
+            args.target,
+            args.output,
+            force=args.force,
+            allow_dirty=args.allow_dirty,
+        )
+    except (HandoffInputError, HandoffExportError, OSError) as exc:
+        parser.error(str(exc))
+    print(path)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

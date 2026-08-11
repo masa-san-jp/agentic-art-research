@@ -26,6 +26,9 @@ class HandoffValidationTest(unittest.TestCase):
         self.addCleanup(shutil.rmtree, temporary, True)
         for name in ("templates", "config", "schemas"):
             shutil.copytree(REPO_ROOT / name, temporary / name)
+        snapshot = temporary / "schemas" / "external" / "production-result.v1.schema.json"
+        if snapshot.exists():
+            snapshot.unlink()
         (temporary / "projects").mkdir()
         (temporary / "data").mkdir()
         return temporary
@@ -285,7 +288,14 @@ class HandoffValidationTest(unittest.TestCase):
 
         schema_path = project.parents[1] / "schemas" / "external" / "production-result.v1.schema.json"
         schema_path.write_text(
-            json.dumps({"$schema": "https://json-schema.org/draft/2020-12/schema", "type": "object"}) + "\n",
+            json.dumps(
+                {
+                    "$schema": "https://json-schema.org/draft/2020-12/schema",
+                    "type": "object",
+                    "required": ["accepted_handoff"],
+                }
+            )
+            + "\n",
             encoding="utf-8",
         )
         feedback_path = project / "07_runtime" / "production-feedback-imports.jsonl"

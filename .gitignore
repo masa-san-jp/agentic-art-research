@@ -4,6 +4,7 @@ __pycache__/
 .pytest_cache/
 .DS_Store
 projects/smoke-project/
+data/handoffs/
 
 # Raw or secret-bearing formats are forbidden by policy as well as ignored here.
 *.eml
@@ -18,4 +19,3 @@ projects/smoke-project/
 *.wav
 *.m4a
 *.mp3
-

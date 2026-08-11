@@ -371,7 +371,7 @@ PROTOTYPES_PATH = "05_production/prototype-plans.yaml"
 CREATIVE_DIRECTION_PATH = "05_production/creative-direction.md"
 FEEDBACK_PATH = "07_runtime/production-feedback-imports.jsonl"
 ABSOLUTE_PATH_PATTERN = re.compile(
-    r"(?:^|[\s(])(?:/(?!/)\S+|[A-Za-z]:[\\/]\S*|~[\\/]\S*|file://\S+)",
+    r"(?:^|[\s\"'(=:])(?:/(?!/)\S+|[A-Za-z]:[\\/]\S*|~[\\/]\S*|file://\S+)",
     re.IGNORECASE,
 )
 PROHIBITED_CLASSIFICATION_PATTERN = re.compile(r"(?<![A-Z0-9_])(?:PRIVATE_RAW|RESTRICTED)(?![A-Z0-9_])")
@@ -1544,7 +1544,7 @@ def _secret_findings(root: Path, path: Path, patterns: list[dict[str, Any]]) -> 
     return findings
 
 
-def validate_repository(root: Path) -> list[Finding]:
+def validate_repository(root: Path, project_target: str | None = None) -> list[Finding]:
     findings: list[Finding] = []
     vocab_path = root / "config" / "vocabularies.yaml"
     access_path = root / "config" / "access-policy.yaml"
@@ -1622,8 +1622,22 @@ def validate_repository(root: Path) -> list[Finding]:
         )
 
     statuses = set(vocab.get("project_statuses", [])) if isinstance(vocab, dict) else set()
-    project_ids = {f"project/{project.name}" for project in iter_project_dirs(root)}
-    for project in iter_project_dirs(root):
+    projects = list(iter_project_dirs(root))
+    project_ids = {f"project/{project.name}" for project in projects}
+    selected_projects = projects
+    if project_target:
+        slug = project_target.split("/", 1)[1] if project_target.startswith("project/") else project_target
+        selected_projects = [project for project in projects if project.name == slug]
+        if not selected_projects:
+            findings.append(
+                Finding(
+                    "projects",
+                    "PROJECT-TARGET",
+                    f"project target {project_target!r} was not found",
+                    remediation="Use an existing project slug or project/<slug> target.",
+                )
+            )
+    for project in selected_projects:
         relative_project = project.relative_to(root)
         entries: dict[str, RecordEntry] = {}
         extension_values: dict[str, Any] = {}
@@ -1827,9 +1841,10 @@ def validate_repository(root: Path) -> list[Finding]:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Validate repository contracts and safety boundaries.")
     parser.add_argument("--check", action="store_true", help="Validate without generating or modifying files.")
+    parser.add_argument("--project", help="Validate one project slug or project/<slug> while retaining repository-wide safety checks.")
     parser.add_argument("--root", type=Path, default=ROOT)
     args = parser.parse_args()
-    findings = validate_repository(args.root.resolve())
+    findings = validate_repository(args.root.resolve(), args.project)
     if findings:
         for finding in findings:
             print(finding.render())

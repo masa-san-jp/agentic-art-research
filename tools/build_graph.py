@@ -4,7 +4,7 @@ import argparse
 from pathlib import Path
 from typing import Any
 
-from _common import ROOT, atomic_write_text, iter_project_dirs, read_jsonl, stable_json, yaml_list
+from _common import ROOT, atomic_write_text, iter_project_dirs, load_yaml, read_jsonl, stable_json, yaml_list
 
 
 def node_key(project_id: str, identifier: str) -> str:
@@ -52,8 +52,58 @@ def build_graph(root: Path) -> dict[str, Any]:
         decisions = yaml_list(project / "04_decisions" / "decision-log.yaml", "decisions")
         requirements = yaml_list(project / "05_production" / "production-requirements.yaml", "requirements")
         tests = yaml_list(project / "05_production" / "acceptance-tests.yaml", "acceptance_tests")
+        hypotheses = yaml_list(project / "04_decisions" / "production-hypotheses.yaml", "hypotheses")
+        comparisons = yaml_list(project / "04_decisions" / "hypothesis-comparison.yaml", "comparisons")
+        prototype_plans = yaml_list(project / "05_production" / "prototype-plans.yaml", "prototype_plans")
+        production_results = read_jsonl(project / "07_runtime" / "production-feedback-imports.jsonl")
+        production_observations: list[dict[str, Any]] = []
+        for result in production_results:
+            if not isinstance(result, dict) or not isinstance(result.get("result_id"), str):
+                continue
+            observations = result.get("observations", [])
+            if not isinstance(observations, list):
+                continue
+            for observation in observations:
+                if not isinstance(observation, dict) or not isinstance(observation.get("id"), str):
+                    continue
+                production_observations.append(
+                    {
+                        **observation,
+                        "id": f"{result['result_id']}/{observation['id']}",
+                        "result_id": result["result_id"],
+                    }
+                )
+        uncertainties = [
+            uncertainty
+            for hypothesis in hypotheses
+            for uncertainty in hypothesis.get("uncertainties", [])
+            if isinstance(uncertainty, dict)
+        ]
+        prototype_tasks = [
+            task
+            for plan in prototype_plans
+            for task in plan.get("tasks", [])
+            if isinstance(task, dict)
+        ]
+        handoff_path = project / "05_production" / "production-handoff.yaml"
+        handoff_value = load_yaml(handoff_path) if handoff_path.exists() else {}
+        handoff_value = handoff_value or {}
+        handoffs = []
+        if isinstance(handoff_value, dict) and handoff_value.get("handoff_id"):
+            handoffs = [{"id": handoff_value["handoff_id"], **handoff_value}]
 
         for records, kind in ((questions, "question"), (evidence, "evidence"), (claims, "claim"), (insights, "insight"), (decisions, "decision"), (requirements, "requirement"), (tests, "acceptance_test")):
+            _add_nodes(nodes, records, kind, project_id)
+        for records, kind in (
+            (hypotheses, "production_hypothesis"),
+            (comparisons, "hypothesis_comparison"),
+            (uncertainties, "uncertainty"),
+            (prototype_plans, "prototype_plan"),
+            (prototype_tasks, "prototype_task"),
+            (handoffs, "production_handoff"),
+            ([{"id": result["result_id"], **result} for result in production_results if isinstance(result, dict) and result.get("result_id")], "production_result"),
+            (production_observations, "production_observation"),
+        ):
             _add_nodes(nodes, records, kind, project_id)
 
         for record in evidence:
@@ -83,6 +133,91 @@ def build_graph(root: Path) -> dict[str, Any]:
             target = record.get("target_requirement")
             if target:
                 _add_edge(edges, nodes, project_id, target, record["id"], "verified_by")
+        for record in hypotheses:
+            for source in record.get("source_decision_ids", []):
+                _add_edge(edges, nodes, project_id, source, record["id"], "informs")
+            for source in record.get("source_insight_ids", []):
+                _add_edge(edges, nodes, project_id, source, record["id"], "informs")
+            for uncertainty in record.get("uncertainties", []):
+                if isinstance(uncertainty, dict) and uncertainty.get("id"):
+                    _add_edge(edges, nodes, project_id, record["id"], uncertainty["id"], "has_uncertainty")
+        for record in comparisons:
+            for source in record.get("hypothesis_ids", []):
+                _add_edge(edges, nodes, project_id, source, record["id"], "compared_by")
+        for record in prototype_plans:
+            _add_edge(edges, nodes, project_id, record["hypothesis_id"], record["id"], "prototyped_by")
+            for source in record.get("uncertainty_ids", []):
+                _add_edge(edges, nodes, project_id, source, record["id"], "tests_uncertainty")
+            for source in record.get("acceptance_test_ids", []):
+                _add_edge(edges, nodes, project_id, record["id"], source, "evaluated_by")
+            for task in record.get("tasks", []):
+                if isinstance(task, dict) and task.get("id"):
+                    _add_edge(edges, nodes, project_id, record["id"], task["id"], "contains")
+                    for dependency in task.get("depends_on", []):
+                        _add_edge(edges, nodes, project_id, dependency, task["id"], "precedes")
+        for handoff in handoffs:
+            handoff_id = handoff["id"]
+            selection = handoff.get("selection") if isinstance(handoff.get("selection"), dict) else {}
+            selected = selection.get("selected_hypothesis_id")
+            candidate_hypothesis_ids = {
+                hypothesis_id
+                for hypothesis_id in [selected, *selection.get("alternative_hypothesis_ids", [])]
+                if isinstance(hypothesis_id, str)
+            }
+            if selected:
+                _add_edge(edges, nodes, project_id, selected, handoff_id, "selected_for")
+            for alternative in selection.get("alternative_hypothesis_ids", []):
+                _add_edge(edges, nodes, project_id, alternative, handoff_id, "alternative_for")
+            for source in handoff.get("prototype_plan_ids", []):
+                _add_edge(edges, nodes, project_id, source, handoff_id, "included_prototype")
+            for requirement in handoff.get("requirements", []):
+                if isinstance(requirement, dict) and requirement.get("id"):
+                    _add_edge(edges, nodes, project_id, requirement["id"], handoff_id, "included_requirement")
+                    for test_id in requirement.get("acceptance_test_ids", []):
+                        _add_edge(edges, nodes, project_id, test_id, handoff_id, "included_test")
+            source_refs = handoff.get("source_refs") if isinstance(handoff.get("source_refs"), dict) else {}
+            for field in ("decision_ids", "insight_ids", "evidence_ids"):
+                for source in source_refs.get(field, []):
+                    _add_edge(edges, nodes, project_id, source, handoff_id, "source_ref")
+            for comparison in comparisons:
+                comparison_hypothesis_ids = {
+                    hypothesis_id
+                    for hypothesis_id in comparison.get("hypothesis_ids", [])
+                    if isinstance(hypothesis_id, str)
+                }
+                if candidate_hypothesis_ids.intersection(comparison_hypothesis_ids):
+                    _add_edge(edges, nodes, project_id, comparison["id"], handoff_id, "comparison_basis")
+
+        for result in production_results:
+            if not isinstance(result, dict) or not isinstance(result.get("result_id"), str):
+                continue
+            result_id = result["result_id"]
+            accepted_handoff = result.get("accepted_handoff") if isinstance(result.get("accepted_handoff"), dict) else {}
+            handoff_id = accepted_handoff.get("id")
+            if isinstance(handoff_id, str) and node_key(project_id, handoff_id) in nodes:
+                _add_edge(edges, nodes, project_id, handoff_id, result_id, "feedback_result")
+            for test_result in result.get("test_results", []):
+                if isinstance(test_result, dict) and isinstance(test_result.get("acceptance_test_id"), str):
+                    _add_edge(edges, nodes, project_id, test_result["acceptance_test_id"], result_id, "evaluated_by_result")
+            for observation in result.get("observations", []):
+                if not isinstance(observation, dict) or not isinstance(observation.get("id"), str):
+                    continue
+                observation_node_id = f"{result_id}/{observation['id']}"
+                _add_edge(edges, nodes, project_id, result_id, observation_node_id, "contains_observation")
+                for requirement_id in observation.get("related_requirement_ids", []):
+                    if isinstance(requirement_id, str):
+                        _add_edge(edges, nodes, project_id, requirement_id, observation_node_id, "observed_by_result")
+                evidence_uri = f"urn:agentic-art-production:result:{result_id}:observations:{observation['id']}"
+                for evidence_record in evidence:
+                    if evidence_record.get("source_location") == evidence_uri:
+                        _add_edge(edges, nodes, project_id, observation_node_id, evidence_record["id"], "derived_as")
+            for test_result in result.get("test_results", []):
+                if not isinstance(test_result, dict) or not isinstance(test_result.get("acceptance_test_id"), str):
+                    continue
+                evidence_uri = f"urn:agentic-art-production:result:{result_id}:test_results:{test_result['acceptance_test_id']}"
+                for evidence_record in evidence:
+                    if evidence_record.get("source_location") == evidence_uri:
+                        _add_edge(edges, nodes, project_id, result_id, evidence_record["id"], "derived_test_evidence")
 
     return {
         "nodes": [nodes[key] for key in sorted(nodes)],

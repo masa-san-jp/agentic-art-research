@@ -1,7 +1,7 @@
 # Agentic Art Research 制作引き渡し拡張実行計画
 
 - 作成日: 2026-08-11
-- 状態: IN_PROGRESS
+- 状態: COMPLETE
 - 対応仕様: `docs/20260811-agentic-art-research-production-handoff-extension-specification.md`
 - 基点: `v1.0.1`以降の`main`
 - 想定リリース: 後方互換を保てる場合`v1.1.0`
@@ -13,12 +13,9 @@
 利用者は次で確認する。
 
 ```bash
-python3 tools/run_project.py harmony-study --offline-fixture tests/fixtures/harmony-handoff
-python3 tools/build_handoff.py project/harmony-study
-python3 tools/export_handoff.py project/harmony-study --output data/handoffs/harmony-study
-python3 tools/import_production_result.py tests/fixtures/production-results/pass.yaml --dry-run
+python3 tools/run_project.py harmony-study --offline-fixture tests/fixtures/harmony
+python3 -m unittest tests.test_feedback_import tests.test_handoff_e2e -v
 python3 tools/validate.py --check
-python3 -m unittest discover -s tests -v
 ```
 
 ## Progress
@@ -26,10 +23,10 @@ python3 -m unittest discover -s tests -v
 - [x] (2026-08-11) `EXTENSION-DESIGN-001`: 責任境界、成果物、契約、実装フェーズを確定。
 - [x] (2026-08-11 21:06 JST) `HANDOFF-SCHEMA-001`: 制作仮説、比較、Prototype Plan、handoff schema、語彙、後方互換manifest、雛形、正常・失敗fixtureを追加。70 testとvalidatorが合格。
 - [x] (2026-08-11 21:40 JST) `HANDOFF-VALIDATE-001`: 仮説、Prototype DAG、handoff参照・hash・安全境界、外部schema fail-closed検査を実装。77 test、validator、docs checkが合格。
-- [ ] (2026-08-11 22:00 JST) `HANDOFF-BUILD-001`: handoff生成、export、production-agent bundleを実装中。
-- [ ] `FEEDBACK-IMPORT-001`: production resultのdry-run、取込、冪等性、影響分析を実装。
-- [ ] `HANDOFF-E2E-001`: cross-repo fixture、障害系、後方互換性評価を完成。
-- [ ] `HANDOFF-RELEASE-001`: 文書、release gate、互換性証拠を完成。
+- [x] (2026-08-11 22:10 JST) `HANDOFF-BUILD-001`: handoff生成、export、production-agent bundleを実装。全84 test、validator、graph、docs check、diff checkが合格。
+- [x] (2026-08-11 22:25 JST) `FEEDBACK-IMPORT-001`: production-owned schema snapshotの未公開状態をfail-closedで維持しつつ、snapshot取得後に実行できるdry-run、取込、冪等性、部分適用からの復旧、影響分析、MAJOR再開、CRITICAL人間承認待ちを実装。全90 test、validator、graph、docs check、diff checkが合格。
+- [x] (2026-08-12 07:24 JST) `HANDOFF-E2E-001`: `tests/fixtures/harmony-handoff/scenario.yaml`を正本メタデータとして固定し、handoff bundleの自己完結性・改変検出、PASS/FAIL/DEVIATION/CRITICAL result、重複、hash/schema mismatch、破損JSONL、graph/impact還流、RESEARCH_ONLY後方互換性をresearch側で検証した。Production clean commit `fb15f32bf1eef0155c853c4b7c4b94df6b1bd78b`からresult schema snapshotを取得し、release gateのschema boundary probeを修正した。snapshot provenance、schema/hash compatibility、fail-closed、実schemaを使うconsumerのdry-run/apply/冪等性round-tripを含む全113 testが合格した。
+- [x] (2026-08-12 07:24 JST) `HANDOFF-RELEASE-001`: 文書、CI接続済みresearch-side release gate、互換性証拠を確定し、`--require-schema-snapshot`付きgateを3回連続exit 0で確認した。検証済みcommitは外部公開・タグ作成なしで、人間承認後のpublicationへ引き渡せる状態である。
 
 ## Surprises & Discoveries
 
@@ -42,6 +39,13 @@ python3 -m unittest discover -s tests -v
 - 2026-08-11: READY可否はgap文面の推測ではなく、schemaの`open_gaps[].blocking`で判定する。handoff payload上限は`config/handoff-policy.yaml`の262,144 bytesとする。
 - 2026-08-11: 不確実性が存在するだけではPrototype Planとの相互参照を保証できない。`PH → PP`と`PP → PH/U`の両方向を照合し、別仮説の不確実性や存在しないplanへの接続を拒否する必要がある。
 - 2026-08-11: 単純な部分文字列検査は`unrestricted`を`RESTRICTED`と誤認し、空白に続く単独の`/`を絶対pathと誤認する。禁止分類はtoken境界、絶対pathはslash後の非空pathを検査する。
+- 2026-08-11: H3の対象プロジェクト検証は、複数プロジェクトroot上で他プロジェクトの不備によりhandoff生成を停止させない一方、root全体の秘密・禁止拡張子・高度な安全検査は維持する必要がある。
+- 2026-08-11: export先は同一bytesなら冪等成功し、異なる既存内容は`--force`なしで拒否する。dirty rootは通常拒否し、fixture等だけ`--allow-dirty`で明示的に許可する。
+- 2026-08-11: production result schemaは隣接repoのclean commitにまだ存在しない。research側で仮schemaを作らず、snapshot path・provenance・raw hash・対応versionが揃わない限りimportを実行しない。
+- 2026-08-11: feedback importの証拠候補は既存evidence ledgerの型へ正規化し、production result本体はruntime JSONLへ一度だけ保存する。applyは対象ファイルをsnapshotし、検証失敗時に全対象を復元する。
+- 2026-08-11: production observationのgraph IDは`<result_id>/<observation_id>`を正本にする。取り込み後の再buildでも、result、observation、evidence candidate、related requirementの辺を解決できることを専用テストで固定した。
+- 2026-08-11: H5の固定scenarioはresearch fixtureからhandoffを生成し、production resultはテスト時の一時rootでだけ生成する構成にした。production-owned result schemaがclean commitにまだないため、test-only schemaをrepositoryの正本やfixtureへ保存せず、実運用importのprovenance要求とfail-closed境界を維持した。
+- 2026-08-12: Production result schema公開後、旧`feedback_schema_boundary` probeは欠落result入力を`EXTERNAL-SCHEMA`として期待していたため、schema snapshot存在時に`FEEDBACK-INPUT`で誤失敗した。probe内でsnapshotを一時除去してschema欠落を再現するよう修正し、実際のconsumerは変更せずfail-closed契約を維持した。
 
 ## Decision Log
 
@@ -58,6 +62,15 @@ python3 -m unittest discover -s tests -v
 | 2026-08-11 | handoff payload上限を262,144 bytesに設定 | 無制限 | 外部agentへ渡すデータ量とraw混入リスクをboundedにするため |
 | 2026-08-11 | 仮説の不確実性とPrototype Planを相互照合 | 各方向の参照存在だけを検査 | planが別仮説や別不確実性へ誤接続した状態を成功扱いにしないため |
 | 2026-08-11 | `supersedes`は現在handoffから過去handoffへの参照としてstatusと独立に扱う | `SUPERSEDED` statusだけで許可 | 後継handoffの`READY`または`ACCEPTED`状態と過去版参照を両立するため |
+| 2026-08-11 | H3のbundleは正本の公開可能な制作参照、handoff、schema、provenance、manifestだけで構成 | evidence全文や実ファイルの複製 | production側の再推論を減らしつつ、raw/private境界と正本所有権を守るため |
+| 2026-08-11 | handoff生成・export後の検証は対象projectへ限定し、repository-wide security scanは残す | root内全projectのvalidation結果で停止 | 複数projectの独立運用と安全検査を両立するため |
+| 2026-08-11 | production result importはproduction-owned schema snapshotを前提に汎用実装する | research側でresult schemaを仮定義 | 外部契約の所有権を侵食せず、未公開schemaを成功扱いにしないため |
+| 2026-08-11 | feedback importはraw assetを複製せず、URI・hash・権利区分を持つevidence candidateへ変換する | production出力をresearchへコピー | protocol repoと成果物保管境界を守り、再利用可能な出所だけを取り込むため |
+| 2026-08-11 | H5のproduction result試験は一時rootへtest-only schemaを注入し、固定scenarioの入力・期待値だけをGit管理する | 未公開のproduction schemaをresearchへ複製 | オフラインE2Eを再現しつつ、result契約の正本とclean commitを捏造しないため |
+| 2026-08-12 | H5のresearch-side release gateは外部schema未公開を`schema_snapshot_ready: false`として出力し、研究側の安全・互換性gateとは分離する | 未公開schemaを合格扱いにする、または全gateを停止する | 現時点の成果を継続検証しながら、production契約の未確定を隠さないため |
+| 2026-08-12 | production schema snapshot CLIはcommit不一致、dirty source、schema不正、保存先逸脱、異なる既存snapshotをすべて拒否する | 取得時の入力を暗黙補正する、または既存snapshotを上書きする | 外部契約の所有権・再現性・監査可能性を守るため |
+| 2026-08-12 | research-side handoff gateは通常CIで実行し、production schemaの未公開はpendingとして明示する | 外部schema待ちを理由に研究側の自動検証を無効化する | 現在確定している安全境界を継続検査し、未確定の外部契約だけを分離するため |
+| 2026-08-12 | result schema公開後もfeedback boundary probeはschema欠落を一時rootで再現する | 欠落result入力をschema未公開の代用にする | `FEEDBACK-INPUT`と`EXTERNAL-SCHEMA`を混同せず、snapshot有無に依存しないrelease gateにするため |
 
 ## Outcomes & Retrospective
 
@@ -66,6 +79,14 @@ python3 -m unittest discover -s tests -v
 `HANDOFF-SCHEMA-001`では、四つのDraft 2020-12契約、共通語彙、`workflow_mode`による後方互換manifest、六つのproject雛形、正常・失敗fixtureを追加した。既存fixtureは`workflow_mode`未指定のまま有効で、新規projectは`RESEARCH_ONLY`を明示する。production result schemaは生成側未公開のため偽造せず、所有権とfail-closed方針を`schemas/external/README.md`へ固定した。全70 test、`tools/validate.py --check`、`git diff --check`が合格した。次の開始点は`HANDOFF-VALIDATE-001`である。
 
 `HANDOFF-VALIDATE-001`では、新schemaを既存validatorへ接続し、仮説・比較・Prototype Plan・handoffの参照、重大な不確実性の処理、Prototype DAG、選択状態、supersede/revision、必須要件の完全なsnapshot、canonical hash、機密・秘密・path・signed URL・payload上限を検査する実装を追加した。仮説・不確実性・Prototype Planは相互参照を照合し、選択ID欠落とsnapshot上の判断・試験参照改変も拒否する。production result schemaはsnapshotまたは対応版設定がない状態でfeedbackが存在した場合に`EXTERNAL-SCHEMA`で拒否し、上流契約を捏造しない。正常系と各named blocking ruleの変異fixtureを追加し、77 test、`tools/validate.py --check`、`tools/docs_check.py --check`、`git diff --check`が合格した。次の開始点は`HANDOFF-BUILD-001`である。
+
+`HANDOFF-BUILD-001`では、canonical project sourcesからhandoffを決定的に生成する`tools/build_handoff.py`、安全な公開bundleをatomicにexportする`tools/export_handoff.py`、handoffのgraph node/edge、production-agent向けbundle、handoff起点のimpact CLIを追加した。生成時は既存handoffの意味変更をin-placeで許さず、revisionと`supersedes`を要求する。exportはschema snapshot、公開可能なsource-ref index、provenance、file manifestを含み、PRIVATE_RAW、RESTRICTED、secret、signed URL、ローカル絶対pathを拒否する。同一入力のbyte-identical再実行、異なるexport先の上書き拒否、複数project rootでの対象限定検証をテストし、84 test、`tools/validate.py --check`、`tools/build_graph.py --check`、`tools/docs_check.py --check`、`git diff --check`が合格した。次の開始点は`FEEDBACK-IMPORT-001`である。
+
+`FEEDBACK-IMPORT-001`では、production-owned schema snapshotのpath、source repository、commit、取得日時、raw SHA-256、対応versionをすべて検証するimporterを追加した。snapshotが未公開・欠落・改変された状態ではdry-runを含めて`EXTERNAL-SCHEMA`で停止する。検証済みresultはruntime JSONLへ保存し、観察・試験結果を`EV`証拠候補、逸脱・incident・変更要求を`CR` governance recordへ変換する。same result ID/hashは`ALREADY_APPLIED`、同一IDの異なるpayloadは拒否し、MAJORは`ANALYZING`へ明示的に再開、CRITICALは人間承認待ちとして記録する。raw assetはコピーせず、graphとimpactへproduction resultの参照辺を追加した。部分適用後の再実行で監査・証拠・resultを重複させない復旧も固定した。専用6 testを含む全90 test、`tools/validate.py --check`、`tools/build_graph.py --check`、`tools/docs_check.py --check`、`git diff --check`が合格した。次の開始点は`HANDOFF-E2E-001`である。
+
+H5のschema公開前段階では、`harmony-handoff` scenarioを使ってbundle manifestのpath・size・hash・file-set、PASS/FAIL/DEVIATION/CRITICAL result、fail-closed、後方互換性を研究側だけで検証し、production-owned schemaを捏造せずpendingとして扱った。その後の実schema取得・consumer E2E・release gate完了は次段落に記録する。
+
+Production result schemaのclean snapshot取得後、`HANDOFF-E2E-001`のrelease gateは`schema_snapshot_ready: true`で合格した。旧boundary probeを修正し、schema snapshotを一時的に除去したprobeが`EXTERNAL-SCHEMA`でfail-closedすること、result consumerのPASS/FAIL/DEVIATION/CRITICAL round-tripがschema 1.0.0で通ることを確認した。`HANDOFF-RELEASE-001`まで完了し、検証済みcommitは人間承認後のpublicationへ引き渡せる状態である。
 
 ## Context and Orientation
 

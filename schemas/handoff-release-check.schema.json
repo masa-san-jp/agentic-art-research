@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/handoff-release-check.schema.json",
+  "title": "Production handoff research-side release check",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "version", "passed", "schema_snapshot_ready", "checks"],
+  "properties": {
+    "schema": {"const": "urn:agentic-art-research:handoff-release-check:v1"},
+    "version": {"const": "1.0.0"},
+    "passed": {"type": "boolean"},
+    "schema_snapshot_ready": {"type": "boolean"},
+    "checks": {
+      "type": "array",
+      "minItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "passed", "status", "details", "required_for_research_gate"],
+        "properties": {
+          "id": {
+            "enum": [
+              "base_release",
+              "handoff_fixture_contract",
+              "feedback_schema_boundary",
+              "research_only_backward_compatibility",
+              "production_result_schema_snapshot"
+            ]
+          },
+          "passed": {"type": "boolean"},
+          "status": {"type": "string", "minLength": 1},
+          "details": {"type": "array", "items": {"type": "string"}},
+          "required_for_research_gate": {"type": "boolean"}
+        }
+      }
+    }
+  }
+}

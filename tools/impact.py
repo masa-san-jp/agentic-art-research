@@ -104,14 +104,16 @@ def render_markdown(report: dict[str, Any]) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Report downstream impact of changed evidence or another node.")
     parser.add_argument("--evidence", dest="node")
+    parser.add_argument("--handoff", dest="handoff_node", help="Start at a production handoff node such as HO001.")
+    parser.add_argument("--production-result", dest="result_node", help="Start at a production result node such as PR001.")
     parser.add_argument("--node")
     parser.add_argument("--format", choices=("json", "markdown"), default="json")
     parser.add_argument("-o", "--output", type=Path)
     parser.add_argument("--root", type=Path, default=ROOT)
     args = parser.parse_args()
-    node = args.node
+    node = args.node or args.handoff_node or args.result_node
     if not node:
-        parser.error("provide --evidence or --node")
+        parser.error("provide --evidence, --handoff, --production-result, or --node")
     root = args.root.resolve()
     graph_path = root / "data" / "dependency-graph.json"
     graph = load_json(graph_path) if graph_path.exists() else build_graph(root)
