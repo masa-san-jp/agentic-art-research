@@ -12,4 +12,5 @@ signed_url_markers:
   - sig=
   - token=
 production_result_schema_path: schemas/external/production-result.v1.schema.json
+production_result_schema_source: {}
 production_result_schema_versions: []

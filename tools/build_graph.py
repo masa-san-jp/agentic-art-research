@@ -55,6 +55,24 @@ def build_graph(root: Path) -> dict[str, Any]:
         hypotheses = yaml_list(project / "04_decisions" / "production-hypotheses.yaml", "hypotheses")
         comparisons = yaml_list(project / "04_decisions" / "hypothesis-comparison.yaml", "comparisons")
         prototype_plans = yaml_list(project / "05_production" / "prototype-plans.yaml", "prototype_plans")
+        production_results = read_jsonl(project / "07_runtime" / "production-feedback-imports.jsonl")
+        production_observations: list[dict[str, Any]] = []
+        for result in production_results:
+            if not isinstance(result, dict) or not isinstance(result.get("result_id"), str):
+                continue
+            observations = result.get("observations", [])
+            if not isinstance(observations, list):
+                continue
+            for observation in observations:
+                if not isinstance(observation, dict) or not isinstance(observation.get("id"), str):
+                    continue
+                production_observations.append(
+                    {
+                        **observation,
+                        "id": f"{result['result_id']}/{observation['id']}",
+                        "result_id": result["result_id"],
+                    }
+                )
         uncertainties = [
             uncertainty
             for hypothesis in hypotheses
@@ -83,6 +101,8 @@ def build_graph(root: Path) -> dict[str, Any]:
             (prototype_plans, "prototype_plan"),
             (prototype_tasks, "prototype_task"),
             (handoffs, "production_handoff"),
+            ([{"id": result["result_id"], **result} for result in production_results if isinstance(result, dict) and result.get("result_id")], "production_result"),
+            (production_observations, "production_observation"),
         ):
             _add_nodes(nodes, records, kind, project_id)
 
@@ -167,6 +187,37 @@ def build_graph(root: Path) -> dict[str, Any]:
                 }
                 if candidate_hypothesis_ids.intersection(comparison_hypothesis_ids):
                     _add_edge(edges, nodes, project_id, comparison["id"], handoff_id, "comparison_basis")
+
+        for result in production_results:
+            if not isinstance(result, dict) or not isinstance(result.get("result_id"), str):
+                continue
+            result_id = result["result_id"]
+            accepted_handoff = result.get("accepted_handoff") if isinstance(result.get("accepted_handoff"), dict) else {}
+            handoff_id = accepted_handoff.get("id")
+            if isinstance(handoff_id, str) and node_key(project_id, handoff_id) in nodes:
+                _add_edge(edges, nodes, project_id, handoff_id, result_id, "feedback_result")
+            for test_result in result.get("test_results", []):
+                if isinstance(test_result, dict) and isinstance(test_result.get("acceptance_test_id"), str):
+                    _add_edge(edges, nodes, project_id, test_result["acceptance_test_id"], result_id, "evaluated_by_result")
+            for observation in result.get("observations", []):
+                if not isinstance(observation, dict) or not isinstance(observation.get("id"), str):
+                    continue
+                observation_node_id = f"{result_id}/{observation['id']}"
+                _add_edge(edges, nodes, project_id, result_id, observation_node_id, "contains_observation")
+                for requirement_id in observation.get("related_requirement_ids", []):
+                    if isinstance(requirement_id, str):
+                        _add_edge(edges, nodes, project_id, requirement_id, observation_node_id, "observed_by_result")
+                evidence_uri = f"urn:agentic-art-production:result:{result_id}:observations:{observation['id']}"
+                for evidence_record in evidence:
+                    if evidence_record.get("source_location") == evidence_uri:
+                        _add_edge(edges, nodes, project_id, observation_node_id, evidence_record["id"], "derived_as")
+            for test_result in result.get("test_results", []):
+                if not isinstance(test_result, dict) or not isinstance(test_result.get("acceptance_test_id"), str):
+                    continue
+                evidence_uri = f"urn:agentic-art-production:result:{result_id}:test_results:{test_result['acceptance_test_id']}"
+                for evidence_record in evidence:
+                    if evidence_record.get("source_location") == evidence_uri:
+                        _add_edge(edges, nodes, project_id, result_id, evidence_record["id"], "derived_test_evidence")
 
     return {
         "nodes": [nodes[key] for key in sorted(nodes)],
