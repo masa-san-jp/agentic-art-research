@@ -9,6 +9,7 @@ from typing import Any
 import yaml
 
 from _common import ROOT, atomic_write_text, load_json, load_yaml, read_jsonl, stable_json, yaml_list
+from state_machine import TransitionError, load_state_machine
 from validate import validate_repository
 
 
@@ -205,6 +206,10 @@ def complete_project(root: Path, target: str, *, completed_at: str | None = None
             "from_status": current_status,
             "to_status": report["status"],
         }
+        try:
+            load_state_machine(root).apply(current_status, event)
+        except TransitionError as exc:
+            raise ValueError(str(exc)) from exc
         atomic_write_text(manifest_path, yaml.safe_dump(manifest, sort_keys=False))
         atomic_write_text(state_path, stable_json(state))
         atomic_write_text(report_path, stable_json(report))
