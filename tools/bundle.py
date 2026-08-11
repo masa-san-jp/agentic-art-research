@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from _common import ROOT, atomic_write_text
+from _common import ROOT, atomic_write_text, load_yaml
 
 
 AUDIENCE_PATHS = {
@@ -12,6 +12,17 @@ AUDIENCE_PATHS = {
     "production-agent": ["05_production/creative-direction.md", "05_production/production-requirements.yaml", "05_production/acceptance-tests.yaml", "05_production/prototype-backlog.yaml"],
     "audit": ["02_evidence/evidence-ledger.jsonl", "03_knowledge/claims.jsonl", "04_decisions/decision-log.yaml", "06_governance/rights-register.yaml", "06_governance/privacy-review.yaml", "07_runtime/completion-report.json"],
 }
+
+PRODUCTION_HANDOFF_PATHS = [
+    "05_production/creative-direction.md",
+    "05_production/production-requirements.yaml",
+    "05_production/acceptance-tests.yaml",
+    "04_decisions/production-hypotheses.yaml",
+    "04_decisions/hypothesis-comparison.yaml",
+    "05_production/prototype-plans.yaml",
+    "05_production/production-handoff.yaml",
+    "00_intake/constraints.yaml",
+]
 
 
 def _project_path(root: Path, target: str) -> Path:
@@ -34,8 +45,12 @@ def resolve_audience_sources(root: Path, target: str, audience: str) -> list[tup
     if audience not in AUDIENCE_PATHS:
         raise ValueError(f"unknown audience: {audience}")
     project = _project_path(root, target)
+    manifest = load_yaml(project / "manifest.yaml") or {}
+    paths = AUDIENCE_PATHS[audience]
+    if audience == "production-agent" and isinstance(manifest, dict) and manifest.get("workflow_mode", "RESEARCH_ONLY") == "PRODUCTION_HANDOFF":
+        paths = PRODUCTION_HANDOFF_PATHS
     sources: list[tuple[str, Path]] = []
-    for relative in AUDIENCE_PATHS[audience]:
+    for relative in paths:
         path = (project / relative).resolve()
         if project not in path.parents:
             raise ValueError(f"audience source escapes project: {relative}")

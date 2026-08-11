@@ -47,6 +47,24 @@ python3 tools/build_graph.py --check
 python3 -m unittest discover -s tests -v
 ~~~
 
+## 制作引き渡し（PRODUCTION_HANDOFF）
+
+制作引き渡しを使うプロジェクトでは、`manifest.yaml` の `workflow_mode` を `PRODUCTION_HANDOFF` にし、仮説、比較、Prototype Plan、要件、受入試験を正本として整える。次でhandoffを決定的に生成・検証・exportできる。
+
+```bash
+python3 tools/build_handoff.py project/<project-id>
+python3 tools/validate.py --project <project-id> --check
+python3 tools/build_graph.py
+python3 tools/impact.py --handoff HO001
+python3 tools/bundle.py project/<project-id> --audience production-agent
+# review and commit the generated canonical handoff before a clean export
+python3 tools/export_handoff.py project/<project-id> --output data/handoffs/<project-id>
+```
+
+export bundleは `manifest.yaml`、`production-handoff.yaml`、`provenance.yaml`、schema snapshot、制作入力のsnapshot、匿名化されたsource-ref index、creative directionだけを含む。原証拠本文、PRIVATE_RAW、RESTRICTED、ローカル絶対パスは含めない。`data/handoffs/` は再生成物であり、手編集しない。
+
+fixtureや未commit作業ツリーを検証するときだけ、exportに `--allow-dirty` を明示する。この場合、provenanceの `source_tree_clean` は `false` になる。
+
 実プロジェクトを試す場合は、一時cloneを作り、検証後に外部出力先へプロジェクト単位でコピーする。
 
 ~~~bash

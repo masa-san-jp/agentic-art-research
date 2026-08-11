@@ -1,5 +1,9 @@
 version: 1
-canonicalization: json-sort-keys-compact-utf8
+canonicalization: json-sort-keys-compact-utf8-v1
+bundle_schema_version: 1.0.0
+handoff_schema_version: 1.0.0
+generator_version: 1.0.0
+source_repository: masa-san-jp/agentic-art-research
 max_payload_bytes: 262144
 signed_url_markers:
   - X-Amz-Signature
