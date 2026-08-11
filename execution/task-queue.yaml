@@ -1,5 +1,5 @@
 version: 1
-updated_at: "2026-08-11T16:10:12+09:00"
+updated_at: "2026-08-11T16:15:19+09:00"
 selection_policy: lowest_id_ready_with_dependencies_done
 allowed_statuses: [BACKLOG, READY, IN_PROGRESS, BLOCKED, DONE]
 tasks:
@@ -72,13 +72,13 @@ tasks:
   - id: COMPLETE-001
     milestone: M3
     title: Implement terminal completion rules
-    status: READY
+    status: DONE
     depends_on: [SAMPLE-001]
     acceptance: COMPLETE and COMPLETE_WITH_GAPS are reproducible and schema-valid.
   - id: RUNTIME-001
     milestone: M4
     title: Implement state machine and event log
-    status: BACKLOG
+    status: READY
     depends_on: [COMPLETE-001]
     acceptance: Every valid transition is replayable and illegal transitions fail.
   - id: RUNTIME-002
