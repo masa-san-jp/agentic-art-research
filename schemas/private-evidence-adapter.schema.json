@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/private-evidence-adapter.schema.json",
+  "title": "Private Derived Evidence Adapter Output",
+  "type": "object",
+  "required": ["schema", "subject", "evidence", "approval", "signal_source", "approved_derived_signals"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {"const": "urn:agentic-art-research:private-evidence-adapter:v1"},
+    "subject": {"type": "string", "pattern": "^subject/[a-z0-9]+(?:-[a-z0-9]+)*$"},
+    "evidence": {
+      "type": "object",
+      "required": ["id", "source_type", "source_location", "created_at", "acquired_at", "content_hash", "rights_status", "sensitivity", "redistribution", "related_projects", "related_questions", "extraction_status", "direct_observation", "observed_by"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "pattern": "^EV[0-9]{3,}$"},
+        "source_type": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+        "source_location": {"type": "string", "pattern": "^(?:gdrive|drive|vault|private|opaque):\\/\\/[A-Za-z0-9][A-Za-z0-9._~-]*(?:\\/[A-Za-z0-9][A-Za-z0-9._~-]*)*$"},
+        "created_at": {"anyOf": [{"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$"}, {"const": "unknown"}, {"type": "null"}]},
+        "acquired_at": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$"},
+        "content_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "rights_status": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+        "sensitivity": {"const": "PRIVATE_DERIVED"},
+        "redistribution": {"enum": ["prohibited", "conditional"]},
+        "related_projects": {"type": "array", "items": {"type": "string", "pattern": "^project/[a-z0-9]+(?:-[a-z0-9]+)*$"}, "uniqueItems": true},
+        "related_questions": {"type": "array", "items": {"type": "string", "pattern": "^Q[0-9]{3,}$"}, "uniqueItems": true},
+        "extraction_status": {"const": "processed"},
+        "direct_observation": {"const": false},
+        "observed_by": {"const": "private-evidence-adapter"}
+      }
+    },
+    "approval": {
+      "type": "object",
+      "required": ["purpose", "operation", "approval_ref", "approved_at"],
+      "additionalProperties": false,
+      "properties": {
+        "purpose": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+        "operation": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+        "approval_ref": {"type": "string", "pattern": "^(?:gdrive|drive|vault|private|opaque|consent):\\/\\/[A-Za-z0-9][A-Za-z0-9._~-]*(?:\\/[A-Za-z0-9][A-Za-z0-9._~-]*)*$"},
+        "approved_at": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$"}
+      }
+    },
+    "signal_source": {
+      "type": "object",
+      "required": ["schema", "source_repository", "source_commit"],
+      "additionalProperties": false,
+      "properties": {
+        "schema": {"type": "string", "minLength": 1},
+        "source_repository": {"type": "string", "pattern": "^[^\\s/]+/[^\\s/]+$"},
+        "source_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"}
+      }
+    },
+    "approved_derived_signals": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "required": ["signal_id", "category", "code", "certainty", "evidence_refs"],
+        "additionalProperties": false,
+        "properties": {
+          "signal_id": {"type": "string", "pattern": "^SIG[0-9]{3,}$"},
+          "category": {"enum": ["seeks", "protects", "avoids", "reacts_against", "drawn_toward", "influenced_by", "tensions", "recurring_patterns", "emotional_material"]},
+          "code": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+          "certainty": {"enum": ["unknown", "low", "medium", "high"]},
+          "evidence_refs": {"type": "array", "items": {"type": "string", "pattern": "^EV[0-9]{3,}$"}, "minItems": 1, "uniqueItems": true}
+        }
+      }
+    }
+  }
+}
