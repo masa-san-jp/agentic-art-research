@@ -48,6 +48,7 @@ python3 tools/bundle.py project/harmony-study --audience human
 - [x] (2026-08-11) `COMPLETE-001`: `COMPLETE`と`COMPLETE_WITH_GAPS`のcompletion reportを決定論的・schema-validに生成。
 - [x] (2026-08-11) `RUNTIME-001`: 語彙設定に基づく合法遷移、違法遷移拒否、run-log replayを実装。
 - [x] (2026-08-11) `RUNTIME-002`: 計画由来のタスクDAG、期限付きlease、分類済み再試行、依存失敗の伝播、kill-and-resume冪等性を実装。
+- [x] (2026-08-11) `RUNTIME-003`: 検索・資料・失敗・飽和の上限を設定から評価し、質問の終端化を冪等適用する停止ポリシーを実装。
 - [ ] M1b: 全JSON Schema検証と参照整合性を実装。
 - [ ] M2: 依存グラフ、バンドル、影響分析、監査を実用レベルへ完成。
 - [ ] M3: 代表サンプルプロジェクトを固定fixtureで完走。
@@ -72,6 +73,7 @@ python3 tools/bundle.py project/harmony-study --audience human
 - 2026-08-11: terminal completionは現在時刻を暗黙に使うと再生成差分になるため、既存の固定timestampまたは明示引数を使い、VALIDATINGから合法な遷移イベントを記録する仕様にした。
 - 2026-08-11: validator内の遷移検証だけでは実行系が同じ契約を再利用できないため、語彙からstate machineを構築し、適用とreplayが同じ規則を使うようにした。
 - 2026-08-11: task runtimeを別ログへ分散させるとライフサイクルと再開点の整合性を失うため、`research-state.json`の`task_runtime` snapshotと既存`run-log.jsonl`の一意イベントを正本にした。期限切れleaseの再取得と効果キーによる完了冪等性を同じ契約で検証する。
+- 2026-08-11: 飽和は全期間の無成果数ではなく、`EVIDENCE_ROUND`の末尾から連続する無成果ラウンドとして数え、成果が1件でも出たら0へ戻す必要がある。停止イベントの質問状態名はライフサイクル状態と衝突しないフィールド名で記録する。
 
 ## Decision Log
 
@@ -91,10 +93,11 @@ python3 tools/bundle.py project/harmony-study --audience human
 | 2026-08-11 | COMPLETE-001は既存または明示されたRFC 3339時刻をcompletion reportと状態更新へ使い、`VALIDATING`からterminal状態へのイベントを追記する | 完了判定を決定論的にし、状態機械と再開情報を同時に保持するため |
 | 2026-08-11 | RUNTIME-001は`config/vocabularies.yaml`からstate machineを構築し、実行時適用とrun-log replayで同じ遷移規則を利用する | validator、completion、将来のOrchestrator間でライフサイクル契約を分散させないため |
 | 2026-08-11 | RUNTIME-002は`research-plan.yaml`のタスク定義を`research-state.json.task_runtime`へ固定し、leaseとタスクイベントを既存`run-log.jsonl`へ記録する | 中断後に2ファイルだけで再開でき、重複効果を決定的な`effect_key`で拒否・再適用できるため |
+| 2026-08-11 | RUNTIME-003は`run-log.jsonl`の質問イベントを設定済み上限へ集計し、成功条件を優先してから`UNRESOLVED`または`BLOCKED`へ停止し、質問台帳へのapplyを冪等にする | 有限の探索を再現可能に終端化し、既存ライフサイクルイベントとの誤認と二重記録を避けるため |
 
 ## Outcomes & Retrospective
 
-M0/M1a、`SCHEMA-001`、`VALIDATE-001`、`SECURITY-001`、`VALIDATE-002`、`TEST-001`、`GRAPH-001`、`BUNDLE-001`、`IMPACT-001`、`AUDIT-001`、`SAMPLE-001`、`COMPLETE-001`、`RUNTIME-001`、`RUNTIME-002`完了時点では、プロジェクト雛形の生成、Draft 2020-12スキーマ検証、JSONL行番号付きエラー、YAML重複キー検出、機密・秘密境界検査、参照整合性、状態遷移と試験接続の検査、blocking ruleの正常・失敗fixtureマトリクス、プロジェクトスコープで決定的な依存グラフ、4 audienceの範囲制限付きbundle生成、upstream/downstreamのJSON・Markdown影響分析、出典偏り・鮮度・弱い判断・未実施試験の非ブロッキング監査、固定offline fixtureからの`COMPLETE_WITH_GAPS` package再生成、両terminal statusの決定論的completion生成、状態機械とrun-log replay、依存DAG・lease・bounded retry・failure classification・resume、CI初期版が実行可能になる。RUNTIME-003以降の停止規則、role context、外部アダプタは未実装であり、「自律リサーチ完成」とはまだ呼ばない。
+M0/M1a、`SCHEMA-001`、`VALIDATE-001`、`SECURITY-001`、`VALIDATE-002`、`TEST-001`、`GRAPH-001`、`BUNDLE-001`、`IMPACT-001`、`AUDIT-001`、`SAMPLE-001`、`COMPLETE-001`、`RUNTIME-001`、`RUNTIME-002`、`RUNTIME-003`完了時点では、プロジェクト雛形の生成、Draft 2020-12スキーマ検証、JSONL行番号付きエラー、YAML重複キー検出、機密・秘密境界検査、参照整合性、状態遷移と試験接続の検査、blocking ruleの正常・失敗fixtureマトリクス、プロジェクトスコープで決定的な依存グラフ、4 audienceの範囲制限付きbundle生成、upstream/downstreamのJSON・Markdown影響分析、出典偏り・鮮度・弱い判断・未実施試験の非ブロッキング監査、固定offline fixtureからの`COMPLETE_WITH_GAPS` package再生成、両terminal statusの決定論的completion生成、状態機械とrun-log replay、依存DAG・lease・bounded retry・failure classification・resume、検索・資料・失敗・飽和の設定上限と質問終端化、CI初期版が実行可能になる。RUNTIME-004以降のrole context、外部アダプタは未実装であり、「自律リサーチ完成」とはまだ呼ばない。
 
 ## Context and Orientation
 

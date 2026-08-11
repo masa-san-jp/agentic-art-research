@@ -1,5 +1,5 @@
 version: 1
-updated_at: "2026-08-11T16:29:21+09:00"
+updated_at: "2026-08-11T16:34:52+09:00"
 selection_policy: lowest_id_ready_with_dependencies_done
 allowed_statuses: [BACKLOG, READY, IN_PROGRESS, BLOCKED, DONE]
 tasks:
@@ -90,13 +90,13 @@ tasks:
   - id: RUNTIME-003
     milestone: M4
     title: Implement stopping policy and saturation
-    status: READY
+    status: DONE
     depends_on: [RUNTIME-002]
     acceptance: Every run terminates within configured bounds.
   - id: RUNTIME-004
     milestone: M4
     title: Implement role context packs
-    status: BACKLOG
+    status: READY
     depends_on: [RUNTIME-003]
     acceptance: Workers receive task-minimal evidence, constraints, and acceptance tests.
   - id: INTEGRATION-001
