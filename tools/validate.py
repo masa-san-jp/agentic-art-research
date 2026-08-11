@@ -11,6 +11,7 @@ from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError
 from referencing import Registry, Resource
 
+from canonical import canonical_json_bytes, handoff_hash_payload, handoff_sha256
 from _common import (
     InputParseError,
     PROJECT_REQUIRED_FILES,
@@ -31,6 +32,12 @@ SCHEMA_FOR_YAML_COLLECTION = {
     "04_decisions/insight-register.yaml": ("insights", "insight"),
     "04_decisions/decision-log.yaml": ("decisions", "decision"),
     "05_production/production-requirements.yaml": ("requirements", "requirement"),
+    "04_decisions/production-hypotheses.yaml": ("hypotheses", "production-hypothesis"),
+    "04_decisions/hypothesis-comparison.yaml": ("comparisons", "hypothesis-comparison"),
+    "05_production/prototype-plans.yaml": ("prototype_plans", "prototype-plan"),
+}
+SCHEMA_FOR_YAML_OBJECT = {
+    "05_production/production-handoff.yaml": "production-handoff",
 }
 SCHEMA_FOR_JSON = {
     "07_runtime/research-state.json": "research-state",
@@ -43,6 +50,10 @@ DOMAIN_SCHEMAS = (
     "insight",
     "decision",
     "requirement",
+    "production-hypothesis",
+    "hypothesis-comparison",
+    "prototype-plan",
+    "production-handoff",
     "research-state",
     "completion-report",
 )
@@ -54,6 +65,19 @@ REFERENCE_FIELDS = {
     "decision": [("insight_ids", "insight"), ("evidence_ids", "evidence")],
     "requirement": [("source_decisions", "decision"), ("acceptance_test_ids", "acceptance_test")],
     "acceptance_test": [("target_requirement", "requirement")],
+    "production-hypothesis": [("source_decision_ids", "decision"), ("source_insight_ids", "insight")],
+    "hypothesis-comparison": [("hypothesis_ids", "production-hypothesis"), ("recommended_hypothesis_id", "production-hypothesis")],
+    "prototype-plan": [
+        ("hypothesis_id", "production-hypothesis"),
+        ("uncertainty_ids", "uncertainty"),
+        ("acceptance_test_ids", "acceptance_test"),
+    ],
+    "prototype_task": [("depends_on", "prototype_task")],
+    "production-handoff": [
+        ("selected_hypothesis_id", "production-hypothesis"),
+        ("alternative_hypothesis_ids", "production-hypothesis"),
+        ("prototype_plan_ids", "prototype-plan"),
+    ],
 }
 
 
@@ -329,6 +353,832 @@ def _check_claim_cycles(root: Path, entries: dict[str, RecordEntry], findings: l
     for record_id in sorted(claims):
         if colors.get(record_id, 0) == 0:
             visit(record_id)
+
+
+HANDOFF_MODE = "PRODUCTION_HANDOFF"
+HANDOFF_REQUIRED_FILES = (
+    "04_decisions/production-hypotheses.yaml",
+    "04_decisions/hypothesis-comparison.yaml",
+    "05_production/prototype-plans.yaml",
+    "05_production/production-handoff.yaml",
+    "06_governance/production-change-requests.yaml",
+    "07_runtime/production-feedback-imports.jsonl",
+)
+HANDOFF_PATH = "05_production/production-handoff.yaml"
+HYPOTHESES_PATH = "04_decisions/production-hypotheses.yaml"
+COMPARISON_PATH = "04_decisions/hypothesis-comparison.yaml"
+PROTOTYPES_PATH = "05_production/prototype-plans.yaml"
+CREATIVE_DIRECTION_PATH = "05_production/creative-direction.md"
+FEEDBACK_PATH = "07_runtime/production-feedback-imports.jsonl"
+ABSOLUTE_PATH_PATTERN = re.compile(r"(?:^|[\s(])(?:/|[A-Za-z]:[\\/]|~[\\/]|file://)", re.IGNORECASE)
+
+
+def _handoff_finding(
+    root: Path,
+    project: Path,
+    relative: str,
+    rule: str,
+    message: str,
+    *,
+    field: str | None = None,
+    remediation: str,
+) -> Finding:
+    return Finding(
+        _relative_path(root, project / relative),
+        rule,
+        message,
+        field=field,
+        remediation=remediation,
+    )
+
+
+def _iter_string_values(value: Any, path: str = "$") -> list[tuple[str, str]]:
+    values: list[tuple[str, str]] = []
+    if isinstance(value, dict):
+        for key, child in value.items():
+            values.extend(_iter_string_values(child, f"{path}.{key}"))
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            values.extend(_iter_string_values(child, f"{path}[{index}]"))
+    elif isinstance(value, str):
+        values.append((path, value))
+    return values
+
+
+def _entry_matches(entries: dict[str, RecordEntry], record_id: Any, kind: str) -> bool:
+    return isinstance(record_id, str) and record_id in entries and entries[record_id][0] == kind
+
+
+def _check_handoff_reference(
+    root: Path,
+    project: Path,
+    entries: dict[str, RecordEntry],
+    record_id: Any,
+    kind: str,
+    *,
+    relative: str,
+    field: str,
+    findings: list[Finding],
+) -> bool:
+    if _entry_matches(entries, record_id, kind):
+        return True
+    actual = entries[record_id][0] if isinstance(record_id, str) and record_id in entries else "missing"
+    findings.append(
+        _handoff_finding(
+            root,
+            project,
+            relative,
+            "HANDOFF-REFERENCE",
+            f"{field} references {record_id!r} ({kind}; {actual})",
+            field=field,
+            remediation="Create the referenced canonical record in this project or correct the handoff ID.",
+        )
+    )
+    return False
+
+
+def _check_prototype_dags(
+    root: Path,
+    project: Path,
+    prototype_plans: list[dict[str, Any]],
+    findings: list[Finding],
+) -> None:
+    for plan_index, plan in enumerate(prototype_plans):
+        tasks = plan.get("tasks") if isinstance(plan.get("tasks"), list) else []
+        task_map: dict[str, dict[str, Any]] = {}
+        for task_index, task in enumerate(tasks):
+            if not isinstance(task, dict) or not isinstance(task.get("id"), str):
+                continue
+            task_id = task["id"]
+            if task_id in task_map:
+                findings.append(
+                    _handoff_finding(
+                        root,
+                        project,
+                        PROTOTYPES_PATH,
+                        "PROTOTYPE-DAG",
+                        f"prototype plan {plan.get('id', plan_index)!r} declares duplicate task {task_id!r}",
+                        field=f"prototype_plans[{plan_index}].tasks[{task_index}].id",
+                        remediation="Give every prototype task a unique project-scoped PT ID.",
+                    )
+                )
+                continue
+            task_map[task_id] = task
+
+        for task_index, task in enumerate(tasks):
+            if not isinstance(task, dict):
+                continue
+            task_id = task.get("id", task_index)
+            dependencies = task.get("depends_on") if isinstance(task.get("depends_on"), list) else []
+            for dependency_index, dependency in enumerate(dependencies):
+                if dependency not in task_map:
+                    findings.append(
+                        _handoff_finding(
+                            root,
+                            project,
+                            PROTOTYPES_PATH,
+                            "PROTOTYPE-DAG",
+                            f"task {task_id!r} depends on missing task {dependency!r}",
+                            field=f"prototype_plans[{plan_index}].tasks[{task_index}].depends_on[{dependency_index}]",
+                            remediation="Declare the dependency in the same prototype plan or remove the stale ID.",
+                        )
+                    )
+
+        colors: dict[str, int] = {}
+        stack: list[str] = []
+        reported: set[tuple[str, ...]] = set()
+
+        def visit(task_id: str) -> None:
+            colors[task_id] = 1
+            stack.append(task_id)
+            task = task_map[task_id]
+            for dependency in task.get("depends_on", []):
+                if dependency not in task_map:
+                    continue
+                if colors.get(dependency, 0) == 0:
+                    visit(dependency)
+                elif colors.get(dependency) == 1:
+                    cycle = tuple(stack[stack.index(dependency) :] + [dependency])
+                    if cycle not in reported:
+                        reported.add(cycle)
+                        findings.append(
+                            _handoff_finding(
+                                root,
+                                project,
+                                PROTOTYPES_PATH,
+                                "PROTOTYPE-DAG",
+                                f"prototype task dependency cycle detected: {' -> '.join(cycle)}",
+                                field=f"prototype_plans[{plan_index}].tasks",
+                                remediation="Break the dependency cycle so prototype tasks form a directed acyclic graph.",
+                            )
+                        )
+            stack.pop()
+            colors[task_id] = 2
+
+        for task_id in sorted(task_map):
+            if colors.get(task_id, 0) == 0:
+                visit(task_id)
+
+
+def _check_external_schema_compatibility(
+    root: Path,
+    project: Path,
+    feedback_records: list[tuple[int, dict[str, Any]]],
+    policy: dict[str, Any],
+    findings: list[Finding],
+) -> None:
+    if not feedback_records:
+        return
+    configured_path = policy.get("production_result_schema_path")
+    schema_path = root / configured_path if isinstance(configured_path, str) else root / "schemas/external/production-result.v1.schema.json"
+    if not schema_path.is_file():
+        findings.append(
+            _handoff_finding(
+                root,
+                project,
+                FEEDBACK_PATH,
+                "EXTERNAL-SCHEMA",
+                "production feedback is present but the production-owned result schema snapshot is unavailable",
+                field="schema_version",
+                remediation="Obtain the production repository's commit-pinned result schema snapshot before importing feedback; do not invent a consumer schema.",
+            )
+        )
+        return
+    try:
+        schema = load_json(schema_path)
+        Draft202012Validator.check_schema(schema)
+        validator = Draft202012Validator(schema)
+    except Exception as exc:
+        findings.append(
+            _handoff_finding(
+                root,
+                project,
+                str(schema_path.relative_to(root)) if schema_path.is_relative_to(root) else str(schema_path),
+                "EXTERNAL-SCHEMA",
+                f"production result schema snapshot is invalid: {exc}",
+                remediation="Restore a valid Draft 2020-12 schema snapshot from the production repository and record its source commit.",
+            )
+        )
+        return
+
+    supported_versions = policy.get("production_result_schema_versions", [])
+    if not isinstance(supported_versions, list):
+        supported_versions = []
+    for line, record in feedback_records:
+        version = record.get("schema_version")
+        if supported_versions and version not in supported_versions:
+            findings.append(
+                Finding(
+                    _relative_path(root, project / FEEDBACK_PATH),
+                    "EXTERNAL-SCHEMA",
+                    f"unsupported production result schema version {version!r}; available versions: {', '.join(str(item) for item in supported_versions)}",
+                    line=line,
+                    field="schema_version",
+                    remediation="Use a result version listed in config/handoff-policy.yaml or add its immutable production-owned snapshot after review.",
+                )
+            )
+        for error in validator.iter_errors(record):
+            findings.append(
+                Finding(
+                    _relative_path(root, project / FEEDBACK_PATH),
+                    "EXTERNAL-SCHEMA",
+                    error.message,
+                    line=line,
+                    field=_schema_error_field(error),
+                    remediation="Correct the production result to the commit-pinned production-owned schema before import.",
+                )
+            )
+
+
+def _check_handoff_security(
+    root: Path,
+    project: Path,
+    handoff: dict[str, Any],
+    access: dict[str, Any],
+    policy: dict[str, Any],
+    findings: list[Finding],
+) -> None:
+    payload = handoff_hash_payload(handoff)
+    payload_bytes = canonical_json_bytes(payload)
+    max_payload = policy.get("max_payload_bytes", 262144)
+    if isinstance(max_payload, int) and len(payload_bytes) > max_payload:
+        findings.append(
+            _handoff_finding(
+                root,
+                project,
+                HANDOFF_PATH,
+                "HANDOFF-SECURITY",
+                f"canonical handoff payload is {len(payload_bytes)} bytes, above the {max_payload}-byte limit",
+                field="integrity",
+                remediation="Keep the handoff to concise, public metadata and move raw evidence or large assets behind approved references.",
+            )
+        )
+
+    secret_patterns: list[tuple[str, re.Pattern[str]]] = []
+    for pattern in access.get("secret_patterns", []) if isinstance(access, dict) else []:
+        if not isinstance(pattern, dict) or not isinstance(pattern.get("id"), str) or not isinstance(pattern.get("pattern"), str):
+            continue
+        try:
+            secret_patterns.append((pattern["id"], re.compile(pattern["pattern"])))
+        except re.error:
+            continue
+    signed_markers = [str(marker).lower() for marker in policy.get("signed_url_markers", []) if isinstance(marker, str)]
+    blocking_tokens = {str(token).upper() for token in ("PRIVATE_RAW", "RESTRICTED")}
+    for field, value in _iter_string_values(handoff):
+        upper_value = value.upper()
+        if any(token in upper_value for token in blocking_tokens):
+            findings.append(
+                _handoff_finding(
+                    root,
+                    project,
+                    HANDOFF_PATH,
+                    "HANDOFF-SECURITY",
+                    "handoff contains a Git-prohibited classification or private-data marker",
+                    field=field,
+                    remediation="Remove PRIVATE_RAW and RESTRICTED material; retain only approved public or project-internal derived metadata.",
+                )
+            )
+        if ABSOLUTE_PATH_PATTERN.search(value) or "../" in value or "..\\" in value:
+            findings.append(
+                _handoff_finding(
+                    root,
+                    project,
+                    HANDOFF_PATH,
+                    "HANDOFF-SECURITY",
+                    "handoff contains an absolute or traversal path",
+                    field=field,
+                    remediation="Use a project-relative canonical reference or an approved opaque external URI without local path details.",
+                )
+            )
+        lowered = value.lower()
+        if "http://" in lowered or "https://" in lowered:
+            if any(marker in lowered for marker in signed_markers):
+                findings.append(
+                    _handoff_finding(
+                        root,
+                        project,
+                        HANDOFF_PATH,
+                        "HANDOFF-SECURITY",
+                        "handoff contains a signed or credential-bearing URL",
+                        field=field,
+                        remediation="Replace signed URLs with a stable approved URI and content hash; never persist access tokens in the handoff.",
+                    )
+                )
+        for pattern_id, regex in secret_patterns:
+            if regex.search(value):
+                findings.append(
+                    _handoff_finding(
+                        root,
+                        project,
+                        HANDOFF_PATH,
+                        "HANDOFF-SECURITY",
+                        f"handoff value matches secret pattern {pattern_id}",
+                        field=field,
+                        remediation="Remove the secret and rotate it in its source system before regenerating the handoff.",
+                    )
+                )
+
+
+def _check_handoff_contract(
+    root: Path,
+    project: Path,
+    manifest: Any,
+    entries: dict[str, RecordEntry],
+    extension_values: dict[str, Any],
+    handoff: Any,
+    access: dict[str, Any],
+    policy: dict[str, Any],
+    feedback_records: list[tuple[int, dict[str, Any]]],
+    findings: list[Finding],
+) -> None:
+    if not isinstance(manifest, dict) or manifest.get("workflow_mode", "RESEARCH_ONLY") != HANDOFF_MODE:
+        return
+
+    for relative in HANDOFF_REQUIRED_FILES:
+        if not (project / relative).is_file():
+            findings.append(
+                _handoff_finding(
+                    root,
+                    project,
+                    relative,
+                    "HANDOFF-STRUCTURE",
+                    "production handoff workflow requires this file",
+                    remediation="Create the file from templates/project or restore the manifest-declared production handoff entry point.",
+                )
+            )
+
+    hypotheses = extension_values.get("production-hypothesis", [])
+    comparisons = extension_values.get("hypothesis-comparison", [])
+    prototype_plans = extension_values.get("prototype-plan", [])
+    if not isinstance(hypotheses, list):
+        hypotheses = []
+    if not isinstance(comparisons, list):
+        comparisons = []
+    if not isinstance(prototype_plans, list):
+        prototype_plans = []
+
+    if not hypotheses:
+        findings.append(
+            _handoff_finding(
+                root,
+                project,
+                HYPOTHESES_PATH,
+                "HYPOTHESIS-TRACE",
+                "production handoff workflow requires at least one production hypothesis",
+                field="hypotheses",
+                remediation="Create at least one schema-valid hypothesis grounded in an adopted decision and insight.",
+            )
+        )
+
+    hypothesis_ids = {record.get("id") for record in hypotheses if isinstance(record, dict) and isinstance(record.get("id"), str)}
+    for hypothesis_index, hypothesis in enumerate(hypotheses):
+        if not isinstance(hypothesis, dict):
+            continue
+        for decision_id in hypothesis.get("source_decision_ids", []):
+            decision_entry = entries.get(decision_id) if isinstance(decision_id, str) else None
+            if decision_entry and decision_entry[0] == "decision" and decision_entry[3].get("status") != "ADOPTED":
+                findings.append(
+                    _handoff_finding(
+                        root,
+                        project,
+                        HYPOTHESES_PATH,
+                        "HYPOTHESIS-TRACE",
+                        f"hypothesis {hypothesis.get('id', hypothesis_index)!r} cites decision {decision_id!r}, which is not ADOPTED",
+                        field=f"hypotheses[{hypothesis_index}].source_decision_ids",
+                        remediation="Ground the hypothesis in an ADOPTED decision or revise the decision lifecycle before handoff.",
+                    )
+                )
+        for uncertainty_index, uncertainty in enumerate(hypothesis.get("uncertainties", [])):
+            if not isinstance(uncertainty, dict):
+                continue
+            severity = uncertainty.get("severity")
+            plan_ids = uncertainty.get("prototype_plan_ids") if isinstance(uncertainty.get("prototype_plan_ids"), list) else []
+            external_reason = uncertainty.get("external_validation_reason")
+            if severity in {"MAJOR", "CRITICAL"} and not plan_ids and not isinstance(external_reason, str):
+                findings.append(
+                    _handoff_finding(
+                        root,
+                        project,
+                        HYPOTHESES_PATH,
+                        "UNCERTAINTY-PROTOTYPE",
+                        f"{severity} uncertainty {uncertainty.get('id', uncertainty_index)!r} has no prototype plan or external validation basis",
+                        field=f"hypotheses[{hypothesis_index}].uncertainties[{uncertainty_index}].prototype_plan_ids",
+                        remediation="Connect the uncertainty to a Prototype Plan that tests it, or extend the contract with an explicit approved external-validation basis.",
+                    )
+                )
+
+    if len(hypotheses) == 1:
+        rationale = hypotheses[0].get("single_hypothesis_rationale") if isinstance(hypotheses[0], dict) else None
+        if not isinstance(rationale, str) or not rationale.strip():
+            findings.append(
+                _handoff_finding(
+                    root,
+                    project,
+                    HYPOTHESES_PATH,
+                    "HYPOTHESIS-SINGLETON",
+                    "a single production hypothesis must explain why no meaningful alternative is carried forward",
+                    field="hypotheses[0].single_hypothesis_rationale",
+                    remediation="Record a concise rationale for the single-hypothesis decision, or generate and compare meaningful alternatives.",
+                )
+            )
+    elif len(hypotheses) > 1:
+        complete_comparisons = []
+        for comparison_index, comparison in enumerate(comparisons):
+            if not isinstance(comparison, dict) or set(comparison.get("hypothesis_ids", [])) != hypothesis_ids:
+                continue
+            axis_sets = []
+            for axis in comparison.get("axes", []):
+                if isinstance(axis, dict):
+                    axis_sets.append({item.get("hypothesis_id") for item in axis.get("assessments", []) if isinstance(item, dict)})
+            if axis_sets and all(axis_set == hypothesis_ids for axis_set in axis_sets):
+                if comparison.get("status") in {"COMPLETE", "HUMAN_SELECTION_REQUIRED"}:
+                    complete_comparisons.append((comparison_index, comparison))
+        if not complete_comparisons:
+            findings.append(
+                _handoff_finding(
+                    root,
+                    project,
+                    COMPARISON_PATH,
+                    "HYPOTHESIS-COMPARISON",
+                    "multiple production hypotheses require one completed common-axis comparison covering every candidate",
+                    field="comparisons",
+                    remediation="Compare all candidates on the same axes and mark the comparison COMPLETE or HUMAN_SELECTION_REQUIRED.",
+                )
+            )
+
+    _check_prototype_dags(root, project, prototype_plans, findings)
+    for plan_index, plan in enumerate(prototype_plans):
+        if not isinstance(plan, dict):
+            continue
+        if plan.get("status") == "EXTERNAL_VALIDATION_REQUIRED" and not isinstance(plan.get("external_validation_reason"), str):
+            findings.append(
+                _handoff_finding(
+                    root,
+                    project,
+                    PROTOTYPES_PATH,
+                    "PROTOTYPE-EXTERNAL",
+                    f"prototype plan {plan.get('id', plan_index)!r} requires an external validation reason",
+                    field=f"prototype_plans[{plan_index}].external_validation_reason",
+                    remediation="Record why the uncertainty cannot be tested locally and identify the external validation boundary.",
+                )
+            )
+
+    if not isinstance(handoff, dict) or not handoff:
+        findings.append(
+            _handoff_finding(
+                root,
+                project,
+                HANDOFF_PATH,
+                "HANDOFF-STRUCTURE",
+                "PRODUCTION_HANDOFF workflow requires a non-empty production handoff object",
+                field="$",
+                remediation="Generate production-handoff.yaml from the canonical hypotheses, prototype plans, requirements, and source references.",
+            )
+        )
+        _check_external_schema_compatibility(root, project, feedback_records, policy, findings)
+        return
+
+    handoff_project_id = handoff.get("research_project_id")
+    manifest_project = manifest.get("project") if isinstance(manifest.get("project"), dict) else {}
+    if handoff_project_id != manifest_project.get("id"):
+        findings.append(
+            _handoff_finding(
+                root,
+                project,
+                HANDOFF_PATH,
+                "HANDOFF-REFERENCE",
+                f"research_project_id {handoff_project_id!r} does not match manifest project ID {manifest_project.get('id')!r}",
+                field="research_project_id",
+                remediation="Generate the handoff for the same project represented by manifest.yaml.",
+            )
+        )
+    if handoff.get("research_project_version") != manifest_project.get("version"):
+        findings.append(
+            _handoff_finding(
+                root,
+                project,
+                HANDOFF_PATH,
+                "HANDOFF-REFERENCE",
+                "research_project_version does not match manifest.project.version",
+                field="research_project_version",
+                remediation="Regenerate the handoff after recording the canonical project version.",
+            )
+        )
+
+    selection = handoff.get("selection") if isinstance(handoff.get("selection"), dict) else {}
+    selection_status = selection.get("status")
+    selected_id = selection.get("selected_hypothesis_id")
+    alternative_ids = selection.get("alternative_hypothesis_ids") if isinstance(selection.get("alternative_hypothesis_ids"), list) else []
+    if selected_id is not None and selected_id not in hypothesis_ids:
+        findings.append(
+            _handoff_finding(
+                root,
+                project,
+                HANDOFF_PATH,
+                "HANDOFF-SELECTION",
+                f"selected hypothesis {selected_id!r} is not present in production-hypotheses.yaml",
+                field="selection.selected_hypothesis_id",
+                remediation="Select a hypothesis declared by this project or set HUMAN_SELECTION_REQUIRED before human review.",
+            )
+        )
+    for alternative_index, alternative_id in enumerate(alternative_ids):
+        if alternative_id not in hypothesis_ids:
+            findings.append(
+                _handoff_finding(
+                    root,
+                    project,
+                    HANDOFF_PATH,
+                    "HANDOFF-SELECTION",
+                    f"alternative hypothesis {alternative_id!r} is not present in production-hypotheses.yaml",
+                    field=f"selection.alternative_hypothesis_ids[{alternative_index}]",
+                    remediation="Declare the alternative candidate before including it in the handoff.",
+                )
+            )
+    if selected_id is not None and selected_id in alternative_ids:
+        findings.append(
+            _handoff_finding(
+                root,
+                project,
+                HANDOFF_PATH,
+                "HANDOFF-SELECTION",
+                "selected hypothesis cannot also be an alternative hypothesis",
+                field="selection.alternative_hypothesis_ids",
+                remediation="Remove the selected hypothesis from the alternatives list.",
+            )
+        )
+    authority = selection.get("authority")
+    human_approval_required = selection.get("human_approval_required")
+    if selection_status == "HUMAN_SELECTION_REQUIRED" and (selected_id is not None or human_approval_required is not True):
+        findings.append(
+            _handoff_finding(
+                root,
+                project,
+                HANDOFF_PATH,
+                "HANDOFF-SELECTION",
+                "HUMAN_SELECTION_REQUIRED must not contain a selected hypothesis and must require human approval",
+                field="selection",
+                remediation="Clear selected_hypothesis_id and set human_approval_required to true until a human selects a candidate.",
+            )
+        )
+    if selection_status == "HUMAN_SELECTED" and (authority != "human-approved" or human_approval_required is True):
+        findings.append(
+            _handoff_finding(
+                root,
+                project,
+                HANDOFF_PATH,
+                "HANDOFF-SELECTION",
+                "HUMAN_SELECTED requires human-approved authority and cannot still require approval",
+                field="selection",
+                remediation="Record the human-approved authority only after the human selection is complete.",
+            )
+        )
+    if selection_status == "AGENT_RECOMMENDED" and human_approval_required is True:
+        findings.append(
+            _handoff_finding(
+                root,
+                project,
+                HANDOFF_PATH,
+                "HANDOFF-SELECTION",
+                "AGENT_RECOMMENDED cannot claim a completed selection while human approval is required",
+                field="selection.human_approval_required",
+                remediation="Use HUMAN_SELECTION_REQUIRED for an unresolved human choice or clear the approval flag for an agent recommendation.",
+            )
+        )
+
+    if selection_status == "HUMAN_SELECTION_REQUIRED":
+        candidate_hypothesis_ids = hypothesis_ids
+    elif isinstance(selected_id, str):
+        candidate_hypothesis_ids = {selected_id}
+    else:
+        candidate_hypothesis_ids = set(alternative_ids)
+    required_plan_ids = {
+        plan.get("id")
+        for plan in prototype_plans
+        if isinstance(plan, dict)
+        and isinstance(plan.get("id"), str)
+        and plan.get("hypothesis_id") in candidate_hypothesis_ids
+        and plan.get("status") not in {"CANCELLED", "FAILED"}
+    }
+    declared_plan_ids = set(handoff.get("prototype_plan_ids", []))
+    missing_plan_ids = sorted(required_plan_ids - declared_plan_ids)
+    if missing_plan_ids:
+        findings.append(
+            _handoff_finding(
+                root,
+                project,
+                HANDOFF_PATH,
+                "HANDOFF-REFERENCE",
+                f"handoff omits Prototype Plans required by the selected candidate: {', '.join(missing_plan_ids)}",
+                field="prototype_plan_ids",
+                remediation="Include every active Prototype Plan attached to the selected candidate, or mark the plan cancelled with a recorded reason.",
+            )
+        )
+
+    lifecycle_status = handoff.get("status")
+    supersedes = handoff.get("supersedes")
+    revision = handoff.get("revision")
+    if lifecycle_status == "SUPERSEDED" and not supersedes:
+        findings.append(
+            _handoff_finding(
+                root,
+                project,
+                HANDOFF_PATH,
+                "HANDOFF-LIFECYCLE",
+                "SUPERSEDED handoff must identify the handoff it supersedes",
+                field="supersedes",
+                remediation="Create a new handoff ID and record the previous handoff ID in supersedes.",
+            )
+        )
+    if supersedes == handoff.get("handoff_id"):
+        findings.append(
+            _handoff_finding(
+                root,
+                project,
+                HANDOFF_PATH,
+                "HANDOFF-LIFECYCLE",
+                "handoff cannot supersede itself",
+                field="supersedes",
+                remediation="Point supersedes to the prior handoff ID, not the current handoff ID.",
+            )
+        )
+    if supersedes and isinstance(revision, int) and revision < 2:
+        findings.append(
+            _handoff_finding(
+                root,
+                project,
+                HANDOFF_PATH,
+                "HANDOFF-LIFECYCLE",
+                "a handoff with supersedes must have revision 2 or later",
+                field="revision",
+                remediation="Increment revision when superseding an earlier handoff or clear supersedes for the initial revision.",
+            )
+        )
+    if lifecycle_status != "SUPERSEDED" and supersedes:
+        findings.append(
+            _handoff_finding(
+                root,
+                project,
+                HANDOFF_PATH,
+                "HANDOFF-LIFECYCLE",
+                f"handoff status {lifecycle_status!r} is inconsistent with supersedes",
+                field="status",
+                remediation="Use SUPERSEDED when replacing an earlier handoff, or clear supersedes for active states.",
+            )
+        )
+
+    if lifecycle_status == "READY":
+        for gap_index, gap in enumerate(handoff.get("open_gaps", [])):
+            if not isinstance(gap, dict):
+                continue
+            if gap.get("blocking") is True:
+                findings.append(
+                    _handoff_finding(
+                        root,
+                        project,
+                        HANDOFF_PATH,
+                        "HANDOFF-READINESS",
+                        f"READY handoff contains a blocking gap {gap.get('id', gap_index)!r}",
+                        field=f"open_gaps[{gap_index}]",
+                        remediation="Resolve the blocking gap or use a non-ready handoff status until production can proceed safely.",
+                    )
+                )
+
+    creative_ref = handoff.get("creative_direction_ref")
+    if isinstance(creative_ref, str):
+        creative_path = (project / creative_ref).resolve()
+        if project.resolve() not in creative_path.parents or not creative_path.is_file():
+            findings.append(
+                _handoff_finding(
+                    root,
+                    project,
+                    HANDOFF_PATH,
+                    "HANDOFF-REFERENCE",
+                    f"creative_direction_ref does not resolve to a file inside the project: {creative_ref!r}",
+                    field="creative_direction_ref",
+                    remediation="Use an existing project-relative creative-direction path; never use an absolute local path.",
+                )
+            )
+
+    for plan_index, plan_id in enumerate(handoff.get("prototype_plan_ids", [])):
+        _check_handoff_reference(
+            root,
+            project,
+            entries,
+            plan_id,
+            "prototype-plan",
+            relative=HANDOFF_PATH,
+            field=f"prototype_plan_ids[{plan_index}]",
+            findings=findings,
+        )
+
+    source_refs = handoff.get("source_refs") if isinstance(handoff.get("source_refs"), dict) else {}
+    for field, kind in (("decision_ids", "decision"), ("insight_ids", "insight"), ("evidence_ids", "evidence")):
+        for index, record_id in enumerate(source_refs.get(field, [])):
+            _check_handoff_reference(
+                root,
+                project,
+                entries,
+                record_id,
+                kind,
+                relative=HANDOFF_PATH,
+                field=f"source_refs.{field}[{index}]",
+                findings=findings,
+            )
+
+    canonical_requirements = {record_id: entry[3] for record_id, entry in entries.items() if entry[0] == "requirement"}
+    handoff_requirements = handoff.get("requirements") if isinstance(handoff.get("requirements"), list) else []
+    handoff_requirement_ids: set[str] = set()
+    for requirement_index, snapshot in enumerate(handoff_requirements):
+        if not isinstance(snapshot, dict):
+            continue
+        requirement_id = snapshot.get("id")
+        if isinstance(requirement_id, str):
+            handoff_requirement_ids.add(requirement_id)
+        source = canonical_requirements.get(requirement_id)
+        if source is None:
+            findings.append(
+                _handoff_finding(
+                    root,
+                    project,
+                    HANDOFF_PATH,
+                    "HANDOFF-REQUIREMENT",
+                    f"handoff requirement {requirement_id!r} is not present in production-requirements.yaml",
+                    field=f"requirements[{requirement_index}].id",
+                    remediation="Include the canonical requirement ID and regenerate the handoff snapshot.",
+                )
+            )
+            continue
+        if snapshot.get("statement") != source.get("statement") or snapshot.get("priority") != source.get("priority"):
+            findings.append(
+                _handoff_finding(
+                    root,
+                    project,
+                    HANDOFF_PATH,
+                    "HANDOFF-REQUIREMENT",
+                    f"handoff requirement {requirement_id!r} changes the canonical statement or priority",
+                    field=f"requirements[{requirement_index}]",
+                    remediation="Treat production-requirements.yaml as the source of truth and regenerate the handoff snapshot.",
+                )
+            )
+        for test_index, test_id in enumerate(snapshot.get("acceptance_test_ids", [])):
+            if not _entry_matches(entries, test_id, "acceptance_test"):
+                _check_handoff_reference(
+                    root,
+                    project,
+                    entries,
+                    test_id,
+                    "acceptance_test",
+                    relative=HANDOFF_PATH,
+                    field=f"requirements[{requirement_index}].acceptance_test_ids[{test_index}]",
+                    findings=findings,
+                )
+            elif entries[test_id][3].get("target_requirement") != requirement_id:
+                findings.append(
+                    _handoff_finding(
+                        root,
+                        project,
+                        HANDOFF_PATH,
+                        "HANDOFF-REQUIREMENT",
+                        f"acceptance test {test_id!r} does not target requirement {requirement_id!r}",
+                        field=f"requirements[{requirement_index}].acceptance_test_ids[{test_index}]",
+                        remediation="Use acceptance tests whose target_requirement matches the handoff requirement ID.",
+                    )
+                )
+    mandatory_ids = {
+        record_id
+        for record_id, record in canonical_requirements.items()
+        if record.get("priority") == "mandatory" and record.get("status") not in {"REJECTED", "INVALIDATED"}
+    }
+    missing_mandatory = sorted(mandatory_ids - handoff_requirement_ids)
+    if missing_mandatory:
+        findings.append(
+            _handoff_finding(
+                root,
+                project,
+                HANDOFF_PATH,
+                "HANDOFF-REQUIREMENT",
+                f"handoff omits mandatory canonical requirements: {', '.join(missing_mandatory)}",
+                field="requirements",
+                remediation="Include every active mandatory requirement and its acceptance tests in the handoff.",
+            )
+        )
+
+    expected_hash = handoff_sha256(handoff)
+    actual_hash = (handoff.get("integrity") or {}).get("content_sha256") if isinstance(handoff.get("integrity"), dict) else None
+    if actual_hash != expected_hash:
+        findings.append(
+            _handoff_finding(
+                root,
+                project,
+                HANDOFF_PATH,
+                "HANDOFF-HASH",
+                f"canonical payload hash {actual_hash!r} does not match recalculated hash {expected_hash!r}",
+                field="integrity.content_sha256",
+                remediation="Recalculate the hash with tools.canonical.handoff_sha256 after changing any handoff field.",
+            )
+        )
+    _check_handoff_security(root, project, handoff, access, policy, findings)
+    _check_external_schema_compatibility(root, project, feedback_records, policy, findings)
 
 
 def _check_lifecycle(
@@ -637,6 +1487,7 @@ def validate_repository(root: Path) -> list[Finding]:
     findings: list[Finding] = []
     vocab_path = root / "config" / "vocabularies.yaml"
     access_path = root / "config" / "access-policy.yaml"
+    handoff_policy_path = root / "config" / "handoff-policy.yaml"
     try:
         vocab = load_yaml(vocab_path) or {}
     except Exception as exc:
@@ -647,9 +1498,14 @@ def validate_repository(root: Path) -> list[Finding]:
     except Exception as exc:
         findings.append(_exception_finding(root, access_path, "YAML", exc))
         access = {}
+    try:
+        handoff_policy = load_yaml(handoff_policy_path) or {}
+    except Exception as exc:
+        findings.append(_exception_finding(root, handoff_policy_path, "YAML", exc))
+        handoff_policy = {}
 
     for path in sorted((root / "config").glob("*.yaml")):
-        if path in {vocab_path, access_path}:
+        if path in {vocab_path, access_path, handoff_policy_path}:
             continue
         try:
             load_yaml(path)
@@ -709,6 +1565,9 @@ def validate_repository(root: Path) -> list[Finding]:
     for project in iter_project_dirs(root):
         relative_project = project.relative_to(root)
         entries: dict[str, RecordEntry] = {}
+        extension_values: dict[str, Any] = {}
+        handoff_value: Any = None
+        feedback_records: list[tuple[int, dict[str, Any]]] = []
         completion_report_value: Any = None
         run_events: list[tuple[int, dict[str, Any]]] = []
         for required in PROJECT_REQUIRED_FILES:
@@ -787,6 +1646,23 @@ def validate_repository(root: Path) -> list[Finding]:
                 _validate_yaml_collection(root, path, value, key, schema_validators.get(schema_name), findings)
                 if isinstance(value, dict) and isinstance(value.get(key), list):
                     _register_records(root, value[key], schema_name, path, entries, findings)
+                    extension_values[schema_name] = value[key]
+                    if schema_name == "production-hypothesis":
+                        for hypothesis in value[key]:
+                            if isinstance(hypothesis, dict) and isinstance(hypothesis.get("uncertainties"), list):
+                                _register_records(root, hypothesis["uncertainties"], "uncertainty", path, entries, findings)
+                    elif schema_name == "prototype-plan":
+                        for plan in value[key]:
+                            if isinstance(plan, dict) and isinstance(plan.get("tasks"), list):
+                                _register_records(root, plan["tasks"], "prototype_task", path, entries, findings)
+            elif relative in SCHEMA_FOR_YAML_OBJECT:
+                schema_name = SCHEMA_FOR_YAML_OBJECT[relative]
+                if value == {} and (manifest.get("workflow_mode", "RESEARCH_ONLY") if isinstance(manifest, dict) else "RESEARCH_ONLY") != HANDOFF_MODE:
+                    continue
+                validator = schema_validators.get(schema_name)
+                if validator:
+                    findings.extend(_schema_findings(root, path, validator, value))
+                handoff_value = value
             elif relative == "01_planning/question-register.yaml":
                 if isinstance(value, dict) and isinstance(value.get("questions"), list):
                     _register_records(root, value["questions"], "question", path, entries, findings)
@@ -823,6 +1699,8 @@ def validate_repository(root: Path) -> list[Finding]:
             validator = schema_validators.get(schema_name) if schema_name else None
             if relative == "07_runtime/run-log.jsonl":
                 run_events.extend(records)
+            if relative == FEEDBACK_PATH:
+                feedback_records.extend(records)
             for line_number, record in records:
                 if validator:
                     findings.extend(_schema_findings(root, path, validator, record, line=line_number))
@@ -844,6 +1722,18 @@ def validate_repository(root: Path) -> list[Finding]:
         _check_question_terminality(root, entries, vocab if isinstance(vocab, dict) else {}, findings)
         _check_requirement_tests(root, entries, findings)
         _check_claim_cycles(root, entries, findings)
+        _check_handoff_contract(
+            root,
+            project,
+            manifest,
+            entries,
+            extension_values,
+            handoff_value,
+            access if isinstance(access, dict) else {},
+            handoff_policy if isinstance(handoff_policy, dict) else {},
+            feedback_records,
+            findings,
+        )
         _check_lifecycle(
             root,
             manifest,

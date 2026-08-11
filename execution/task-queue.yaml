@@ -1,5 +1,5 @@
 version: 2
-updated_at: "2026-08-11T21:06:46+09:00"
+updated_at: "2026-08-11T21:26:00+09:00"
 selection_policy: lowest_id_ready_with_dependencies_done
 allowed_statuses: [BACKLOG, READY, IN_PROGRESS, BLOCKED, DONE]
 tasks:
@@ -162,9 +162,9 @@ tasks:
   - id: HANDOFF-VALIDATE-001
     milestone: H2
     title: Validate handoff traceability integrity and safety
-    status: READY
+    status: DONE
     depends_on: [HANDOFF-SCHEMA-001]
-    acceptance: References, prototype DAGs, lifecycle, hashes, schema compatibility, and private-data boundaries fail with actionable diagnostics.
+    acceptance: References, prototype DAGs, lifecycle, hashes, schema compatibility, private-data boundaries, and named blocking mutation fixtures fail with actionable diagnostics.
   - id: HANDOFF-BUILD-001
     milestone: H3
     title: Build deterministic production handoff bundles

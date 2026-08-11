@@ -317,6 +317,8 @@ integrity:
 
 `prototype_plan_ids`は、選択仮説に試作対象の重大な不確実性がない場合、または重大な不確実性ごとに`external_validation_reason`がある場合は空配列でよい。`open_gaps`は各項目に`blocking`を持ち、`READY`では`blocking: true`を禁止する。
 
+`integrity.content_sha256`は、`integrity`フィールドを除いたhandoff objectを、UTF-8のsorted-key・compact JSON（空白なし）へ正規化したbytesに対するSHA-256とする。この正規化は`tools/canonical.py`だけで実装し、YAMLのkey順、インデント、改行の差をhashへ持ち込まない。canonical payloadは262,144 bytesを上限とし、値は`config/handoff-policy.yaml`で管理する。
+
 ### 8.4 含めてはならない情報
 
 - `PRIVATE_RAW`、`RESTRICTED`
@@ -513,9 +515,7 @@ production側で作品が完成していなくてもresearch projectは完了で
 
 次は実装時に推測で固定せず、fixtureと計測結果をDecision Logへ記録して決める。
 
-- canonical YAML hashの具体的正規化方式
 - schema snapshot自動更新のCLI形状
-- 大きなproduction resultに対する最大payloadサイズ
 - 外部asset URIの許可scheme一覧
 - production側との互換性matrixの保存形式
 

@@ -6,6 +6,10 @@ normal:
   - id: generated-project
     kind: repository
     fixture: templates/project
+  - id: generated-production-handoff
+    kind: handoff
+    setup: valid-handoff
+    fixture: tests/fixtures/harmony
   - id: schema-project-manifest
     kind: schema
     schema: project-manifest
@@ -214,3 +218,71 @@ failure:
     kind: repository
     setup: invalid-secret-pattern
     rule: SECURITY-PATTERN
+  - id: handoff-structure
+    kind: handoff
+    setup: handoff-missing-file
+    rule: HANDOFF-STRUCTURE
+  - id: handoff-reference
+    kind: handoff
+    setup: handoff-reference
+    rule: HANDOFF-REFERENCE
+  - id: handoff-selection
+    kind: handoff
+    setup: handoff-selection
+    rule: HANDOFF-SELECTION
+  - id: handoff-lifecycle
+    kind: handoff
+    setup: handoff-lifecycle
+    rule: HANDOFF-LIFECYCLE
+  - id: handoff-readiness
+    kind: handoff
+    setup: handoff-readiness
+    rule: HANDOFF-READINESS
+  - id: handoff-requirement
+    kind: handoff
+    setup: handoff-missing-requirement
+    rule: HANDOFF-REQUIREMENT
+  - id: handoff-hash
+    kind: handoff
+    setup: handoff-hash
+    rule: HANDOFF-HASH
+  - id: handoff-private-boundary
+    kind: handoff
+    setup: handoff-private
+    rule: HANDOFF-SECURITY
+  - id: handoff-absolute-path
+    kind: handoff
+    setup: handoff-absolute-path
+    rule: HANDOFF-SECURITY
+  - id: handoff-signed-url
+    kind: handoff
+    setup: handoff-signed-url
+    rule: HANDOFF-SECURITY
+  - id: hypothesis-trace
+    kind: handoff
+    setup: hypothesis-trace
+    rule: HYPOTHESIS-TRACE
+  - id: hypothesis-singleton
+    kind: handoff
+    setup: singleton-rationale
+    rule: HYPOTHESIS-SINGLETON
+  - id: hypothesis-comparison
+    kind: handoff
+    setup: multiple-hypotheses
+    rule: HYPOTHESIS-COMPARISON
+  - id: uncertainty-prototype
+    kind: handoff
+    setup: uncertainty-without-prototype
+    rule: UNCERTAINTY-PROTOTYPE
+  - id: prototype-dag
+    kind: handoff
+    setup: prototype-cycle
+    rule: PROTOTYPE-DAG
+  - id: prototype-external
+    kind: handoff
+    setup: prototype-external
+    rule: PROTOTYPE-EXTERNAL
+  - id: external-schema
+    kind: handoff
+    setup: external-schema
+    rule: EXTERNAL-SCHEMA
