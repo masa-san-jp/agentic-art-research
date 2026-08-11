@@ -1,15 +1,14 @@
 version: 1
-updated_at: "2026-08-11T19:35:00+09:00"
+updated_at: "2026-08-11T19:38:00+09:00"
 current_milestone: M6
-next_task: RELEASE-001
-last_completed_task: EVAL-002
-terminal: false
-blocked_by:
-  - "human-approval: create GitHub Release v1.0.0"
+next_task: null
+last_completed_task: RELEASE-001
+terminal: true
+blocked_by: []
 resume_from:
   read:
     - AGENTS.md
     - docs/20260811-agentic-art-research-system-design-specification.md
     - docs/20260811-agentic-art-research-repository-execution-plan.md
     - execution/task-queue.yaml
-  action: After explicit human approval, create GitHub Release v1.0.0 from the then-current main HEAD; do not publish before approval.
+  action: v1.0.0 is published at https://github.com/masa-san-jp/agentic-art-research/releases/tag/v1.0.0; resume only for a new release or post-release fix.
