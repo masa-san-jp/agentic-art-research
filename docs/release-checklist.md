@@ -33,6 +33,20 @@ python3 tools/handoff_release_check.py \
 `schema_snapshot_ready: false`はproduction-owned result schema未公開を明示する状態であり、
 `--require-schema-snapshot`を付けた場合だけ失敗として扱う。production schemaをresearch側で合成してはならない。
 
+production側のclean commitが公開された後は、まず次でsnapshotとprovenanceを登録する。
+
+```bash
+python3 tools/snapshot_production_schema.py \
+  --source-repo /path/to/agentic-art-production \
+  --source-schema schemas/external/production-result.v1.schema.json \
+  --source-repository masa-san-jp/agentic-art-production \
+  --commit <40-character-production-commit> \
+  --acquired-at 2026-08-12T00:00:00+09:00 \
+  --version 1.0.0
+```
+
+このCLIはdirty worktree、commit不一致、schema不正、path逸脱、既存snapshotの上書きを拒否する。
+
 ## 境界
 
 このタスクでは、外部公開、タグ作成、GitHub Release、配布、購入、契約、送信は行わない。

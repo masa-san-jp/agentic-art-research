@@ -1,0 +1,107 @@
+from __future__ import annotations
+
+import json
+import shutil
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+import yaml
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT / "tools"))
+
+from snapshot_production_schema import SchemaSnapshotError, snapshot_schema  # noqa: E402
+
+
+class ProductionSchemaSnapshotTest(unittest.TestCase):
+    def _git(self, source: Path, *args: str) -> str:
+        result = subprocess.run(["git", "-C", str(source), *args], check=True, capture_output=True, text=True)
+        return result.stdout.strip()
+
+    def _source_repo(self) -> tuple[tempfile.TemporaryDirectory, Path, str]:
+        temporary = tempfile.TemporaryDirectory()
+        source = Path(temporary.name) / "production"
+        source.mkdir()
+        self._git(source, "init", "--quiet")
+        schema = source / "schemas" / "external" / "production-result.v1.schema.json"
+        schema.parent.mkdir(parents=True)
+        schema.write_text(
+            json.dumps({"$schema": "https://json-schema.org/draft/2020-12/schema", "type": "object"}) + "\n",
+            encoding="utf-8",
+        )
+        self._git(source, "add", ".")
+        subprocess.run(
+            [
+                "git",
+                "-C",
+                str(source),
+                "-c",
+                "user.name=fixture",
+                "-c",
+                "user.email=fixture@example.invalid",
+                "commit",
+                "--quiet",
+                "-m",
+                "fixture",
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        return temporary, source, self._git(source, "rev-parse", "HEAD")
+
+    def _research_root(self, temporary: tempfile.TemporaryDirectory) -> Path:
+        root = Path(temporary.name) / "research"
+        shutil.copytree(REPO_ROOT / "config", root / "config")
+        (root / "schemas").mkdir()
+        return root
+
+    def test_clean_commit_snapshot_is_idempotent_and_pins_policy(self) -> None:
+        source_temporary, source, commit = self._source_repo()
+        research_temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(source_temporary.cleanup)
+        self.addCleanup(research_temporary.cleanup)
+        root = self._research_root(research_temporary)
+        acquired_at = "2026-08-12T00:30:00+09:00"
+        kwargs = {
+            "source_repository": "masa-san-jp/agentic-art-production",
+            "commit": commit,
+            "acquired_at": acquired_at,
+            "version": "1.0.0",
+        }
+
+        first = snapshot_schema(root, source, "schemas/external/production-result.v1.schema.json", Path("schemas/external/production-result.v1.schema.json"), **kwargs)
+        second = snapshot_schema(root, source, "schemas/external/production-result.v1.schema.json", Path("schemas/external/production-result.v1.schema.json"), **kwargs)
+        self.assertEqual(first, second)
+        policy = yaml.safe_load((root / "config" / "handoff-policy.yaml").read_text(encoding="utf-8"))
+        self.assertEqual(commit, policy["production_result_schema_source"]["commit"])
+        self.assertEqual(first["sha256"], policy["production_result_schema_source"]["sha256"])
+
+    def test_dirty_source_is_rejected_before_snapshot(self) -> None:
+        source_temporary, source, commit = self._source_repo()
+        research_temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(source_temporary.cleanup)
+        self.addCleanup(research_temporary.cleanup)
+        root = self._research_root(research_temporary)
+        (source / "schemas" / "external" / "production-result.v1.schema.json").write_text("{}\n", encoding="utf-8")
+
+        with self.assertRaisesRegex(SchemaSnapshotError, "EXTERNAL-SCHEMA-SOURCE"):
+            snapshot_schema(
+                root,
+                source,
+                "schemas/external/production-result.v1.schema.json",
+                Path("schemas/external/production-result.v1.schema.json"),
+                source_repository="masa-san-jp/agentic-art-production",
+                commit=commit,
+                acquired_at="2026-08-12T00:30:00+09:00",
+                version="1.0.0",
+            )
+        self.assertFalse((root / "schemas" / "external" / "production-result.v1.schema.json").exists())
+
+
+if __name__ == "__main__":
+    unittest.main()
