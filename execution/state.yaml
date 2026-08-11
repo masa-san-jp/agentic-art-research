@@ -1,8 +1,8 @@
 version: 1
-updated_at: "2026-08-11T18:55:00+09:00"
+updated_at: "2026-08-11T19:05:00+09:00"
 current_milestone: M6
-next_task: CHAOS-001
-last_completed_task: SECURITY-002
+next_task: DOCS-001
+last_completed_task: CHAOS-001
 terminal: false
 blocked_by: []
 resume_from:
@@ -11,4 +11,4 @@ resume_from:
     - docs/20260811-agentic-art-research-system-design-specification.md
     - docs/20260811-agentic-art-research-repository-execution-plan.md
     - execution/task-queue.yaml
-  action: Claim CHAOS-001, mark it IN_PROGRESS, and run deterministic API-stop, broken-JSONL, interrupted-lease, and duplicate-effect recovery scenarios.
+  action: Claim DOCS-001, mark it IN_PROGRESS, and add onboarding, operations, incident response, and model startup documentation.

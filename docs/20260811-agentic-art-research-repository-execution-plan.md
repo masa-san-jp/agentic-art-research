@@ -55,6 +55,7 @@ python3 tools/bundle.py project/harmony-study --audience human
 - [x] (2026-08-11) `EVAL-002`: offline fixtureを一時領域で再生成し、正確性・追跡性・終端性・再開性・安全性の5ゲートを決定的に評価。
 - [x] (2026-08-11) `RELEASE-001`: 設計仕様§19.2の10項目、必要パス、CI相当3回、offline fixture、5ゲートを確認するv1.0.0チェックリストを実装。
 - [x] (2026-08-11) `SECURITY-002`: symlink、外部path traversal、unsafe archiveの非展開検査をvalidatorとCIへ接続。
+- [x] (2026-08-11) `CHAOS-001`: API停止、破損JSONL、期限切れlease、重複effectを合成rootで再現する決定的chaos suiteをCIへ接続。
 - [ ] M1b: 全JSON Schema検証と参照整合性を実装。
 - [ ] M2: 依存グラフ、バンドル、影響分析、監査を実用レベルへ完成。
 - [ ] M3: 代表サンプルプロジェクトを固定fixtureで完走。
@@ -86,6 +87,7 @@ python3 tools/bundle.py project/harmony-study --audience human
 - 2026-08-11: 評価を本体プロジェクトへ直接適用するとテストがcanonical dataを変更し得るため、fixture再生成を一時rootへ隔離した。5ゲートの結果は時刻を含めず、同一入力でbyte-stableなJSONにした。
 - 2026-08-11: リリース判定は公開やタグ作成と分離し、設計仕様§19.2のチェック済み件数、workflowの必須コマンド、offline評価、CI相当コマンド3回をローカルで検査する。外部公開は人間承認対象として実行しない。
 - 2026-08-11: SECURITY-002ではアーカイブを展開しない。member名、サイズ、権限、リンク種別、禁止拡張子・ファイル名だけを検査し、symlinkはリポジトリ内を指す場合も監査対象にする。
+- 2026-08-11: CHAOS-001は外部APIを呼ばず、停止を`TIMEOUT`へ分類するfake faultと、task runtime・validatorの既存契約を一時rootで組み合わせる。各シナリオは固定時刻で結果を比較できる。
 
 ## Decision Log
 
