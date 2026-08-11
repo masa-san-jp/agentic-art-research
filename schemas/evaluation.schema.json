@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/evaluation.schema.json",
+  "title": "Offline Evaluation Report",
+  "type": "object",
+  "required": ["schema", "fixture", "project_id", "passed", "checks"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {"const": "urn:agentic-art-research:evaluation:v1"},
+    "fixture": {"type": "string", "minLength": 1},
+    "project_id": {"type": "string", "pattern": "^project/[a-z0-9]+(?:-[a-z0-9]+)*$"},
+    "passed": {"type": "boolean"},
+    "checks": {
+      "type": "array",
+      "minItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["id", "passed", "details"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"enum": ["accuracy", "traceability", "termination", "resume", "privacy", "audit"]},
+          "passed": {"type": "boolean"},
+          "details": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    }
+  }
+}

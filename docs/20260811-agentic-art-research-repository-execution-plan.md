@@ -52,6 +52,7 @@ python3 tools/bundle.py project/harmony-study --audience human
 - [x] (2026-08-11) `RUNTIME-004`: task、role固有source、制約、受入試験だけを含む決定論的context packを実装。
 - [x] (2026-08-11) `INTEGRATION-001`: art-history-notesのgraphをsource commit固定でread-only参照するadapterを実装。
 - [x] (2026-08-11) `INTEGRATION-002`: opaque URI、SHA-256、承認メタデータ、許可済み派生シグナルだけを通すprivate evidence adapterを実装。
+- [x] (2026-08-11) `EVAL-002`: synthetic offline fixtureで正確性、追跡性、終端性、再開性、安全性、監査の評価を実装。
 - [ ] M1b: 全JSON Schema検証と参照整合性を実装。
 - [ ] M2: 依存グラフ、バンドル、影響分析、監査を実用レベルへ完成。
 - [ ] M3: 代表サンプルプロジェクトを固定fixtureで完走。
@@ -78,6 +79,7 @@ python3 tools/bundle.py project/harmony-study --audience human
 - 2026-08-11: task runtimeを別ログへ分散させるとライフサイクルと再開点の整合性を失うため、`research-state.json`の`task_runtime` snapshotと既存`run-log.jsonl`の一意イベントを正本にした。期限切れleaseの再取得と効果キーによる完了冪等性を同じ契約で検証する。
 - 2026-08-11: 飽和は全期間の無成果数ではなく、`EVIDENCE_ROUND`の末尾から連続する無成果ラウンドとして数え、成果が1件でも出たら0へ戻す必要がある。停止イベントの質問状態名はライフサイクル状態と衝突しないフィールド名で記録する。
 - 2026-08-11: 私的証拠の連携境界は、`PRIVATE_RAW`を`PRIVATE_DERIVED`へ変換する場所にしない。上流の同意・承認済み派生結果だけを、opaque URI、ハッシュ、監査メタデータ、制御語彙のシグナルとして受け取り、未知フィールドをfail closedする。
+- 2026-08-11: E2E評価は、単体テストの件数だけでなく、固定fixtureの期待トレース、state replay、期限切れleaseの再取得、重複効果抑止、private adapter拒否境界、固定時刻監査を同じレポートで合格判定する。評価rootは不足ディレクトリだけを初期化し、既存プロジェクトは上書きしない。
 
 ## Decision Log
 
@@ -99,10 +101,11 @@ python3 tools/bundle.py project/harmony-study --audience human
 | 2026-08-11 | RUNTIME-002は`research-plan.yaml`のタスク定義を`research-state.json.task_runtime`へ固定し、leaseとタスクイベントを既存`run-log.jsonl`へ記録する | 中断後に2ファイルだけで再開でき、重複効果を決定的な`effect_key`で拒否・再適用できるため |
 | 2026-08-11 | RUNTIME-003は`run-log.jsonl`の質問イベントを設定済み上限へ集計し、成功条件を優先してから`UNRESOLVED`または`BLOCKED`へ停止し、質問台帳へのapplyを冪等にする | 有限の探索を再現可能に終端化し、既存ライフサイクルイベントとの誤認と二重記録を避けるため |
 | 2026-08-11 | INTEGRATION-002は上流で承認済みの`PRIVATE_DERIVED`だけを受け付け、opaque URI・SHA-256・承認参照・固定カテゴリの派生シグナルへ正規化する。`PRIVATE_RAW`、`RESTRICTED`、原文相当の未知フィールドは拒否する | 私的原文をrepoやログへ漏らさず、派生結果の出所と承認を再検証可能にするため |
+| 2026-08-11 | EVAL-002は固定offline fixtureの期待トレースとruntime/privacy probeを、決定論的な評価レポートへ集約する | 正確性、追跡性、終端性、再開性、安全性を個別テストの存在ではなく同一の受入結果で確認するため |
 
 ## Outcomes & Retrospective
 
-M0/M1a、`SCHEMA-001`、`VALIDATE-001`、`SECURITY-001`、`VALIDATE-002`、`TEST-001`、`GRAPH-001`、`BUNDLE-001`、`IMPACT-001`、`AUDIT-001`、`SAMPLE-001`、`COMPLETE-001`、`RUNTIME-001`、`RUNTIME-002`、`RUNTIME-003`、`RUNTIME-004`、`INTEGRATION-001`、`INTEGRATION-002`完了時点では、プロジェクト雛形の生成、Draft 2020-12スキーマ検証、JSONL行番号付きエラー、YAML重複キー検出、機密・秘密境界検査、参照整合性、状態機械と試験接続の検査、blocking ruleの正常・失敗fixtureマトリクス、プロジェクトスコープで決定的な依存グラフ、4 audienceの範囲制限付きbundle生成、upstream/downstreamのJSON・Markdown影響分析、出典偏り・鮮度・弱い判断・未実施試験の非ブロッキング監査、固定offline fixtureからの`COMPLETE_WITH_GAPS` package再生成、両terminal statusの決定論的completion生成、状態機械とrun-log replay、依存DAG・lease・bounded retry・failure classification・resume、検索・資料・失敗・飽和の設定上限と質問終端化、task・role固有source・制約・受入試験だけを含むcontext pack、source commit固定のart-history-notes read-only adapter、opaque URI・ハッシュ・承認参照・制御語彙シグナルだけを通すprivate evidence adapter、CI初期版が実行可能になる。評価・release gateは未実装であり、「自律リサーチ完成」とはまだ呼ばない。
+M0/M1a、`SCHEMA-001`、`VALIDATE-001`、`SECURITY-001`、`VALIDATE-002`、`TEST-001`、`GRAPH-001`、`BUNDLE-001`、`IMPACT-001`、`AUDIT-001`、`SAMPLE-001`、`COMPLETE-001`、`RUNTIME-001`、`RUNTIME-002`、`RUNTIME-003`、`RUNTIME-004`、`INTEGRATION-001`、`INTEGRATION-002`、`EVAL-002`完了時点では、プロジェクト雛形の生成、Draft 2020-12スキーマ検証、JSONL行番号付きエラー、YAML重複キー検出、機密・秘密境界検査、参照整合性、状態機械と試験接続の検査、blocking ruleの正常・失敗fixtureマトリクス、プロジェクトスコープで決定的な依存グラフ、4 audienceの範囲制限付きbundle生成、upstream/downstreamのJSON・Markdown影響分析、出典偏り・鮮度・弱い判断・未実施試験の非ブロッキング監査、固定offline fixtureからの`COMPLETE_WITH_GAPS` package再生成、両terminal statusの決定論的completion生成、状態機械とrun-log replay、依存DAG・lease・bounded retry・failure classification・resume、検索・資料・失敗・飽和の設定上限と質問終端化、task・role固有source・制約・受入試験だけを含むcontext pack、source commit固定のart-history-notes read-only adapter、opaque URI・ハッシュ・承認参照・制御語彙シグナルだけを通すprivate evidence adapter、固定offline fixtureの期待トレース・runtime再開・privacy境界・監査を含むE2E評価、CI初期版が実行可能になる。release gateのみ未実装であり、「自律リサーチ完成」とはまだ呼ばない。
 
 ## Context and Orientation
 

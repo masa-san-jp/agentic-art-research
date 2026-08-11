@@ -114,12 +114,12 @@ tasks:
   - id: EVAL-002
     milestone: M6
     title: Add end-to-end quality and safety evals
-    status: READY
+    status: DONE
     depends_on: [INTEGRATION-001, INTEGRATION-002]
     acceptance: Accuracy, traceability, termination, resume, and privacy gates pass.
   - id: RELEASE-001
     milestone: M6
     title: Release v1.0.0
-    status: BACKLOG
+    status: READY
     depends_on: [EVAL-002]
     acceptance: Design specification section 19.2 is fully checked and CI passes three times.
