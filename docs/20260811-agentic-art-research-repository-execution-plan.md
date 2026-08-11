@@ -50,6 +50,7 @@ python3 tools/bundle.py project/harmony-study --audience human
 - [x] (2026-08-11) `RUNTIME-002`: 計画由来のタスクDAG、期限付きlease、分類済み再試行、依存失敗の伝播、kill-and-resume冪等性を実装。
 - [x] (2026-08-11) `RUNTIME-003`: 検索・資料・失敗・飽和の上限を設定から評価し、質問の終端化を冪等適用する停止ポリシーを実装。
 - [x] (2026-08-11) `RUNTIME-004`: ロール定義とタスク参照から、証拠・制約・受入試験を最小範囲で解決する決定的コンテキストパックを実装。
+- [x] (2026-08-11) `INTEGRATION-001`: `art-history-notes` の graph と Git HEAD を読み、本文を複製せず stable external-reference metadata を取り込むアダプタを実装。
 - [ ] M1b: 全JSON Schema検証と参照整合性を実装。
 - [ ] M2: 依存グラフ、バンドル、影響分析、監査を実用レベルへ完成。
 - [ ] M3: 代表サンプルプロジェクトを固定fixtureで完走。
@@ -76,6 +77,7 @@ python3 tools/bundle.py project/harmony-study --audience human
 - 2026-08-11: task runtimeを別ログへ分散させるとライフサイクルと再開点の整合性を失うため、`research-state.json`の`task_runtime` snapshotと既存`run-log.jsonl`の一意イベントを正本にした。期限切れleaseの再取得と効果キーによる完了冪等性を同じ契約で検証する。
 - 2026-08-11: 飽和は全期間の無成果数ではなく、`EVIDENCE_ROUND`の末尾から連続する無成果ラウンドとして数え、成果が1件でも出たら0へ戻す必要がある。停止イベントの質問状態名はライフサイクル状態と衝突しないフィールド名で記録する。
 - 2026-08-11: ロール別パックは audience bundle の全ファイル複製ではなく、タスクが宣言したIDから追跡連鎖を解決する必要がある。ロールの許可語彙外の参照と `PRIVATE_RAW` / `RESTRICTED` は、欠落を黙って補正せず生成を拒否する。
+- 2026-08-11: `art-history-notes` の正本は Markdown entity 本文ではなく生成済み `data/graph.json` のメタデータと Git commit で参照できる。アダプタは status 下限を適用し、stub を除外して URI・ID・commit・取得日時だけをプロジェクトへ書く。
 
 ## Decision Log
 
@@ -97,10 +99,11 @@ python3 tools/bundle.py project/harmony-study --audience human
 | 2026-08-11 | RUNTIME-002は`research-plan.yaml`のタスク定義を`research-state.json.task_runtime`へ固定し、leaseとタスクイベントを既存`run-log.jsonl`へ記録する | 中断後に2ファイルだけで再開でき、重複効果を決定的な`effect_key`で拒否・再適用できるため |
 | 2026-08-11 | RUNTIME-003は`run-log.jsonl`の質問イベントを設定済み上限へ集計し、成功条件を優先してから`UNRESOLVED`または`BLOCKED`へ停止し、質問台帳へのapplyを冪等にする | 有限の探索を再現可能に終端化し、既存ライフサイクルイベントとの誤認と二重記録を避けるため |
 | 2026-08-11 | RUNTIME-004はロール設定の許可kindとタスクの明示IDを使い、質問から下流成果物を導出してJSON packへ出力する | 後続workerへ全プロジェクトを渡さず、必要な証拠・制約・受入試験だけを監査可能に渡すため |
+| 2026-08-11 | INTEGRATION-001は外部KBの`data/graph.json`とsource Git HEADを読み取り、参照ID・URN・commit・取得日時・用途だけを`external-references.jsonl`へ冪等追加する | 一般美術史の正本競合と本文複製を避け、同一commitの再取込を重複させないため |
 
 ## Outcomes & Retrospective
 
-M0/M1a、`SCHEMA-001`、`VALIDATE-001`、`SECURITY-001`、`VALIDATE-002`、`TEST-001`、`GRAPH-001`、`BUNDLE-001`、`IMPACT-001`、`AUDIT-001`、`SAMPLE-001`、`COMPLETE-001`、`RUNTIME-001`、`RUNTIME-002`、`RUNTIME-003`、`RUNTIME-004`完了時点では、プロジェクト雛形の生成、Draft 2020-12スキーマ検証、JSONL行番号付きエラー、YAML重複キー検出、機密・秘密境界検査、参照整合性、状態遷移と試験接続の検査、blocking ruleの正常・失敗fixtureマトリクス、プロジェクトスコープで決定的な依存グラフ、4 audienceの範囲制限付きbundle生成、upstream/downstreamのJSON・Markdown影響分析、出典偏り・鮮度・弱い判断・未実施試験の非ブロッキング監査、固定offline fixtureからの`COMPLETE_WITH_GAPS` package再生成、両terminal statusの決定論的completion生成、状態機械とrun-log replay、依存DAG・lease・bounded retry・failure classification・resume、検索・資料・失敗・飽和の設定上限と質問終端化、タスク最小のロールコンテキストパック、CI初期版が実行可能になる。INTEGRATION-001以降の外部アダプタは未実装であり、「自律リサーチ完成」とはまだ呼ばない。
+M0/M1a、`SCHEMA-001`、`VALIDATE-001`、`SECURITY-001`、`VALIDATE-002`、`TEST-001`、`GRAPH-001`、`BUNDLE-001`、`IMPACT-001`、`AUDIT-001`、`SAMPLE-001`、`COMPLETE-001`、`RUNTIME-001`、`RUNTIME-002`、`RUNTIME-003`、`RUNTIME-004`、`INTEGRATION-001`完了時点では、プロジェクト雛形の生成、Draft 2020-12スキーマ検証、JSONL行番号付きエラー、YAML重複キー検出、機密・秘密境界検査、参照整合性、状態遷移と試験接続の検査、blocking ruleの正常・失敗fixtureマトリクス、プロジェクトスコープで決定的な依存グラフ、4 audienceの範囲制限付きbundle生成、upstream/downstreamのJSON・Markdown影響分析、出典偏り・鮮度・弱い判断・未実施試験の非ブロッキング監査、固定offline fixtureからの`COMPLETE_WITH_GAPS` package再生成、両terminal statusの決定論的completion生成、状態機械とrun-log replay、依存DAG・lease・bounded retry・failure classification・resume、検索・資料・失敗・飽和の設定上限と質問終端化、タスク最小のロールコンテキストパック、外部KBのstable reference adapter、CI初期版が実行可能になる。INTEGRATION-002以降の個人証拠アダプタと評価は未実装であり、「自律リサーチ完成」とはまだ呼ばない。
 
 ## Context and Orientation
 

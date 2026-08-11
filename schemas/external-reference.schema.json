@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/external-reference.schema.json",
+  "title": "External art-history-notes reference",
+  "type": "object",
+  "required": ["id", "system", "entity_id", "uri", "source_commit", "acquired_at", "usage"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {"type": "string", "pattern": "^XR[0-9]{3,}$"},
+    "system": {"const": "art-history-notes"},
+    "entity_id": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "uri": {"type": "string", "pattern": "^urn:ahn:[^\\s]+$"},
+    "source_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "acquired_at": {"$ref": "common.schema.json#/$defs/timestamp"},
+    "usage": {"$ref": "common.schema.json#/$defs/nonEmptyString"}
+  }
+}

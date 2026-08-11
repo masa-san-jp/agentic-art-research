@@ -25,6 +25,7 @@ from _common import (
 SCHEMA_FOR_JSONL = {
     "02_evidence/evidence-ledger.jsonl": "evidence",
     "03_knowledge/claims.jsonl": "claim",
+    "03_knowledge/external-references.jsonl": "external-reference",
 }
 SCHEMA_FOR_YAML_COLLECTION = {
     "04_decisions/insight-register.yaml": ("insights", "insight"),
@@ -44,6 +45,7 @@ DOMAIN_SCHEMAS = (
     "requirement",
     "research-state",
     "completion-report",
+    "external-reference",
 )
 RecordEntry = tuple[str, Path, int | None, dict[str, Any]]
 REFERENCE_FIELDS = {

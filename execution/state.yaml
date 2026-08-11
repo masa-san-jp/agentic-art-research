@@ -1,8 +1,8 @@
 version: 1
-updated_at: "2026-08-11T16:39:42+09:00"
+updated_at: "2026-08-11T16:43:38+09:00"
 current_milestone: M4
-next_task: INTEGRATION-001
-last_completed_task: RUNTIME-004
+next_task: INTEGRATION-002
+last_completed_task: INTEGRATION-001
 terminal: false
 blocked_by: []
 resume_from:
@@ -11,4 +11,4 @@ resume_from:
     - docs/20260811-agentic-art-research-system-design-specification.md
     - docs/20260811-agentic-art-research-repository-execution-plan.md
     - execution/task-queue.yaml
-  action: Claim INTEGRATION-001, mark it IN_PROGRESS, and implement a read-only art-history-notes adapter with stable IDs and source commit metadata.
+  action: Claim INTEGRATION-002, mark it IN_PROGRESS, and implement the private evidence adapter contract for opaque URI, hash, metadata, and approved derived signals.

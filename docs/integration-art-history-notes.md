@@ -44,3 +44,18 @@ external_reference:
 
 同じentityのsource commitが変わったら、内容hashを比較し、関連claimとdecisionへ影響分析を走らせる。変更がない場合は再計算しない。
 
+## Repository adapter
+
+`tools/art_history_adapter.py` は `data/graph.json` と source repository の Git HEAD だけを読む。
+本文Markdownはコピーせず、プロジェクトへは `03_knowledge/external-references.jsonl` の参照メタデータだけを追加する。
+
+```bash
+python3 tools/art_history_adapter.py search \
+  --source-root /path/to/art-history-notes --query surrealism --minimum-status draft
+python3 tools/art_history_adapter.py import \
+  --source-root /path/to/art-history-notes --target project/example \
+  --entity-ids movement/surrealism --acquired-at 2026-08-11T15:00:00+09:00 \
+  --usage precedent_research
+```
+
+`stub` は既定の `draft` 下限で除外され、同一 entity・commit・用途の再取込はスキップされる。

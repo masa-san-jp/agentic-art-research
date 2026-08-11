@@ -1,0 +1,7 @@
+version: 1
+art_history_notes:
+  system: art-history-notes
+  uri_prefix: "urn:ahn:"
+  status_order: [stub, draft, verified]
+  default_minimum_status: draft
+  default_max_results: 20
