@@ -14,18 +14,44 @@ AUDIENCE_PATHS = {
 }
 
 
-def build_bundle(root: Path, target: str, audience: str) -> str:
-    if not target.startswith("project/"):
+def _project_path(root: Path, target: str) -> Path:
+    if not target.startswith("project/") or target.count("/") != 1:
         raise ValueError("target must be project/<slug>")
     slug = target.split("/", 1)[1]
-    project = root / "projects" / slug
-    if not project.exists():
+    if not slug:
+        raise ValueError("target must be project/<slug>")
+    projects_root = (root / "projects").resolve()
+    project = (projects_root / slug).resolve()
+    if project.parent != projects_root:
+        raise ValueError("target must identify a direct project directory")
+    if not project.is_dir():
         raise FileNotFoundError(f"project not found: {target}")
-    parts = [f"# {target} — {audience} bundle", "", "Generated from canonical project files. Do not edit this bundle as source.", ""]
+    return project
+
+
+def resolve_audience_sources(root: Path, target: str, audience: str) -> list[tuple[str, Path]]:
+    """Resolve every declared audience source and reject missing or escaping files."""
+    if audience not in AUDIENCE_PATHS:
+        raise ValueError(f"unknown audience: {audience}")
+    project = _project_path(root, target)
+    sources: list[tuple[str, Path]] = []
     for relative in AUDIENCE_PATHS[audience]:
-        path = project / relative
-        if not path.exists():
-            continue
+        path = (project / relative).resolve()
+        if project not in path.parents:
+            raise ValueError(f"audience source escapes project: {relative}")
+        if not path.is_file():
+            raise FileNotFoundError(f"audience source not found for {audience}: {target}/{relative}")
+        sources.append((relative, path))
+    return sources
+
+
+def build_bundle(root: Path, target: str, audience: str) -> str:
+    sources = resolve_audience_sources(root, target, audience)
+    parts = [f"# {target} — {audience} bundle", "", "Generated from canonical project files. Do not edit this bundle as source.", ""]
+    parts.extend(["## Resolved sources", ""])
+    parts.extend(f"- `{relative}`" for relative, _ in sources)
+    parts.append("")
+    for relative, path in sources:
         parts.extend([f"## `{relative}`", "", "```text", path.read_text(encoding="utf-8").rstrip(), "```", ""])
     return "\n".join(parts).rstrip() + "\n"
 
@@ -51,4 +77,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
