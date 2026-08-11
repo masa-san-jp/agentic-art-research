@@ -1,14 +1,15 @@
 version: 1
-updated_at: "2026-08-11T19:20:00+09:00"
+updated_at: "2026-08-11T19:35:00+09:00"
 current_milestone: M6
 next_task: RELEASE-001
 last_completed_task: EVAL-002
 terminal: false
-blocked_by: []
+blocked_by:
+  - "human-approval: create GitHub Release v1.0.0"
 resume_from:
   read:
     - AGENTS.md
     - docs/20260811-agentic-art-research-system-design-specification.md
     - docs/20260811-agentic-art-research-repository-execution-plan.md
     - execution/task-queue.yaml
-  action: Claim RELEASE-001 and verify the release checklist, three consecutive CI runs, and v1.0.0 readiness.
+  action: After explicit human approval, create GitHub Release v1.0.0 from main commit dda3bf6e3f9700cdf3849325aafcda4951adcb15; do not publish before approval.
