@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/release-check.schema.json",
+  "title": "Release Check",
+  "type": "object",
+  "required": ["schema", "version", "passed", "checks", "ci_evidence"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {"const": "urn:agentic-art-research:release-check:v1"},
+    "version": {"const": "1.0.0"},
+    "passed": {"type": "boolean"},
+    "ci_evidence": {"type": "string", "minLength": 1},
+    "checks": {
+      "type": "array",
+      "minItems": 8,
+      "items": {
+        "type": "object",
+        "required": ["id", "passed", "details"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"enum": ["structure", "schemas", "new_project_and_validate", "graph_bundle_impact", "sample_terminal", "e2e_evaluation", "specification_mvp", "ci_three_runs"]},
+          "passed": {"type": "boolean"},
+          "details": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    }
+  }
+}
