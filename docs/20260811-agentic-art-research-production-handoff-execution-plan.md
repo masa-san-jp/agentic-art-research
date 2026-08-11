@@ -25,7 +25,7 @@ python3 tools/validate.py --check
 - [x] (2026-08-11 21:40 JST) `HANDOFF-VALIDATE-001`: 仮説、Prototype DAG、handoff参照・hash・安全境界、外部schema fail-closed検査を実装。77 test、validator、docs checkが合格。
 - [x] (2026-08-11 22:10 JST) `HANDOFF-BUILD-001`: handoff生成、export、production-agent bundleを実装。全84 test、validator、graph、docs check、diff checkが合格。
 - [x] (2026-08-11 22:25 JST) `FEEDBACK-IMPORT-001`: production-owned schema snapshotの未公開状態をfail-closedで維持しつつ、snapshot取得後に実行できるdry-run、取込、冪等性、部分適用からの復旧、影響分析、MAJOR再開、CRITICAL人間承認待ちを実装。全90 test、validator、graph、docs check、diff checkが合格。
-- [ ] (2026-08-11 22:32 JST) `HANDOFF-E2E-001`: `tests/fixtures/harmony-handoff/scenario.yaml`を正本メタデータとして固定し、handoff bundleの自己完結性・改変検出、PASS/FAIL/DEVIATION/CRITICAL result、重複、hash/schema mismatch、破損JSONL、graph/impact還流、RESEARCH_ONLY後方互換性をresearch側で検証した。全102 test、validator、docs check、graph check、diff check、release gate 3回（各11 check）が合格。production側clean commitのresult schemaとconsumer実装は未公開のため、H5はその互換性確認待ちで継続中。
+- [ ] (2026-08-12 00:18 JST) `HANDOFF-E2E-001`: `tests/fixtures/harmony-handoff/scenario.yaml`を正本メタデータとして固定し、handoff bundleの自己完結性・改変検出、PASS/FAIL/DEVIATION/CRITICAL result、重複、hash/schema mismatch、破損JSONL、graph/impact還流、RESEARCH_ONLY後方互換性をresearch側で検証した。research-side handoff release gate（base release、fixture、fail-closed、後方互換性）を追加し、全103 test、validator、docs check、graph check、diff check、handoff release gate 3回が合格。production側clean commitのresult schemaとconsumer実装は未公開のため、`schema_snapshot_ready: false`を明示し、H5はその互換性確認待ちで継続中。
 - [ ] `HANDOFF-RELEASE-001`: 文書、release gate、互換性証拠を完成。
 
 ## Surprises & Discoveries
@@ -66,6 +66,7 @@ python3 tools/validate.py --check
 | 2026-08-11 | production result importはproduction-owned schema snapshotを前提に汎用実装する | research側でresult schemaを仮定義 | 外部契約の所有権を侵食せず、未公開schemaを成功扱いにしないため |
 | 2026-08-11 | feedback importはraw assetを複製せず、URI・hash・権利区分を持つevidence candidateへ変換する | production出力をresearchへコピー | protocol repoと成果物保管境界を守り、再利用可能な出所だけを取り込むため |
 | 2026-08-11 | H5のproduction result試験は一時rootへtest-only schemaを注入し、固定scenarioの入力・期待値だけをGit管理する | 未公開のproduction schemaをresearchへ複製 | オフラインE2Eを再現しつつ、result契約の正本とclean commitを捏造しないため |
+| 2026-08-12 | H5のresearch-side release gateは外部schema未公開を`schema_snapshot_ready: false`として出力し、研究側の安全・互換性gateとは分離する | 未公開schemaを合格扱いにする、または全gateを停止する | 現時点の成果を継続検証しながら、production契約の未確定を隠さないため |
 
 ## Outcomes & Retrospective
 
@@ -79,7 +80,7 @@ python3 tools/validate.py --check
 
 `FEEDBACK-IMPORT-001`では、production-owned schema snapshotのpath、source repository、commit、取得日時、raw SHA-256、対応versionをすべて検証するimporterを追加した。snapshotが未公開・欠落・改変された状態ではdry-runを含めて`EXTERNAL-SCHEMA`で停止する。検証済みresultはruntime JSONLへ保存し、観察・試験結果を`EV`証拠候補、逸脱・incident・変更要求を`CR` governance recordへ変換する。same result ID/hashは`ALREADY_APPLIED`、同一IDの異なるpayloadは拒否し、MAJORは`ANALYZING`へ明示的に再開、CRITICALは人間承認待ちとして記録する。raw assetはコピーせず、graphとimpactへproduction resultの参照辺を追加した。部分適用後の再実行で監査・証拠・resultを重複させない復旧も固定した。専用6 testを含む全90 test、`tools/validate.py --check`、`tools/build_graph.py --check`、`tools/docs_check.py --check`、`git diff --check`が合格した。次の開始点は`HANDOFF-E2E-001`である。
 
-`HANDOFF-E2E-001`のresearch側では、`harmony-handoff` scenarioを使ってbundle manifestのpath・size・hash・file-setを検証し、外部consumerへのコピーと改変を検出するテストを追加した。PASS、FAIL、DEVIATION、CRITICALのresultをdry-run/applyし、影響レベル、証拠候補、変更要求、CRITICALの人間承認待ち、graph/impact辺を確認する。未対応schema、result hash改変、同一IDの異なるpayload、破損feedback JSONLはそれぞれ named ruleで停止し、既存RESEARCH_ONLY fixtureは変更なしで合格する。固定scenarioとテスト時生成物はresearch側だけで完結するが、production-owned result schemaのclean commitとproduction consumerでの同一schema/hash検証が未提供のため、cross-repo互換性の完了とは扱わない。全102 test、`tools/validate.py --check`、`tools/docs_check.py --check`、`tools/build_graph.py --check`、`git diff --check`、release gate 3回（各11 check）が合格した。次の開始点はproduction側のresult schema公開後に、clean commitを固定したdual-repository compatibility testとH5 release gate integrationを追加することである。
+`HANDOFF-E2E-001`のresearch側では、`harmony-handoff` scenarioを使ってbundle manifestのpath・size・hash・file-setを検証し、外部consumerへのコピーと改変を検出するテストを追加した。PASS、FAIL、DEVIATION、CRITICALのresultをdry-run/applyし、影響レベル、証拠候補、変更要求、CRITICALの人間承認待ち、graph/impact辺を確認する。未対応schema、result hash改変、同一IDの異なるpayload、破損feedback JSONLはそれぞれ named ruleで停止し、既存RESEARCH_ONLY fixtureは変更なしで合格する。さらに`tools/handoff_release_check.py`と`schemas/handoff-release-check.schema.json`でresearch-sideのbase release、handoff fixture、feedback fail-closed、後方互換性を判定する。固定scenarioとテスト時生成物はresearch側だけで完結するが、production-owned result schemaのclean commitとproduction consumerでの同一schema/hash検証が未提供のため、`schema_snapshot_ready: false`としてcross-repo互換性の完了とは扱わない。全103 test、`tools/validate.py --check`、`tools/docs_check.py --check`、`tools/build_graph.py --check`、`git diff --check`、handoff release gate 3回が合格した。次の開始点はproduction側のresult schema公開後に、clean commitを固定したdual-repository compatibility testと`--require-schema-snapshot` gateを追加することである。
 
 ## Context and Orientation
 
