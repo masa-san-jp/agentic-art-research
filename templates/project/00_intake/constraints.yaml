@@ -1,0 +1,10 @@
+deadline: null
+budget: null
+publication_scope: PROJECT_INTERNAL
+allowed_source_scopes: [public, approved-personal-derived]
+prohibited_actions: [publish, submit, send, purchase, contract, delete]
+technical: []
+physical: []
+rights: []
+safety: []
+

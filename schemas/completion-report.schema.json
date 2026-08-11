@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/completion-report.schema.json",
+  "title": "Completion report",
+  "type": "object",
+  "required": ["project_id", "status", "completed_at", "checks", "gaps", "blockers", "reopen_triggers"],
+  "additionalProperties": false,
+  "properties": {
+    "project_id": {"$ref": "common.schema.json#/$defs/projectId"},
+    "status": {"enum": ["COMPLETE", "COMPLETE_WITH_GAPS", "BLOCKED", "CANCELLED"]},
+    "completed_at": {"$ref": "common.schema.json#/$defs/timestamp"},
+    "checks": {
+      "type": "object",
+      "required": ["manifest_valid", "mandatory_questions_terminal", "evidence_ledger_valid", "claim_references_resolved", "decisions_traceable", "requirements_testable", "rights_review_complete", "privacy_review_complete", "no_private_raw_in_git"],
+      "additionalProperties": {"type": "boolean"}
+    },
+    "gaps": {"type": "array", "items": {"type": "object", "required": ["id", "reason", "impact"], "properties": {"id": {"type": "string"}, "reason": {"type": "string"}, "impact": {"type": "string"}}}},
+    "blockers": {"type": "array", "items": {"type": "object", "required": ["id", "reason", "release_condition"], "properties": {"id": {"type": "string"}, "reason": {"type": "string"}, "release_condition": {"type": "string"}}}},
+    "reopen_triggers": {"type": "array", "items": {"type": "string"}}
+  }
+}
+

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/insight.schema.json",
+  "title": "Insight",
+  "type": "object",
+  "required": ["id", "statement", "claim_ids", "opposing_claim_ids", "epistemic_status", "production_implication"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {"type": "string", "pattern": "^IN[0-9]{3,}$"},
+    "statement": {"type": "string", "minLength": 1},
+    "claim_ids": {"type": "array", "items": {"type": "string", "pattern": "^CL[0-9]{3,}$"}, "minItems": 1, "uniqueItems": true},
+    "opposing_claim_ids": {"type": "array", "items": {"type": "string", "pattern": "^CL[0-9]{3,}$"}, "uniqueItems": true},
+    "epistemic_status": {"$ref": "common.schema.json#/$defs/epistemicStatus"},
+    "production_implication": {"type": "string", "minLength": 1}
+  }
+}
+

@@ -1,0 +1,16 @@
+version: 1
+review_days:
+  long_term_aesthetic_signal: 180
+  recent_interest: 30
+  email_calendar_interest_min: 7
+  email_calendar_interest_max: 30
+event_review:
+  technical_specification: before_production
+  rights_and_rules: before_publication_or_submission
+  venue_conditions: before_installation
+  material_safety: on_lot_or_spec_change
+deletion:
+  automatic: false
+  require_dependency_report: true
+  require_human_approval: true
+

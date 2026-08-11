@@ -1,0 +1,18 @@
+version: 1
+scale:
+  min: 0
+  max: 4
+factors:
+  source_reliability: 0.30
+  directness: 0.25
+  corroboration: 0.20
+  freshness: 0.15
+  scope_fit: 0.10
+conflict_penalty_points: 10
+conflict_penalty_range: [0, 2]
+formula: "round(25 * weighted_factor_sum - 10 * conflict_penalty), clamped to 0..100"
+usage: ranking_and_review_priority_only
+prohibitions:
+  - Do not promote a claim to FACT or VERIFIED from score alone.
+  - A material unresolved contradiction forces CONTESTED regardless of score.
+

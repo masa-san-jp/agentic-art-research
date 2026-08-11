@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/common.schema.json",
+  "$defs": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "stableId": {
+      "type": "string",
+      "pattern": "^[A-Z]{2,4}[0-9]{3,}$"
+    },
+    "projectId": {
+      "type": "string",
+      "pattern": "^project/[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "accessClass": {
+      "enum": ["PRIVATE_RAW", "PRIVATE_DERIVED", "PROJECT_INTERNAL", "PUBLIC_CITABLE", "RESTRICTED"]
+    },
+    "epistemicStatus": {
+      "enum": ["VERIFIED", "SUPPORTED", "CONTESTED", "WEAK", "HYPOTHESIS", "REJECTED", "UNRESOLVED"]
+    }
+  }
+}
+

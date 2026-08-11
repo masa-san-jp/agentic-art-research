@@ -1,0 +1,14 @@
+version: 1
+defaults:
+  max_search_strategies_per_question: 3
+  max_sources_reviewed_per_question: 30
+  max_identical_failure_retries: 2
+  saturation_rounds_without_new_evidence: 2
+  minimum_independent_secondary_sources_when_no_primary: 2
+  allow_complete_with_gaps: true
+  require_terminal_state: true
+overrides_require:
+  - reason
+  - approved_by
+  - approved_at
+

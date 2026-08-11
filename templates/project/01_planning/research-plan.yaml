@@ -1,0 +1,17 @@
+version: 1
+project_id: project/__PROJECT_SLUG__
+objective: null
+required_outputs:
+  - executive_brief
+  - creative_direction
+  - decision_log
+  - production_requirements
+  - acceptance_tests
+budget:
+  max_questions: 12
+  max_total_sources: 120
+  max_runtime_minutes: 240
+stopping_policy: config/stopping-policy.yaml
+source_priority: [primary, independent-secondary, approved-personal-derived, simulation]
+status: DRAFT
+
