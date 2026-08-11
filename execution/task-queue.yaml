@@ -108,13 +108,13 @@ tasks:
   - id: INTEGRATION-002
     milestone: M5
     title: Add private evidence adapter contract
-    status: READY
+    status: DONE
     depends_on: [RUNTIME-004]
     acceptance: Only opaque URI, hash, metadata, and approved derived signal enter repository.
   - id: EVAL-002
     milestone: M6
     title: Add end-to-end quality and safety evals
-    status: BACKLOG
+    status: READY
     depends_on: [INTEGRATION-001, INTEGRATION-002]
     acceptance: Accuracy, traceability, termination, resume, and privacy gates pass.
   - id: RELEASE-001
