@@ -4,7 +4,7 @@
 - 状態: COMPLETE
 - 対応仕様: `docs/20260811-agentic-art-research-production-handoff-extension-specification.md`
 - 基点: `v1.0.1`以降の`main`
-- 想定リリース: 後方互換を保てる場合`v1.1.0`
+- 実績リリース: `v1.1.0`（production handoff拡張）
 
 ## Purpose / Big Picture
 
@@ -26,7 +26,7 @@ python3 tools/validate.py --check
 - [x] (2026-08-11 22:10 JST) `HANDOFF-BUILD-001`: handoff生成、export、production-agent bundleを実装。全84 test、validator、graph、docs check、diff checkが合格。
 - [x] (2026-08-11 22:25 JST) `FEEDBACK-IMPORT-001`: production-owned schema snapshotの未公開状態をfail-closedで維持しつつ、snapshot取得後に実行できるdry-run、取込、冪等性、部分適用からの復旧、影響分析、MAJOR再開、CRITICAL人間承認待ちを実装。全90 test、validator、graph、docs check、diff checkが合格。
 - [x] (2026-08-12 07:24 JST) `HANDOFF-E2E-001`: `tests/fixtures/harmony-handoff/scenario.yaml`を正本メタデータとして固定し、handoff bundleの自己完結性・改変検出、PASS/FAIL/DEVIATION/CRITICAL result、重複、hash/schema mismatch、破損JSONL、graph/impact還流、RESEARCH_ONLY後方互換性をresearch側で検証した。Production clean commit `fb15f32bf1eef0155c853c4b7c4b94df6b1bd78b`からresult schema snapshotを取得し、release gateのschema boundary probeを修正した。snapshot provenance、schema/hash compatibility、fail-closed、実schemaを使うconsumerのdry-run/apply/冪等性round-tripを含む全113 testが合格した。
-- [x] (2026-08-12 07:24 JST) `HANDOFF-RELEASE-001`: 文書、CI接続済みresearch-side release gate、互換性証拠を確定し、`--require-schema-snapshot`付きgateを3回連続exit 0で確認した。検証済みcommitは外部公開・タグ作成なしで、人間承認後のpublicationへ引き渡せる状態である。
+- [x] (2026-08-12 07:24 JST) `HANDOFF-RELEASE-001`: 文書、CI接続済みresearch-side release gate、互換性証拠を確定し、`--require-schema-snapshot`付きgateを3回連続exit 0で確認した。検証済みhandoff拡張はmain commit `fb08b617eded3962826d913a4dd0832639d4c8c2`を対象にv1.1.0として公開済みである。
 
 ## Surprises & Discoveries
 
@@ -69,7 +69,7 @@ python3 tools/validate.py --check
 | 2026-08-11 | H5のproduction result試験は一時rootへtest-only schemaを注入し、固定scenarioの入力・期待値だけをGit管理する | 未公開のproduction schemaをresearchへ複製 | オフラインE2Eを再現しつつ、result契約の正本とclean commitを捏造しないため |
 | 2026-08-12 | H5のresearch-side release gateは外部schema未公開を`schema_snapshot_ready: false`として出力し、研究側の安全・互換性gateとは分離する | 未公開schemaを合格扱いにする、または全gateを停止する | 現時点の成果を継続検証しながら、production契約の未確定を隠さないため |
 | 2026-08-12 | production schema snapshot CLIはcommit不一致、dirty source、schema不正、保存先逸脱、異なる既存snapshotをすべて拒否する | 取得時の入力を暗黙補正する、または既存snapshotを上書きする | 外部契約の所有権・再現性・監査可能性を守るため |
-| 2026-08-12 | research-side handoff gateは通常CIで実行し、production schemaの未公開はpendingとして明示する | 外部schema待ちを理由に研究側の自動検証を無効化する | 現在確定している安全境界を継続検査し、未確定の外部契約だけを分離するため |
+| 2026-08-12 | research-side handoff gateは通常CIで実行し、production schema snapshotの欠落・改変は`--require-schema-snapshot`でfail closedする | 外部schema待ちを理由に研究側の自動検証を無効化する | 現在確定している安全境界を継続検査し、production-owned contractの版固定を監査可能にするため |
 | 2026-08-12 | result schema公開後もfeedback boundary probeはschema欠落を一時rootで再現する | 欠落result入力をschema未公開の代用にする | `FEEDBACK-INPUT`と`EXTERNAL-SCHEMA`を混同せず、snapshot有無に依存しないrelease gateにするため |
 
 ## Outcomes & Retrospective
@@ -86,7 +86,7 @@ python3 tools/validate.py --check
 
 H5のschema公開前段階では、`harmony-handoff` scenarioを使ってbundle manifestのpath・size・hash・file-set、PASS/FAIL/DEVIATION/CRITICAL result、fail-closed、後方互換性を研究側だけで検証し、production-owned schemaを捏造せずpendingとして扱った。その後の実schema取得・consumer E2E・release gate完了は次段落に記録する。
 
-Production result schemaのclean snapshot取得後、`HANDOFF-E2E-001`のrelease gateは`schema_snapshot_ready: true`で合格した。旧boundary probeを修正し、schema snapshotを一時的に除去したprobeが`EXTERNAL-SCHEMA`でfail-closedすること、result consumerのPASS/FAIL/DEVIATION/CRITICAL round-tripがschema 1.0.0で通ることを確認した。`HANDOFF-RELEASE-001`まで完了し、検証済みcommitは人間承認後のpublicationへ引き渡せる状態である。
+Production result schemaのclean snapshot取得後、`HANDOFF-E2E-001`のrelease gateは`schema_snapshot_ready: true`で合格した。旧boundary probeを修正し、schema snapshotを一時的に除去したprobeが`EXTERNAL-SCHEMA`でfail-closedすること、result consumerのPASS/FAIL/DEVIATION/CRITICAL round-tripがschema 1.0.0で通ることを確認した。`HANDOFF-RELEASE-001`まで完了し、v1.1.0はmain commit `fb08b617eded3962826d913a4dd0832639d4c8c2`へ公開済みである。
 
 ## Context and Orientation
 

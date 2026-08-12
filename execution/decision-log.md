@@ -28,3 +28,4 @@
 | 2026-08-11 | ED-022 | 明示承認後、v1.0.0を検証済みmain commit `d0f2df8d2e6b639d0c5a45104368943ebfb7d1e7`へ固定して公開し、release taskとstateをterminalへ更新する | 公開対象を検証済みcommitへ固定し、承認済み外部操作と完了記録を追跡可能にするため | GitHub Release v1.0.0、`execution/state.yaml` |
 | 2026-08-11 | ED-023 | プロトコルrepositoryと実プロジェクト成果物を分離し、生成物はプロジェクトID単位で外部のAgentic-Art-Outputへ保存する | canonical repositoryを再現可能なプロトコルの正本に保ち、デモ・実データ・生成graphの混入を防ぐため | AGENTS.md、README.md、docs/project-output-boundary.md |
 | 2026-08-12 | ED-024 | upstreamのresearch-request受理はcanonical request hashをproject内receiptへ保存し、受理projectを常にRESEARCH_ONLYで開始する | 同一依頼の再試行を安全に冪等化し、未完成のproduction handoffを受理時に生成せず、researchとproductionの責任境界を維持するため | `tools/accept_research_request.py`、`schemas/research-request*.schema.json` |
+| 2026-08-12 | ED-025 | v1.2.0はPR #38の検証済みsquash merge commit `a11d14b22323bdb7173839889b7b5a64754919f7`へ固定して公開する | upstream→research受理契約の公開対象と実装commitを一致させ、後から再現可能にするため | GitHub Release `v1.2.0` |
