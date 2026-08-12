@@ -1,5 +1,5 @@
 version: 2
-updated_at: "2026-08-12T07:24:00+09:00"
+updated_at: "2026-08-12T10:00:00+09:00"
 selection_policy: lowest_id_ready_with_dependencies_done
 allowed_statuses: [BACKLOG, READY, IN_PROGRESS, BLOCKED, DONE]
 tasks:
@@ -189,3 +189,27 @@ tasks:
     status: DONE
     depends_on: [HANDOFF-E2E-001]
     acceptance: Documentation and release gates pass three consecutive times and the verified commit is ready for explicit human-approved publication.
+  - id: INBOUND-DESIGN-001
+    milestone: I0
+    title: Define upstream research request contract
+    status: DONE
+    depends_on: [HANDOFF-RELEASE-001]
+    acceptance: Versioned request schema, source/data boundary, materialization, idempotency, and rejection rules are documented.
+  - id: INBOUND-ACCEPT-001
+    milestone: I1
+    title: Implement research request acceptance
+    status: DONE
+    depends_on: [INBOUND-DESIGN-001]
+    acceptance: Dry-run and apply materialize a valid RESEARCH_ONLY project with receipt hash and fail closed on unsafe or conflicting input.
+  - id: INBOUND-TEST-001
+    milestone: I1
+    title: Add inbound request contract tests and operations docs
+    status: DONE
+    depends_on: [INBOUND-ACCEPT-001]
+    acceptance: Normal, schema, security, collision, dry-run, and idempotency cases are deterministic and documented.
+  - id: INBOUND-RELEASE-001
+    milestone: I2
+    title: Run inbound request release gate
+    status: DONE
+    depends_on: [INBOUND-TEST-001]
+    acceptance: Full validation, security, docs, and CI-equivalent gates pass three times before explicit publication approval.

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/research-request-receipt.schema.json",
+  "title": "Accepted research request receipt",
+  "type": "object",
+  "required": ["version", "request_id", "project_id", "request_sha256", "accepted_at"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {"const": 1},
+    "request_id": {"type": "string", "pattern": "^RR[0-9]{3,}$"},
+    "project_id": {"$ref": "common.schema.json#/$defs/projectId"},
+    "request_sha256": {"$ref": "common.schema.json#/$defs/sha256"},
+    "accepted_at": {"$ref": "common.schema.json#/$defs/timestamp"}
+  }
+}

@@ -37,6 +37,8 @@
         "production_handoff": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
         "production_change_requests": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
         "production_feedback_imports": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+        "research_request": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+        "research_request_receipt": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
         "completion_report": {"$ref": "common.schema.json#/$defs/nonEmptyString"}
       }
     },

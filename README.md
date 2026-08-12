@@ -34,6 +34,18 @@ MVP、個人証拠境界、品質評価、追加のリポジトリ安全検査�
 
 人間へ「次に何をしますか」と聞かず、キューの次タスクへ進む。人間確認が必要なのは、設計仕様書 §6.2 の条件だけである。
 
+## 上流セッションからの研究依頼
+
+別セッションまたは別リポジトリからは、会話の貼り付けではなく、`schemas/research-request.schema.json` に適合するYAML/JSONを渡す。受け入れはdry-runで確認してからapplyする。
+
+```bash
+python3 tools/accept_research_request.py path/to/research-request.yaml --dry-run
+python3 tools/accept_research_request.py path/to/research-request.yaml --apply
+python3 tools/validate.py --project project/<slug> --check
+```
+
+受理されたprojectは必ず `RESEARCH_ONLY` で開始する。同じ依頼の再実行はreceiptのcanonical SHA-256で `ALREADY_APPLIED` になり、既存projectを変更しない。productionへの引き渡しは、研究・判断・試作計画を完了した後に「制作引き渡し（PRODUCTION_HANDOFF）」の手順へ進む。入力契約と拒否境界の詳細は `docs/20260812-agentic-art-research-inbound-request-extension-specification.md` を参照する。
+
 ## ローカル実行
 
 プロトコル自体の検証は、このリポジトリで実行する。

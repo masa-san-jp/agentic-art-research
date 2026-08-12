@@ -81,11 +81,23 @@ SCHEMA_CASES = {
         "invalid": "research-state-invalid-task-status.json",
         "rule": "enum",
     },
+    "research-request": {
+        "valid": "research-request.yaml",
+        "invalid": "research-request-unknown-field.yaml",
+        "rule": "additionalProperties",
+    },
+    "research-request-receipt": {
+        "valid": "research-request-receipt.json",
+        "invalid": "research-request-receipt-invalid-version.json",
+        "rule": "const",
+    },
 }
 
 
 def load_json(path: Path) -> dict:
     with path.open(encoding="utf-8") as handle:
+        if path.suffix in {".yaml", ".yml"}:
+            return yaml.safe_load(handle)
         return json.load(handle)
 
 

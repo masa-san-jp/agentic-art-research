@@ -47,6 +47,17 @@ python3 tools/audit.py
 個人証拠や非公開音声はリポジトリへコピーせず、許可されたアダプタの不透明URI、ハッシュ、メタデータ、派生シグナルだけを扱う。
 権利不明素材は採用せず、理由付きの棄却またはギャップとして記録する。
 
+上流セッションまたは別リポジトリから依頼を受ける場合は、まずschema適合と衝突だけをdry-runで確認する。
+
+```bash
+python3 tools/accept_research_request.py path/to/research-request.yaml --dry-run
+python3 tools/accept_research_request.py path/to/research-request.yaml --apply \
+  --accepted-at 2026-08-12T09:00:00+09:00
+python3 tools/validate.py --project project/<slug> --check
+```
+
+受理CLIは外部sourceを取得せず、production repoへ書き込まず、`RESEARCH_ONLY` projectとcanonical SHA-256 receiptだけを作る。同一依頼の再実行は `ALREADY_APPLIED` になり、異なる内容の同一IDや既存projectは拒否する。入力契約は `docs/20260812-agentic-art-research-inbound-request-extension-specification.md` にある。
+
 ## Incident response
 
 検証または安全検査が失敗した場合は、入力ファイルとエラーを保存し、原因を推測で補正しない。
