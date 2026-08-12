@@ -1,0 +1,40 @@
+schema_version: 1.0.0
+request_id: RR001
+requested_at: '2026-08-12T09:00:00+09:00'
+source:
+  kind: SESSION
+  system: upstream-art-brief
+  repository: null
+  commit: null
+  artifact_uri: urn:example:upstream:RR001
+  session_id: session-001
+project:
+  slug: harmony-study
+  title: Harmony Study
+  creator_id: creator/test
+intent:
+  purpose: Explore how harmony is experienced through layered visual rhythm.
+  creative_question: How can a visual work make changing harmony perceptible?
+  intended_use: Research and prototype planning for a new artwork.
+  audience_experience: The audience should notice gradual shifts rather than a single climax.
+  medium_materials: [paper, light]
+constraints:
+  deadline: '2026-10-01'
+  budget:
+    amount: 100000
+    currency: JPY
+  publication_scope: PROJECT_INTERNAL
+  allowed_source_scopes: [public, external-knowledge]
+  prohibited_actions: [publish, send, purchase, contract, delete]
+  technical: [The prototype must be reproducible offline.]
+  physical: []
+  rights: [Use only sources with a reviewed rights status.]
+  safety: [Review electrical and installation safety before making.]
+references:
+  - label: Public reference placeholder
+    uri: urn:example:reference:001
+    rights_status: UNKNOWN
+open_questions: ["Which material best preserves the intended rhythm?"]
+data_boundary:
+  classification: PROJECT_INTERNAL
+  raw_data_included: false

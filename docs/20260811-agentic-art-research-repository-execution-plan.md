@@ -1,7 +1,7 @@
 # Agentic Art Research リポジトリ完成実行計画
 
 - 作成日: 2026-08-11
-- 状態: COMPLETE
+- 状態: COMPLETE（v1.2 inbound request拡張のrelease gate完了、公開は別承認）
 - 対応仕様: `docs/20260811-agentic-art-research-system-design-specification.md`
 - 実行対象: GPT-5.6 LunaまたはClaude Sonnet級の、ファイル編集・コマンド実行・Git操作が可能なエージェント
 
@@ -64,6 +64,9 @@ python3 tools/bundle.py project/harmony-study --audience human
 - [x] M4: 状態機械と自律Orchestratorを実装。
 - [x] M5: `art-history-notes` と個人証拠保管先のアダプタを実装。
 - [x] M6: 評価、セキュリティ、回帰、リリース判定を完成。
+- [x] (2026-08-12) I0: 上流セッション／別リポジトリからresearchへ依頼を受ける入力契約を追加。
+- [x] (2026-08-12) I1: `research-request` のschema、受け入れCLI、冪等性、安全境界、fixture、運用文書を実装。
+- [x] (2026-08-12) I2: inbound request release gateを3回連続で実行し、公開前の検証済み変更として固定。
 
 ## Surprises & Discoveries
 
@@ -88,6 +91,9 @@ python3 tools/bundle.py project/harmony-study --audience human
 - 2026-08-11: MVPのrelease gateはローカルで再実行可能なチェックと公開CI run metadataまでを自動化し、GitHub Releaseの作成・告知は外部公開として分離する。チェック成功だけでは公開承認を推測しない。
 - 2026-08-11: v1.0.0公開後のhardeningを最新mainへ再適用する際、重複した機能実装の履歴をマージせず、追加差分だけをmain基点へ移植してリリース差分を限定した。
 - 2026-08-11: 明示承認後のGitHub Release v1.0.0は、検証済みmain commit `d0f2df8d2e6b639d0c5a45104368943ebfb7d1e7`へ固定して公開し、公開後に完了状態を記録する。承認前後の境界を分離することで、公開対象と完了記録を追跡可能にした。
+- 2026-08-12: 上流入力を会話やローカルパスで受けると再開性・安全性・冪等性を検証できないため、`research-request`をYAML/JSONのversioned contractとして受け付け、受理後は必ず`RESEARCH_ONLY` projectへmaterializeする。
+- 2026-08-12: 既存のproject雛形は研究専用とproduction handoffの両方の空ファイルを持つため、受理時に`PRODUCTION_HANDOFF`へ切り替えると未完成handoffを作る。受理CLIは常に`RESEARCH_ONLY`を維持し、productionへの切替を後段へ委ねる。
+- 2026-08-12: requestの再適用はrequest本文のcanonical SHA-256とproject内receiptで判定し、accepted_atの違いを既存projectへ反映しない。これにより再試行が既存intakeを変更しない。
 
 ## Decision Log
 
@@ -116,10 +122,16 @@ python3 tools/bundle.py project/harmony-study --audience human
 | 2026-08-11 | ED-024 | DOCS-001の運用文書は必須見出しを設定ファイルで宣言し、存在・見出し・リポジトリ内パスを専用CLIで検査する | 新しいエージェントが会話履歴なしで導入・通常運用・障害対応・起動を再現できることをCIで保証するため |
 | 2026-08-11 | ED-025 | RELEASE-002は追加hardening検査をrelease checkへ含め、既存の公開・タグ作成なしのrelease契約を維持する | security、chaos、documentationの実装後も最終判定の抜けを作らず、外部公開の人間承認境界を越えないため |
 | 2026-08-11 | 明示承認後、v1.0.0を検証済みmain commit `d0f2df8d2e6b639d0c5a45104368943ebfb7d1e7`へ固定して公開し、release taskとstateをterminalへ更新する | 公開対象を検証済みcommitへ固定し、承認済み外部操作と完了記録を追跡可能にするため |
+| 2026-08-12 | 上流依頼は`research-request` schemaと`accept_research_request.py`で受け、入力のhashをreceiptへ固定する。受理projectは`RESEARCH_ONLY`から開始し、同一hashのみ冪等再適用を許可する | upstream→researchの境界で未知フィールド、raw/private data、project衝突をfail closedし、production handoffと責任を混ぜないため |
+| 2026-08-12 | requestの受理結果はproject内のYAML receiptに保存し、グローバルな受理DBや`data/`へ書かない | canonical project単位で再開でき、protocol repositoryへ実案件を常設しない境界を維持するため |
 
 ## Outcomes & Retrospective
 
 M0/M1a、`SCHEMA-001`、`VALIDATE-001`、`SECURITY-001`、`VALIDATE-002`、`TEST-001`、`GRAPH-001`、`BUNDLE-001`、`IMPACT-001`、`AUDIT-001`、`SAMPLE-001`、`COMPLETE-001`、`RUNTIME-001`、`RUNTIME-002`、`RUNTIME-003`、`RUNTIME-004`、`INTEGRATION-001`、`INTEGRATION-002`、`EVAL-002`、`RELEASE-001`のローカルrelease gate・CI evidence・GitHub Release公開まで完了した。プロジェクト雛形の生成、Draft 2020-12スキーマ検証、JSONL行番号付きエラー、YAML重複キー検出、機密・秘密境界検査、参照整合性、状態機械と試験接続の検査、blocking ruleの正常・失敗fixtureマトリクス、プロジェクトスコープで決定的な依存グラフ、4 audienceの範囲制限付きbundle生成、upstream/downstreamのJSON・Markdown影響分析、出典偏り・鮮度・弱い判断・未実施試験の非ブロッキング監査、固定offline fixtureからの`COMPLETE_WITH_GAPS` package再生成、両terminal statusの決定論的completion生成、状態機械とrun-log replay、依存DAG・lease・bounded retry・failure classification・resume、検索・資料・失敗・飽和の設定上限と質問終端化、task・role固有source・制約・受入試験だけを含むcontext pack、source commit固定のart-history-notes read-only adapter、opaque URI・ハッシュ・承認参照・制御語彙シグナルだけを通すprivate evidence adapter、固定offline fixtureの期待トレース・runtime再開・privacy境界・監査を含むE2E評価、仕様MVPチェック10項目、成功CI 3件のevidence、CI初期版が実行可能になる。GitHub Release v1.0.0は検証済みmain commit `d0f2df8d2e6b639d0c5a45104368943ebfb7d1e7`へ固定され、stateはterminalとなった。追加の変更は新しいreleaseまたはpost-release fixとして再開する。
+
+v1.2 inbound request拡張では、上流セッション／別リポジトリが会話履歴なしで研究依頼を渡せるversioned contractを追加する。正本仕様は`docs/20260812-agentic-art-research-inbound-request-extension-specification.md`、schemaは`schemas/research-request.schema.json`、受理CLIは`tools/accept_research_request.py`である。受理projectを研究専用で開始し、production handoffは既存H系の後段として維持する。
+
+I0/I1では、入力schemaとreceipt schema、schema-aware validator接続、dry-run/applyの受理CLI、canonical hashによる冪等性、project衝突・同一ID改変・秘密・local pathのfail-closed検査、intake派生物、fixture、CLIテスト、README/operations/schema referenceを追加した。I2の全ゲートも3回連続で合格し、次はこの検証済み変更のcommit/pushまたは公開判断である。
 
 v1.0.1候補では、symlink・path traversal・unsafe archive検査、停止・破損・中断・重複のchaos検査、運用文書契約を追加し、release check 11項目と67テストをmain基点で再確認した。
 

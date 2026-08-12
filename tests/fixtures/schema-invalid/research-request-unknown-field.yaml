@@ -1,0 +1,32 @@
+schema_version: 1.0.0
+request_id: RR001
+requested_at: '2026-08-12T09:00:00+09:00'
+source:
+  kind: SESSION
+  system: upstream-art-brief
+project:
+  slug: harmony-study
+  title: Harmony Study
+  creator_id: null
+intent:
+  purpose: Purpose
+  creative_question: Question
+  intended_use: Use
+  audience_experience: null
+  medium_materials: []
+constraints:
+  deadline: null
+  budget: null
+  publication_scope: PROJECT_INTERNAL
+  allowed_source_scopes: [public]
+  prohibited_actions: []
+  technical: []
+  physical: []
+  rights: []
+  safety: []
+references: []
+open_questions: []
+data_boundary:
+  classification: PROJECT_INTERNAL
+  raw_data_included: false
+unexpected: reject-me

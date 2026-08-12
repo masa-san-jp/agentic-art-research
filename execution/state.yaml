@@ -1,8 +1,8 @@
 version: 1
-updated_at: "2026-08-11T20:04:00+09:00"
-current_milestone: M6
+updated_at: "2026-08-12T10:00:00+09:00"
+current_milestone: I2
 next_task: null
-last_completed_task: RELEASE-002
+last_completed_task: INBOUND-RELEASE-001
 terminal: true
 blocked_by: []
 resume_from:
@@ -11,8 +11,8 @@ resume_from:
     - docs/20260811-agentic-art-research-system-design-specification.md
     - docs/20260811-agentic-art-research-repository-execution-plan.md
     - execution/task-queue.yaml
-  action: v1.0.0 is published; v1.0.1 post-hardening release candidate is prepared from current main.
+  action: v1.2 inbound request extension is gate-verified. Commit/push and public release remain separate explicit operations.
 last_verification:
   result: PASS
-  command: /Users/masa/マイドライブ/Dev/agentic-art-research/.venv/bin/python tools/release_check.py --offline-fixture tests/fixtures/harmony --ci-evidence execution/ci-evidence.json
-  detail: 67 tests passed; release check passed three times with 11 checks including security, chaos, and operations documentation.
+  command: /tmp/aar-docs-venv/bin/python -m unittest discover -s tests; tools/validate.py --check; tools/security_check.py --check; tools/chaos_check.py; tools/docs_check.py --check; tools/build_graph.py --check; tools/release_check.py; tools/handoff_release_check.py --require-schema-snapshot
+  detail: 119 tests and all listed gates passed three consecutive times; release and handoff reports were byte-identical across runs.

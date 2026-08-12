@@ -38,6 +38,8 @@ SCHEMA_FOR_YAML_COLLECTION = {
 }
 SCHEMA_FOR_YAML_OBJECT = {
     "05_production/production-handoff.yaml": "production-handoff",
+    "00_intake/research-request.yaml": "research-request",
+    "00_intake/research-request-receipt.yaml": "research-request-receipt",
 }
 SCHEMA_FOR_JSON = {
     "07_runtime/research-state.json": "research-state",
@@ -54,6 +56,8 @@ DOMAIN_SCHEMAS = (
     "hypothesis-comparison",
     "prototype-plan",
     "production-handoff",
+    "research-request",
+    "research-request-receipt",
     "research-state",
     "completion-report",
 )

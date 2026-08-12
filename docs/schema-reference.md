@@ -39,6 +39,8 @@ production hypothesis + prototype plan + requirement + acceptance test → produ
 
 制作引き渡し拡張のschema正本は`production-hypothesis.schema.json`、`hypothesis-comparison.schema.json`、`prototype-plan.schema.json`、`production-handoff.schema.json`とする。production result schemaはproduction repoが正本であり、公開前にconsumer側で仮定義しない。
 
+上流からresearchへ入る依頼は `schemas/research-request.schema.json`、受理記録は `schemas/research-request-receipt.schema.json` が正本である。受理後のprojectには入力のうちschemaで許可された派生情報だけを `00_intake/` に保存し、原文、秘密、ローカルパス、`PRIVATE_RAW`、`RESTRICTED` は保存しない。
+
 `MAJOR`または`CRITICAL`の制作仮説上の不確実性は、少なくとも一つの`prototype_plan_ids`か、空でない`external_validation_reason`を持つ。handoffの`prototype_plan_ids`自体は、重大な不確実性がない場合または外部検証へ明示的に委ねる場合は空配列でよい。`open_gaps`は各項目に`blocking`を持ち、`READY` handoffではblocking gapを許可しない。
 
 handoff hashは`tools/canonical.py`のcanonical JSON（`integrity`除外、sorted keys、compact UTF-8）から再計算し、payloadは`config/handoff-policy.yaml`の262,144 bytes上限を超えてはならない。
