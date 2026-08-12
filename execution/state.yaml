@@ -11,7 +11,7 @@ resume_from:
     - docs/20260811-agentic-art-research-system-design-specification.md
     - docs/20260811-agentic-art-research-repository-execution-plan.md
     - execution/task-queue.yaml
-  action: v1.2 inbound request extension is gate-verified. Commit/push and public release remain separate explicit operations.
+  action: v1.2 inbound request extension is merged and publicly released. Wait for the first upstream research-request artifact; no implementation task is queued.
 last_verification:
   result: PASS
   command: /tmp/aar-docs-venv/bin/python -m unittest discover -s tests; tools/validate.py --check; tools/security_check.py --check; tools/chaos_check.py; tools/docs_check.py --check; tools/build_graph.py --check; tools/release_check.py; tools/handoff_release_check.py --require-schema-snapshot

@@ -131,7 +131,7 @@ M0/M1a、`SCHEMA-001`、`VALIDATE-001`、`SECURITY-001`、`VALIDATE-002`、`TEST
 
 v1.2 inbound request拡張では、上流セッション／別リポジトリが会話履歴なしで研究依頼を渡せるversioned contractを追加する。正本仕様は`docs/20260812-agentic-art-research-inbound-request-extension-specification.md`、schemaは`schemas/research-request.schema.json`、受理CLIは`tools/accept_research_request.py`である。受理projectを研究専用で開始し、production handoffは既存H系の後段として維持する。
 
-I0/I1では、入力schemaとreceipt schema、schema-aware validator接続、dry-run/applyの受理CLI、canonical hashによる冪等性、project衝突・同一ID改変・秘密・local pathのfail-closed検査、intake派生物、fixture、CLIテスト、README/operations/schema referenceを追加した。I2の全ゲートも3回連続で合格し、次はこの検証済み変更のcommit/pushまたは公開判断である。
+I0/I1では、入力schemaとreceipt schema、schema-aware validator接続、dry-run/applyの受理CLI、canonical hashによる冪等性、project衝突・同一ID改変・秘密・local pathのfail-closed検査、intake派生物、fixture、CLIテスト、README/operations/schema referenceを追加した。I2の全ゲートも3回連続で合格し、v1.2.0としてmain commit `a11d14b22323bdb7173839889b7b5a64754919f7`へ公開済みである。
 
 v1.0.1候補では、symlink・path traversal・unsafe archive検査、停止・破損・中断・重複のchaos検査、運用文書契約を追加し、release check 11項目と67テストをmain基点で再確認した。
 

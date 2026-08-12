@@ -1,6 +1,6 @@
-# v1.0.1 release checklist
+# v1.2.0 release checklist
 
-このチェックリストは、公開・タグ作成・GitHub Releaseを実行せず、リポジトリ内のMVP完了条件だけを確認する。
+このチェックリストは、v1.2.0の公開対象を再現可能な検証済みmain commitへ固定するための記録である。チェック実行自体は公開・タグ作成・GitHub Releaseを行わない。
 
 ## 判定
 
@@ -30,11 +30,10 @@ python3 tools/handoff_release_check.py \
 ```
 
 このgateの`passed: true`はresearch側のbundle、fail-closed、後方互換性を示す。
-`schema_snapshot_ready: false`はproduction-owned result schema未公開を明示する状態であり、
-`--require-schema-snapshot`を付けた場合だけ失敗として扱う。production schemaをresearch側で合成してはならない。
-通常のGitHub Actions検証でもこのresearch-side gateを実行し、production schema未公開の状態は明示的なpendingとして検査する。
+production-owned result schemaのsnapshotは登録済みであり、release判定では`--require-schema-snapshot`を付けて検査する。production schemaをresearch側で合成してはならない。
+通常のGitHub Actions検証でもこのresearch-side gateを実行し、schema snapshotの欠落・改変はfail-closedで検査する。
 
-production側のclean commitが公開された後は、まず次でsnapshotとprovenanceを登録する。
+production側のclean commit `fb15f32bf1eef0155c853c4b7c4b94df6b1bd78b`公開後、次でsnapshotとprovenanceを登録済みである。
 
 ```bash
 python3 tools/snapshot_production_schema.py \
@@ -50,5 +49,4 @@ python3 tools/snapshot_production_schema.py \
 
 ## 境界
 
-このタスクでは、外部公開、タグ作成、GitHub Release、配布、購入、契約、送信は行わない。
-それらは設計仕様書 §6.2 の人間承認対象である。
+このチェックリストは外部送信、配布、購入、契約を行わない。公開Releaseの作成は、このgateの成功後に人間承認を受けて実施し、v1.2.0では検証済みmain commit `a11d14b22323bdb7173839889b7b5a64754919f7`へ公開済みである。
