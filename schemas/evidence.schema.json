@@ -21,6 +21,8 @@
     "content_hash": {"$ref": "common.schema.json#/$defs/sha256"},
     "rights_status": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
     "sensitivity": {"$ref": "common.schema.json#/$defs/accessClass"},
+    "reference_categories": {"$ref": "common.schema.json#/$defs/referenceCategories"},
+    "access_url": {"$ref": "common.schema.json#/$defs/accessUrl"},
     "redistribution": {"enum": ["allowed", "prohibited", "conditional", "unknown"]},
     "related_projects": {
       "type": "array",

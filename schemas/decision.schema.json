@@ -27,6 +27,8 @@
     "reason": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
     "uncertainty": {"type": ["string", "null"], "minLength": 1},
     "review_trigger": {"type": ["string", "null"], "minLength": 1},
+    "reference_categories": {"$ref": "common.schema.json#/$defs/referenceCategories"},
+    "access_url": {"$ref": "common.schema.json#/$defs/accessUrl"},
     "authority": {"enum": ["agent-recommended", "human-approved", "policy-derived"]},
     "status": {"$ref": "common.schema.json#/$defs/decisionStatus"}
   },

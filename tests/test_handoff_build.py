@@ -130,6 +130,14 @@ class HandoffBuildContractTest(unittest.TestCase):
         self.assertIn("schemas/production-handoff.schema.json", first)
         self.assertNotIn("artifacts/evidence-ledger.jsonl", first)
         self.assertNotIn(b"source_location", first["artifacts/source-ref-index.yaml"])
+        source_index = yaml.safe_load(first["artifacts/source-ref-index.yaml"])
+        references = {item["id"]: item for item in source_index["references"]}
+        self.assertNotIn("records", source_index)
+        self.assertTrue(references["DC001"]["record_hash"].startswith("sha256:"))
+        self.assertNotIn("record_sha256", references["DC001"])
+        self.assertEqual(["CONCEPT"], references["DC001"]["reference_categories"])
+        self.assertEqual("https://example.invalid/references/concept", references["DC001"]["access_url"])
+        self.assertEqual(["METHOD", "VISUAL"], references["IN001"]["reference_categories"])
         self.assertFalse(any(b"/Users/" in content or b"/private/" in content for content in first.values()))
 
         export_handoff(root, "project/handoff-build", output, allow_dirty=True)
@@ -184,6 +192,17 @@ class HandoffBuildContractTest(unittest.TestCase):
 
         with self.assertRaisesRegex(HandoffExportError, "absolute or local path"):
             export_handoff(root, "project/handoff-build", root / "data" / "handoffs" / "unsafe", allow_dirty=True)
+
+    def test_export_rejects_unsafe_reference_urls(self) -> None:
+        root, project = self.make_project()
+        decision_path = project / "04_decisions" / "decision-log.yaml"
+        decision = yaml.safe_load(decision_path.read_text(encoding="utf-8"))
+        decision["decisions"][0]["access_url"] = "https://user:secret@example.invalid/reference"
+        decision_path.write_text(yaml.safe_dump(decision, sort_keys=False, allow_unicode=True), encoding="utf-8")
+        build_handoff(root, "project/handoff-build", generated_at=self.generated_at, research_commit=self.commit)
+
+        with self.assertRaisesRegex(HandoffExportError, "safe HTTPS URL"):
+            export_handoff(root, "project/handoff-build", root / "data" / "handoffs" / "unsafe-url", allow_dirty=True)
 
     def test_target_resolution_rejects_escape(self) -> None:
         root, _ = self.make_project()

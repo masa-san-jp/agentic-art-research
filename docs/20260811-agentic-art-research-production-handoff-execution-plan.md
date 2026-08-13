@@ -27,6 +27,7 @@ python3 tools/validate.py --check
 - [x] (2026-08-11 22:25 JST) `FEEDBACK-IMPORT-001`: production-owned schema snapshotの未公開状態をfail-closedで維持しつつ、snapshot取得後に実行できるdry-run、取込、冪等性、部分適用からの復旧、影響分析、MAJOR再開、CRITICAL人間承認待ちを実装。全90 test、validator、graph、docs check、diff checkが合格。
 - [x] (2026-08-12 07:24 JST) `HANDOFF-E2E-001`: `tests/fixtures/harmony-handoff/scenario.yaml`を正本メタデータとして固定し、handoff bundleの自己完結性・改変検出、PASS/FAIL/DEVIATION/CRITICAL result、重複、hash/schema mismatch、破損JSONL、graph/impact還流、RESEARCH_ONLY後方互換性をresearch側で検証した。Production clean commit `fb15f32bf1eef0155c853c4b7c4b94df6b1bd78b`からresult schema snapshotを取得し、release gateのschema boundary probeを修正した。snapshot provenance、schema/hash compatibility、fail-closed、実schemaを使うconsumerのdry-run/apply/冪等性round-tripを含む全113 testが合格した。
 - [x] (2026-08-12 07:24 JST) `HANDOFF-RELEASE-001`: 文書、CI接続済みresearch-side release gate、互換性証拠を確定し、`--require-schema-snapshot`付きgateを3回連続exit 0で確認した。検証済みhandoff拡張はmain commit `fb08b617eded3962826d913a4dd0832639d4c8c2`を対象にv1.1.0として公開済みである。
+- [ ] (2026-08-14) `ISSUE-35-REFERENCE-CONTRACT`: source-ref indexのcanonical keysを`references`/`record_hash`へ統一し、正本レコードの明示的な公開参照メタデータを安全にexportする。Production側の受理実装と実bundle integration testを別PRで接続する。
 
 ## Surprises & Discoveries
 

@@ -30,6 +30,18 @@
       "type": "string",
       "pattern": "^sha256:[0-9a-f]{64}$"
     },
+    "referenceCategory": {
+      "enum": ["CONCEPT", "VISUAL", "METHOD", "MATERIAL", "CONTEXT", "OTHER"]
+    },
+    "referenceCategories": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/referenceCategory"},
+      "uniqueItems": true
+    },
+    "accessUrl": {
+      "type": ["string", "null"],
+      "pattern": "^https://[^\\s?#]+$"
+    },
     "accessClass": {
       "enum": ["PRIVATE_RAW", "PRIVATE_DERIVED", "PROJECT_INTERNAL", "PUBLIC_CITABLE", "RESTRICTED"]
     },

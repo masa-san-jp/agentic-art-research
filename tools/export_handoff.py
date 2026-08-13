@@ -9,6 +9,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import yaml
 
@@ -23,6 +24,7 @@ ABSOLUTE_PATH_PATTERN = re.compile(
     r"(?:^|[\s\"'(=:])(?:/(?!/)\S+|[A-Za-z]:[\\/]\S*|~[\\/]\S*|file://\S+)",
     re.IGNORECASE,
 )
+REFERENCE_CATEGORIES = {"CONCEPT", "VISUAL", "METHOD", "MATERIAL", "CONTEXT", "OTHER"}
 
 
 class HandoffExportError(ValueError):
@@ -53,6 +55,24 @@ def _summary(kind: str, record: dict[str, Any]) -> str:
     return " ".join(str(value).split())[:280]
 
 
+def _reference_metadata(kind: str, record: dict[str, Any]) -> dict[str, Any]:
+    """Return only explicit, public reference metadata from a canonical record."""
+    categories = record.get("reference_categories", [])
+    if not isinstance(categories, list) or any(category not in REFERENCE_CATEGORIES for category in categories):
+        raise HandoffExportError(f"{kind} reference_categories must contain only known categories")
+    access_url = record.get("access_url")
+    if access_url is not None:
+        if not isinstance(access_url, str) or not access_url:
+            raise HandoffExportError(f"{kind} access_url must be a non-empty HTTPS URL or null")
+        parsed = urlsplit(access_url)
+        if parsed.scheme != "https" or not parsed.netloc or parsed.username or parsed.password or parsed.query or parsed.fragment:
+            raise HandoffExportError(f"{kind} access_url must be a safe HTTPS URL without credentials, query, or fragment")
+    return {
+        "reference_categories": sorted(set(categories)),
+        "access_url": access_url,
+    }
+
+
 def source_ref_index(sources: HandoffSources, handoff: dict[str, Any]) -> dict[str, Any]:
     maps = _source_maps(sources)
     source_fields = {
@@ -79,11 +99,12 @@ def source_ref_index(sources: HandoffSources, handoff: dict[str, Any]) -> dict[s
                     "id": record_id,
                     "kind": kind,
                     "source_path": source_path,
-                    "record_sha256": canonical_sha256(record),
+                    "record_hash": canonical_sha256(record),
                     "summary": _summary(kind, record),
+                    **_reference_metadata(kind, record),
                 }
             )
-    return {"source_project": sources.project_id, "records": sorted(records, key=lambda item: (item["kind"], item["id"]))}
+    return {"source_project": sources.project_id, "references": sorted(records, key=lambda item: (item["kind"], item["id"]))}
 
 
 def _git_state(root: Path) -> bool | None:
