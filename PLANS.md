@@ -28,7 +28,7 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 
 ### Progress
 
-- [x] `HANDOFF-REFERENCE-CONTRACT-001`: source-ref indexのProducer/Consumer契約をResearch側から公開する。Production側Issue #35/#37の前提であり、別repoの実装・mergeは行わない。120 testとvalidatorが合格。
+- [x] `HANDOFF-REFERENCE-CONTRACT-001`: Issue #43のsource-ref Producer/Consumer契約をResearch側から公開する。Production consumerの実装・mergeは別repoの責務として行わない。120 testとvalidatorが合格。
 
 チェックボックスとUTCまたはJST日時。未完了、部分完了、完了を正確に表す。
 

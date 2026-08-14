@@ -219,8 +219,8 @@ tasks:
     status: DONE
     depends_on: [HANDOFF-RELEASE-001]
     acceptance: Source-ref index uses references and record_hash, with canonical non-zero hashes, and exporter tests cover normal output plus prohibited evidence boundaries.
-    issue_refs: ["agentic-art-orchestration#35", "agentic-art-orchestration#37"]
+    issue_refs: ["agentic-art-research#43", "agentic-art-orchestration#43"]
     checks:
       - python3 -m unittest tests.test_handoff_build.HandoffBuildContractTest.test_export_source_ref_index_uses_contract_keys_and_canonical_hashes
-      - python3 -m unittest tests.test_handoff_build.HandoffBuildContractTest.test_export_rejects_unsafe_production_reference_url
+      - python3 -m unittest tests.test_handoff_build.HandoffBuildContractTest.test_export_rejects_quoted_local_paths_in_public_artifacts
       - python3 tools/validate.py --check
