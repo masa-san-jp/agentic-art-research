@@ -9,6 +9,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import yaml
 
@@ -27,6 +28,9 @@ ABSOLUTE_PATH_PATTERN = re.compile(
 
 class HandoffExportError(ValueError):
     """Raised when a handoff bundle cannot be exported safely."""
+
+
+REFERENCE_CATEGORIES = {"CONCEPT", "VISUAL", "METHOD", "MATERIAL", "INSTALLATION", "OTHER"}
 
 
 def _sha256_bytes(value: bytes) -> str:
@@ -53,6 +57,23 @@ def _summary(kind: str, record: dict[str, Any]) -> str:
     return " ".join(str(value).split())[:280]
 
 
+def _reference_metadata(kind: str, record: dict[str, Any]) -> tuple[list[str], str | None]:
+    categories = record.get("reference_categories", [])
+    if not isinstance(categories, list) or not all(isinstance(value, str) for value in categories):
+        raise HandoffExportError(f"{kind} {record.get('id')!r} reference_categories must be a list of category IDs")
+    unknown = sorted(set(categories) - REFERENCE_CATEGORIES)
+    if unknown:
+        raise HandoffExportError(f"{kind} {record.get('id')!r} has unknown reference categories: {', '.join(unknown)}")
+    access_url = record.get("access_url")
+    if access_url is not None:
+        if not isinstance(access_url, str) or not access_url or any(character.isspace() for character in access_url):
+            raise HandoffExportError(f"{kind} {record.get('id')!r} access_url must be a stable HTTPS URL without whitespace")
+        parsed = urlsplit(access_url)
+        if parsed.scheme != "https" or not parsed.hostname or parsed.query or parsed.fragment or parsed.username or parsed.password:
+            raise HandoffExportError(f"{kind} {record.get('id')!r} access_url must not contain query, fragment, or credentials")
+    return list(categories), access_url
+
+
 def source_ref_index(sources: HandoffSources, handoff: dict[str, Any]) -> dict[str, Any]:
     maps = _source_maps(sources)
     source_fields = {
@@ -74,6 +95,7 @@ def source_ref_index(sources: HandoffSources, handoff: dict[str, Any]) -> dict[s
                 raise HandoffExportError(
                     f"handoff source_refs.{field} includes prohibited evidence classification {record.get('sensitivity')!r}"
                 )
+            categories, access_url = _reference_metadata(kind, record)
             records.append(
                 {
                     "id": record_id,
@@ -81,6 +103,8 @@ def source_ref_index(sources: HandoffSources, handoff: dict[str, Any]) -> dict[s
                     "source_path": source_path,
                     "record_sha256": canonical_sha256(record),
                     "summary": _summary(kind, record),
+                    "reference_categories": categories,
+                    "access_url": access_url,
                 }
             )
     return {"source_project": sources.project_id, "records": sorted(records, key=lambda item: (item["kind"], item["id"]))}

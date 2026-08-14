@@ -8,5 +8,7 @@ decisions:
     reason: The two sources support a perceptual rule while the opposing hypothesis remains explicit.
     uncertainty: Venue lighting may alter the perceived interval.
     review_trigger: Fail the frame review under the target lighting condition.
+    reference_categories: [CONCEPT]
+    access_url: https://example.com/references/concept
     authority: agent-recommended
     status: ADOPTED

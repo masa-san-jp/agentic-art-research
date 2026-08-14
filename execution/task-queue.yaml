@@ -1,5 +1,5 @@
-version: 2
-updated_at: "2026-08-12T10:00:00+09:00"
+version: 3
+updated_at: "2026-08-14T00:00:00+09:00"
 selection_policy: lowest_id_ready_with_dependencies_done
 allowed_statuses: [BACKLOG, READY, IN_PROGRESS, BLOCKED, DONE]
 tasks:
@@ -213,3 +213,14 @@ tasks:
     status: DONE
     depends_on: [INBOUND-TEST-001]
     acceptance: Full validation, security, docs, and CI-equivalent gates pass three times before explicit publication approval.
+  - id: HANDOFF-REFERENCE-CONTRACT-001
+    milestone: H6
+    title: Export canonical source-reference records for Production
+    status: DONE
+    depends_on: [HANDOFF-RELEASE-001]
+    acceptance: Source-ref index uses records and record_sha256, optional production reference categories and stable HTTPS access URLs are schema-valid and exporter-validated, with normal and unsafe URL tests.
+    issue_refs: ["agentic-art-orchestration#35", "agentic-art-orchestration#37"]
+    checks:
+      - python3 -m unittest tests.test_handoff_build.HandoffBuildContractTest.test_export_source_ref_index_uses_contract_keys_and_canonical_hashes
+      - python3 -m unittest tests.test_handoff_build.HandoffBuildContractTest.test_export_rejects_unsafe_production_reference_url
+      - python3 tools/validate.py --check

@@ -20,6 +20,8 @@
       "uniqueItems": true
     },
     "epistemic_status": {"$ref": "common.schema.json#/$defs/epistemicStatus"},
-    "production_implication": {"$ref": "common.schema.json#/$defs/nonEmptyString"}
+    "production_implication": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "reference_categories": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/productionReferenceCategory"}, "uniqueItems": true},
+    "access_url": {"type": "string", "pattern": "^https://[^\\s?#]+$"}
   }
 }

@@ -67,7 +67,7 @@ handoff-bundle/
     └── creative-direction.md
 ```
 
-`manifest.yaml` はbundle内の全ファイルのraw-byte hashとfile-set hashを持つ。`source-ref-index.yaml` はdecision、insight、evidenceのID、project-relative source path、record hash、安全な短いsummaryだけを持ち、原証拠本文を複製しない。
+`manifest.yaml` はbundle内の全ファイルのraw-byte hashとfile-set hashを持つ。`source-ref-index.yaml` は `records` 配列にdecision、insight、evidenceのID、project-relative source path、`record_sha256`、安全な短いsummary、任意の`reference_categories`と`access_url`を持ち、原証拠本文を複製しない。`record_sha256`は元record全体のcanonical SHA-256で、ゼロ値や欠落は出力しない。
 
 ## 空、不明、未解決
 

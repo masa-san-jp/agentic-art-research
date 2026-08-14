@@ -25,6 +25,8 @@
       "uniqueItems": true
     },
     "reason": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "reference_categories": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/productionReferenceCategory"}, "uniqueItems": true},
+    "access_url": {"type": "string", "pattern": "^https://[^\\s?#]+$"},
     "uncertainty": {"type": ["string", "null"], "minLength": 1},
     "review_trigger": {"type": ["string", "null"], "minLength": 1},
     "authority": {"enum": ["agent-recommended", "human-approved", "policy-derived"]},

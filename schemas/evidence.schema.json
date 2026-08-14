@@ -19,6 +19,8 @@
     },
     "acquired_at": {"$ref": "common.schema.json#/$defs/timestamp"},
     "content_hash": {"$ref": "common.schema.json#/$defs/sha256"},
+    "reference_categories": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/productionReferenceCategory"}, "uniqueItems": true},
+    "access_url": {"type": "string", "pattern": "^https://[^\\s?#]+$"},
     "rights_status": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
     "sensitivity": {"$ref": "common.schema.json#/$defs/accessClass"},
     "redistribution": {"enum": ["allowed", "prohibited", "conditional", "unknown"]},

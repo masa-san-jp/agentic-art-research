@@ -27,6 +27,7 @@ python3 tools/validate.py --check
 - [x] (2026-08-11 22:25 JST) `FEEDBACK-IMPORT-001`: production-owned schema snapshotの未公開状態をfail-closedで維持しつつ、snapshot取得後に実行できるdry-run、取込、冪等性、部分適用からの復旧、影響分析、MAJOR再開、CRITICAL人間承認待ちを実装。全90 test、validator、graph、docs check、diff checkが合格。
 - [x] (2026-08-12 07:24 JST) `HANDOFF-E2E-001`: `tests/fixtures/harmony-handoff/scenario.yaml`を正本メタデータとして固定し、handoff bundleの自己完結性・改変検出、PASS/FAIL/DEVIATION/CRITICAL result、重複、hash/schema mismatch、破損JSONL、graph/impact還流、RESEARCH_ONLY後方互換性をresearch側で検証した。Production clean commit `fb15f32bf1eef0155c853c4b7c4b94df6b1bd78b`からresult schema snapshotを取得し、release gateのschema boundary probeを修正した。snapshot provenance、schema/hash compatibility、fail-closed、実schemaを使うconsumerのdry-run/apply/冪等性round-tripを含む全113 testが合格した。
 - [x] (2026-08-12 07:24 JST) `HANDOFF-RELEASE-001`: 文書、CI接続済みresearch-side release gate、互換性証拠を確定し、`--require-schema-snapshot`付きgateを3回連続exit 0で確認した。検証済みhandoff拡張はmain commit `fb08b617eded3962826d913a4dd0832639d4c8c2`を対象にv1.1.0として公開済みである。
+- [x] (2026-08-14 JST) `HANDOFF-REFERENCE-CONTRACT-001`: Production Issue #35/#37対応として、source-ref indexの`records`/`record_sha256`、production reference metadata、安定HTTPS URLの出力契約を追加。Research全121 testとvalidatorが合格。Production側の受入PRとは別commitで公開する。
 
 ## Surprises & Discoveries
 
@@ -46,6 +47,7 @@ python3 tools/validate.py --check
 - 2026-08-11: production observationのgraph IDは`<result_id>/<observation_id>`を正本にする。取り込み後の再buildでも、result、observation、evidence candidate、related requirementの辺を解決できることを専用テストで固定した。
 - 2026-08-11: H5の固定scenarioはresearch fixtureからhandoffを生成し、production resultはテスト時の一時rootでだけ生成する構成にした。production-owned result schemaがclean commitにまだないため、test-only schemaをrepositoryの正本やfixtureへ保存せず、実運用importのprovenance要求とfail-closed境界を維持した。
 - 2026-08-12: Production result schema公開後、旧`feedback_schema_boundary` probeは欠落result入力を`EXTERNAL-SCHEMA`として期待していたため、schema snapshot存在時に`FEEDBACK-INPUT`で誤失敗した。probe内でsnapshotを一時除去してschema欠落を再現するよう修正し、実際のconsumerは変更せずfail-closed契約を維持した。
+- 2026-08-14: Production consumerはsource-ref indexにProduction側で再計算できる原record本文を持たないため、Research exporterをcanonical hashの責任主体とした。categories/URLは任意metadataとしてschema化し、未提供時は推測せずProduction側のcoverage/gapで可視化する。
 
 ## Decision Log
 
@@ -71,6 +73,7 @@ python3 tools/validate.py --check
 | 2026-08-12 | production schema snapshot CLIはcommit不一致、dirty source、schema不正、保存先逸脱、異なる既存snapshotをすべて拒否する | 取得時の入力を暗黙補正する、または既存snapshotを上書きする | 外部契約の所有権・再現性・監査可能性を守るため |
 | 2026-08-12 | research-side handoff gateは通常CIで実行し、production schema snapshotの欠落・改変は`--require-schema-snapshot`でfail closedする | 外部schema待ちを理由に研究側の自動検証を無効化する | 現在確定している安全境界を継続検査し、production-owned contractの版固定を監査可能にするため |
 | 2026-08-12 | result schema公開後もfeedback boundary probeはschema欠落を一時rootで再現する | 欠落result入力をschema未公開の代用にする | `FEEDBACK-INPUT`と`EXTERNAL-SCHEMA`を混同せず、snapshot有無に依存しないrelease gateにするため |
+| 2026-08-14 | source-ref indexのwire keyを`records`/`record_sha256`へ固定し、production reference metadataはcanonical source recordのoptional fieldsから出力する | Production向けに別の`references`/`record_hash`形式を作る、カテゴリやURLを推測する | producer/consumerの責任を分離し、Productionが参照情報を捏造せずに受け取れるため |
 
 ## Outcomes & Retrospective
 
@@ -87,6 +90,8 @@ python3 tools/validate.py --check
 H5のschema公開前段階では、`harmony-handoff` scenarioを使ってbundle manifestのpath・size・hash・file-set、PASS/FAIL/DEVIATION/CRITICAL result、fail-closed、後方互換性を研究側だけで検証し、production-owned schemaを捏造せずpendingとして扱った。その後の実schema取得・consumer E2E・release gate完了は次段落に記録する。
 
 Production result schemaのclean snapshot取得後、`HANDOFF-E2E-001`のrelease gateは`schema_snapshot_ready: true`で合格した。旧boundary probeを修正し、schema snapshotを一時的に除去したprobeが`EXTERNAL-SCHEMA`でfail-closedすること、result consumerのPASS/FAIL/DEVIATION/CRITICAL round-tripがschema 1.0.0で通ることを確認した。`HANDOFF-RELEASE-001`まで完了し、v1.1.0はmain commit `fb08b617eded3962826d913a4dd0832639d4c8c2`へ公開済みである。
+
+`HANDOFF-REFERENCE-CONTRACT-001`では、Productionが要求するsource-ref wire contractをResearch側のschema・exporter・fixtureで固定する。Productionがhashを再計算できないことを理由にゼロ値を許可せず、Research exporterがcanonical source recordから計算した非ゼロ`record_sha256`を受け渡す。完了条件はResearch側のvalidator/testとProduction側のconsumer PRを別々に確認し、どちらも人間承認前のmerge待ちとして残すことである。
 
 ## Context and Orientation
 

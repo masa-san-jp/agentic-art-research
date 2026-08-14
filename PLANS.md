@@ -28,17 +28,25 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 
 ### Progress
 
+- [x] `HANDOFF-REFERENCE-CONTRACT-001`: source-ref indexのProducer/Consumer契約をResearch側から公開する。Production側Issue #35/#37の前提であり、別repoの実装・mergeは行わない。121 testとvalidatorが合格。
+
 チェックボックスとUTCまたはJST日時。未完了、部分完了、完了を正確に表す。
 
 ### Surprises & Discoveries
+
+- Production側の現状が`references`/`record_hash`を期待し、Research exporterの`records`/`record_sha256`と不一致だった。canonical hashの計算責任はResearchに置き、Productionは形式と非ゼロ値を検証する。
 
 実装中に判明した制約、失敗、想定との差を、短い証拠とともに記録する。
 
 ### Decision Log
 
+- 2026-08-14: `reference_categories`と恒久HTTPS `access_url`をdecision/insight/evidenceのoptional metadataとして追加し、未提供時は空/欠落のまま出力する。Productionでのカテゴリ推測を避けるため。
+
 決定、理由、代替案、影響、日付を記録する。
 
 ### Outcomes & Retrospective
+
+- 完了: Research側変更はテスト・validator通過済み。別PRで公開し、Production側consumer変更と同時mergeせず、両方のPR URLを親Issueへ記録してから人間mergeを待つ。
 
 完了した動作、未完了、教訓、次の計画への影響を記録する。
 
@@ -75,4 +83,3 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 5. 発見と決定を即時に計画へ戻す。
 6. 受入条件を満たすまで「完了」としない。
 7. 終了時に次の正確な開始点を残す。
-
