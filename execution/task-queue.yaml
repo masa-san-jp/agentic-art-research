@@ -218,7 +218,7 @@ tasks:
     title: Export canonical source-reference records for Production
     status: DONE
     depends_on: [HANDOFF-RELEASE-001]
-    acceptance: Source-ref index uses records and record_sha256, optional production reference categories and stable HTTPS access URLs are schema-valid and exporter-validated, with normal and unsafe URL tests.
+    acceptance: Source-ref index uses references and record_hash, with canonical non-zero hashes, and exporter tests cover normal output plus prohibited evidence boundaries.
     issue_refs: ["agentic-art-orchestration#35", "agentic-art-orchestration#37"]
     checks:
       - python3 -m unittest tests.test_handoff_build.HandoffBuildContractTest.test_export_source_ref_index_uses_contract_keys_and_canonical_hashes

@@ -421,7 +421,7 @@ python3 tools/impact.py --production-result PR001
 - `--apply` は検証済み結果だけを台帳、証拠候補、監査ログへ追記する。
 - 同じresult IDとhashの再取込は冪等に成功し、異なる内容で同じIDなら失敗する。
 
-`export_handoff.py` のbundleはproduction側の受理契約に合わせて `manifest.yaml`、`production-handoff.yaml`、`provenance.yaml`、`schemas/`、`artifacts/` を持つ。`artifacts/` には仮説、比較、要件、受入試験、Prototype Plan、source-ref index、creative directionのsnapshotを置く。source-ref indexは `records` 配列と `record_sha256`、任意の`reference_categories`、安全な`access_url`を出力する。原証拠本文、禁止区分、秘密、ローカル絶対パスはexportしない。
+`export_handoff.py` のbundleはproduction側の受理契約に合わせて `manifest.yaml`、`production-handoff.yaml`、`provenance.yaml`、`schemas/`、`artifacts/` を持つ。`artifacts/` には仮説、比較、要件、受入試験、Prototype Plan、source-ref index、creative directionのsnapshotを置く。source-ref indexは `references` 配列と `record_hash` を出力する。原証拠本文、禁止区分、秘密、ローカル絶対パスはexportしない。
 
 ## 13. エージェント権限
 

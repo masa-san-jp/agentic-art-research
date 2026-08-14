@@ -30,9 +30,6 @@
       "type": "string",
       "pattern": "^sha256:[0-9a-f]{64}$"
     },
-    "productionReferenceCategory": {
-      "enum": ["CONCEPT", "VISUAL", "METHOD", "MATERIAL", "INSTALLATION", "OTHER"]
-    },
     "accessClass": {
       "enum": ["PRIVATE_RAW", "PRIVATE_DERIVED", "PROJECT_INTERNAL", "PUBLIC_CITABLE", "RESTRICTED"]
     },

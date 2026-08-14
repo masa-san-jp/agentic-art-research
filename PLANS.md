@@ -28,7 +28,7 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 
 ### Progress
 
-- [x] `HANDOFF-REFERENCE-CONTRACT-001`: source-ref indexのProducer/Consumer契約をResearch側から公開する。Production側Issue #35/#37の前提であり、別repoの実装・mergeは行わない。121 testとvalidatorが合格。
+- [x] `HANDOFF-REFERENCE-CONTRACT-001`: source-ref indexのProducer/Consumer契約をResearch側から公開する。Production側Issue #35/#37の前提であり、別repoの実装・mergeは行わない。120 testとvalidatorが合格。
 
 チェックボックスとUTCまたはJST日時。未完了、部分完了、完了を正確に表す。
 
@@ -40,7 +40,7 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 
 ### Decision Log
 
-- 2026-08-14: `reference_categories`と恒久HTTPS `access_url`をdecision/insight/evidenceのoptional metadataとして追加し、未提供時は空/欠落のまま出力する。Productionでのカテゴリ推測を避けるため。
+- 2026-08-14: Production consumerとの実データ検証でsource-ref indexのwire key不一致が判明したため、Issue #43に従い`references`/`record_hash`へ統一する。参照カテゴリとアクセスURLは別Issueへ分離する。
 
 決定、理由、代替案、影響、日付を記録する。
 

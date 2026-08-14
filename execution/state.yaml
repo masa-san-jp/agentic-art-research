@@ -1,8 +1,8 @@
 version: 1
-updated_at: "2026-08-12T10:00:00+09:00"
-current_milestone: I2
+updated_at: "2026-08-14T14:00:00+09:00"
+current_milestone: H6
 next_task: null
-last_completed_task: INBOUND-RELEASE-001
+last_completed_task: HANDOFF-REFERENCE-CONTRACT-001
 terminal: true
 blocked_by: []
 resume_from:
@@ -11,8 +11,8 @@ resume_from:
     - docs/20260811-agentic-art-research-system-design-specification.md
     - docs/20260811-agentic-art-research-repository-execution-plan.md
     - execution/task-queue.yaml
-  action: v1.2 inbound request extension is merged and publicly released. Wait for the first upstream research-request artifact; no implementation task is queued.
+  action: Research-side source-ref contract fix is complete on PR #42. Wait for human review/merge and production consumer compatibility; no implementation task is queued.
 last_verification:
   result: PASS
-  command: /tmp/aar-docs-venv/bin/python -m unittest discover -s tests; tools/validate.py --check; tools/security_check.py --check; tools/chaos_check.py; tools/docs_check.py --check; tools/build_graph.py --check; tools/release_check.py; tools/handoff_release_check.py --require-schema-snapshot
-  detail: 119 tests and all listed gates passed three consecutive times; release and handoff reports were byte-identical across runs.
+  command: /tmp/aar-docs-venv/bin/python -m unittest discover -s tests -q; tools/validate.py --check; tools/security_check.py --check; tools/chaos_check.py; tools/docs_check.py --check; tools/build_graph.py --check; tools/evaluate.py --offline-fixture tests/fixtures/harmony; tools/release_check.py --offline-fixture tests/fixtures/harmony --ci-evidence execution/ci-evidence.json; tools/handoff_release_check.py --require-schema-snapshot
+  detail: 120 tests and all research-side gates passed; clean-source producer-to-production acceptance/build_plan integration passed with references/record_hash; no production repository files changed.

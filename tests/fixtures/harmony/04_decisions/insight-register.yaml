@@ -5,5 +5,3 @@ insights:
     opposing_claim_ids: [CL003]
     epistemic_status: SUPPORTED
     production_implication: Make interval and interruption observable in the prototype.
-    reference_categories: [VISUAL, METHOD]
-    access_url: https://example.com/references/visual-method

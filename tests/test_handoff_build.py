@@ -146,26 +146,12 @@ class HandoffBuildContractTest(unittest.TestCase):
         output = root / "data" / "handoffs" / "handoff-build"
         export_handoff(root, "project/handoff-build", output, allow_dirty=True)
         index = yaml.safe_load((output / "artifacts/source-ref-index.yaml").read_text(encoding="utf-8"))
-        self.assertIn("records", index)
-        self.assertNotIn("references", index)
-        self.assertTrue(index["records"])
-        for record in index["records"]:
-            self.assertRegex(record["record_sha256"], r"^sha256:[0-9a-f]{64}$")
-            self.assertNotEqual(record["record_sha256"], "sha256:" + "0" * 64)
-        decision = next(record for record in index["records"] if record["id"] == "DC001")
-        self.assertEqual(decision["reference_categories"], ["CONCEPT"])
-        self.assertEqual(decision["access_url"], "https://example.com/references/concept")
-
-    def test_export_rejects_unsafe_production_reference_url(self) -> None:
-        root, project = self.make_project()
-        decision_path = project / "04_decisions/decision-log.yaml"
-        decision = yaml.safe_load(decision_path.read_text(encoding="utf-8"))
-        decision["decisions"][0]["reference_categories"] = ["CONCEPT"]
-        decision["decisions"][0]["access_url"] = "https://user:secret@example.com/reference"
-        decision_path.write_text(yaml.safe_dump(decision, sort_keys=False), encoding="utf-8")
-        build_handoff(root, "project/handoff-build", generated_at=self.generated_at, research_commit=self.commit)
-        with self.assertRaisesRegex(HandoffExportError, "credentials"):
-            export_handoff(root, "project/handoff-build", root / "data/handoffs/unsafe", allow_dirty=True)
+        self.assertIn("references", index)
+        self.assertNotIn("records", index)
+        self.assertTrue(index["references"])
+        for record in index["references"]:
+            self.assertRegex(record["record_hash"], r"^sha256:[0-9a-f]{64}$")
+            self.assertNotEqual(record["record_hash"], "sha256:" + "0" * 64)
 
     def test_force_only_replaces_a_generated_bundle(self) -> None:
         root, _ = self.make_project()
