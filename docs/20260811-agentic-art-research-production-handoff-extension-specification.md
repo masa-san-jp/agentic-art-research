@@ -313,7 +313,7 @@ integrity:
 - Prototype Plan
 - 権利、安全、プライバシー制約
 - 未解決事項、仮定、再計画条件
-- source ID、source commit、公開可能な短い要約
+- source ID、source commit、公開可能な短い要約、制作参照カテゴリと安全なアクセスURL
 
 `prototype_plan_ids`は、選択仮説に試作対象の重大な不確実性がない場合、または重大な不確実性ごとに`external_validation_reason`がある場合は空配列でよい。`open_gaps`は各項目に`blocking`を持ち、`READY`では`blocking: true`を禁止する。
 
@@ -421,7 +421,7 @@ python3 tools/impact.py --production-result PR001
 - `--apply` は検証済み結果だけを台帳、証拠候補、監査ログへ追記する。
 - 同じresult IDとhashの再取込は冪等に成功し、異なる内容で同じIDなら失敗する。
 
-`export_handoff.py` のbundleはproduction側の受理契約に合わせて `manifest.yaml`、`production-handoff.yaml`、`provenance.yaml`、`schemas/`、`artifacts/` を持つ。`artifacts/` には仮説、比較、要件、受入試験、Prototype Plan、source-ref index、creative directionのsnapshotを置く。原証拠本文、禁止区分、秘密、ローカル絶対パスはexportしない。
+`export_handoff.py` のbundleはproduction側の受理契約に合わせて `manifest.yaml`、`production-handoff.yaml`、`provenance.yaml`、`schemas/`、`artifacts/` を持つ。`artifacts/` には仮説、比較、要件、受入試験、Prototype Plan、source-ref index、creative directionのsnapshotを置く。source-ref indexは `references` 配列と `record_hash` を出力する。原証拠本文、禁止区分、秘密、ローカル絶対パスはexportしない。
 
 ## 13. エージェント権限
 

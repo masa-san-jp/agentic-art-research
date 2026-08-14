@@ -79,11 +79,11 @@ def source_ref_index(sources: HandoffSources, handoff: dict[str, Any]) -> dict[s
                     "id": record_id,
                     "kind": kind,
                     "source_path": source_path,
-                    "record_sha256": canonical_sha256(record),
+                    "record_hash": canonical_sha256(record),
                     "summary": _summary(kind, record),
                 }
             )
-    return {"source_project": sources.project_id, "records": sorted(records, key=lambda item: (item["kind"], item["id"]))}
+    return {"source_project": sources.project_id, "references": sorted(records, key=lambda item: (item["kind"], item["id"]))}
 
 
 def _git_state(root: Path) -> bool | None:

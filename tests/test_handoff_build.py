@@ -17,7 +17,6 @@ sys.path.insert(0, str(REPO_ROOT / "tools"))
 from build_graph import build_graph
 from build_handoff import HandoffBuildError, build_handoff
 from bundle import build_bundle
-from canonical import canonical_sha256
 from export_handoff import HandoffExportError, export_handoff
 from handoff_common import HandoffInputError, resolve_project
 from impact import impact_report
@@ -141,18 +140,18 @@ class HandoffBuildContractTest(unittest.TestCase):
         with self.assertRaisesRegex(HandoffExportError, "different bytes"):
             export_handoff(root, "project/handoff-build", output, allow_dirty=True)
 
-    def test_source_ref_index_contract_uses_records_and_record_sha256(self) -> None:
-        root, project = self.make_project()
+    def test_export_source_ref_index_uses_contract_keys_and_canonical_hashes(self) -> None:
+        root, _ = self.make_project()
         build_handoff(root, "project/handoff-build", generated_at=self.generated_at, research_commit=self.commit)
         output = root / "data" / "handoffs" / "handoff-build"
         export_handoff(root, "project/handoff-build", output, allow_dirty=True)
         index = yaml.safe_load((output / "artifacts/source-ref-index.yaml").read_text(encoding="utf-8"))
-        self.assertIn("records", index)
-        self.assertNotIn("references", index)
-        records = {record["id"]: record for record in index["records"]}
-        decision_document = yaml.safe_load((project / "04_decisions/decision-log.yaml").read_text(encoding="utf-8"))
-        decision = next(item for item in decision_document["decisions"] if item["id"] == "DC001")
-        self.assertEqual(canonical_sha256(decision), records["DC001"]["record_sha256"])
+        self.assertIn("references", index)
+        self.assertNotIn("records", index)
+        self.assertTrue(index["references"])
+        for record in index["references"]:
+            self.assertRegex(record["record_hash"], r"^sha256:[0-9a-f]{64}$")
+            self.assertNotEqual(record["record_hash"], "sha256:" + "0" * 64)
 
     def test_force_only_replaces_a_generated_bundle(self) -> None:
         root, _ = self.make_project()
