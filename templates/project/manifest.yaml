@@ -11,7 +11,9 @@ entry_points:
   human_summary: 05_production/creative-direction.md
   research_plan: 01_planning/research-plan.yaml
   evidence_ledger: 02_evidence/evidence-ledger.jsonl
+  prior_art: 03_knowledge/prior-art.jsonl
   decision_log: 04_decisions/decision-log.yaml
+  self_repetition_review: 04_decisions/self-repetition-review.yaml
   production_requirements: 05_production/production-requirements.yaml
   production_hypotheses: 04_decisions/production-hypotheses.yaml
   hypothesis_comparison: 04_decisions/hypothesis-comparison.yaml

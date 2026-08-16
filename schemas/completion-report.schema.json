@@ -7,11 +7,11 @@
   "additionalProperties": false,
   "properties": {
     "project_id": {"$ref": "common.schema.json#/$defs/projectId"},
-    "status": {"enum": ["COMPLETE", "COMPLETE_WITH_GAPS", "BLOCKED", "CANCELLED"]},
+    "status": {"enum": ["COMPLETE", "COMPLETE_WITH_GAPS", "INCOMPLETE", "BLOCKED", "CANCELLED"]},
     "completed_at": {"$ref": "common.schema.json#/$defs/timestamp"},
     "checks": {
       "type": "object",
-      "required": ["manifest_valid", "mandatory_questions_terminal", "evidence_ledger_valid", "claim_references_resolved", "decisions_traceable", "requirements_testable", "rights_review_complete", "privacy_review_complete", "no_private_raw_in_git", "completion_report_terminal"],
+      "required": ["manifest_valid", "mandatory_questions_terminal", "evidence_ledger_valid", "claim_references_resolved", "decisions_traceable", "requirements_testable", "rights_review_complete", "privacy_review_complete", "no_private_raw_in_git", "completion_report_terminal", "research_quality_sufficient"],
       "additionalProperties": false,
       "properties": {
         "manifest_valid": {"type": "boolean"},
@@ -23,7 +23,8 @@
         "rights_review_complete": {"type": "boolean"},
         "privacy_review_complete": {"type": "boolean"},
         "no_private_raw_in_git": {"type": "boolean"},
-        "completion_report_terminal": {"type": "boolean"}
+        "completion_report_terminal": {"type": "boolean"},
+        "research_quality_sufficient": {"type": "boolean"}
       }
     },
     "gaps": {

@@ -118,6 +118,24 @@ class HandoffBuildContractTest(unittest.TestCase):
         self.assertEqual("HO002", updated["handoff_id"])
         self.assertEqual("HO001", updated["supersedes"])
 
+    def test_incomplete_project_rejects_handoff_without_mutation(self) -> None:
+        root, project = self.make_project()
+        path = build_handoff(root, "project/handoff-build", generated_at=self.generated_at, research_commit=self.commit)
+        before = path.read_bytes()
+
+        manifest_path = project / "manifest.yaml"
+        manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+        manifest["project"]["status"] = "INCOMPLETE"
+        manifest_path.write_text(yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8")
+        report_path = project / "07_runtime" / "completion-report.json"
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        report["status"] = "INCOMPLETE"
+        report_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+
+        with self.assertRaisesRegex(HandoffBuildError, "INCOMPLETE"):
+            build_handoff(root, "project/handoff-build", research_commit=self.commit)
+        self.assertEqual(before, path.read_bytes())
+
     def test_export_is_self_contained_and_destination_is_not_silently_overwritten(self) -> None:
         root, _ = self.make_project()
         build_handoff(root, "project/handoff-build", generated_at=self.generated_at, research_commit=self.commit)

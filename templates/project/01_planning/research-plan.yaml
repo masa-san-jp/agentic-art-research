@@ -14,6 +14,10 @@ budget:
 stopping_policy: config/stopping-policy.yaml
 source_priority: [primary, independent-secondary, approved-personal-derived, simulation]
 status: DRAFT
+# Optional project-specific lower bounds require a reason. Omit to use config/stopping-policy.yaml defaults.
+# minimums:
+#   evidence: 0
+#   reason: "Small exploratory study with an explicitly bounded scope."
 tasks:
   - id: TASK001
     title: Validate intake and research plan

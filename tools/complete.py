@@ -9,6 +9,7 @@ from typing import Any
 import yaml
 
 from _common import ROOT, atomic_write_text, load_json, load_yaml, read_jsonl, stable_json, yaml_list
+from completion_quality import load_completion_quality_policy, quality_failures
 from state_machine import TransitionError, load_state_machine
 from validate import validate_repository
 
@@ -24,6 +25,7 @@ CHECK_NAMES = (
     "privacy_review_complete",
     "no_private_raw_in_git",
     "completion_report_terminal",
+    "research_quality_sufficient",
 )
 CORE_CHECKS = {
     "manifest_valid",
@@ -35,7 +37,7 @@ CORE_CHECKS = {
     "no_private_raw_in_git",
     "completion_report_terminal",
 }
-TERMINAL_STATUSES = {"COMPLETE", "COMPLETE_WITH_GAPS"}
+TERMINAL_STATUSES = {"COMPLETE", "COMPLETE_WITH_GAPS", "INCOMPLETE"}
 
 
 def _project_path(root: Path, target: str) -> Path:
@@ -107,6 +109,23 @@ def evaluate_project(root: Path, target: str) -> dict[str, Any]:
     decisions = yaml_list(project / "04_decisions" / "decision-log.yaml", "decisions")
     requirements = yaml_list(project / "05_production" / "production-requirements.yaml", "requirements")
     acceptance_tests = yaml_list(project / "05_production" / "acceptance-tests.yaml", "acceptance_tests")
+    rejected_options = yaml_list(project / "04_decisions" / "rejected-options.yaml", "rejected_options")
+    uncertainties = yaml_list(project / "04_decisions" / "uncertainty-register.yaml", "uncertainties")
+    prior_art = read_jsonl(project / "03_knowledge" / "prior-art.jsonl")
+    self_repetition_reviews = yaml_list(project / "04_decisions" / "self-repetition-review.yaml", "reviews")
+    quality_policy = load_completion_quality_policy(root, load_yaml(project / "01_planning" / "research-plan.yaml") or {})
+    quality_counts = {
+        "evidence": len(evidence),
+        "claims": len(claims),
+        "insights": len(yaml_list(project / "04_decisions" / "insight-register.yaml", "insights")),
+        "decisions": len(decisions),
+        "requirements": len(requirements),
+        "rejected_options": len(rejected_options),
+        "uncertainty": len(uncertainties),
+        "prior_art": len(prior_art),
+        "self_repetition_review": len(self_repetition_reviews),
+    }
+    quality_gaps = quality_failures(quality_policy, quality_counts)
     tests_by_id = {record.get("id"): record for record in acceptance_tests}
 
     checks = {
@@ -134,10 +153,19 @@ def evaluate_project(root: Path, target: str) -> dict[str, Any]:
         "no_private_raw_in_git": not _has_rule(findings, "DATA-BOUNDARY", "SECRET-SCAN"),
         "completion_report_terminal": isinstance(completion_report, dict)
         and completion_report.get("status") in set(vocab.get("terminal_statuses", [])),
+        "research_quality_sufficient": not quality_gaps,
     }
     core_ok = all(checks[name] for name in CORE_CHECKS)
-    status = "COMPLETE" if core_ok and all(checks.values()) else "COMPLETE_WITH_GAPS" if core_ok else "BLOCKED"
-    gaps = [
+    status = (
+        "BLOCKED"
+        if not core_ok
+        else "INCOMPLETE"
+        if quality_gaps
+        else "COMPLETE"
+        if all(checks.values())
+        else "COMPLETE_WITH_GAPS"
+    )
+    gaps = quality_gaps if status == "INCOMPLETE" else [
         {
             "id": f"GAP-{name.upper()}",
             "reason": f"{name} is not complete.",
@@ -236,7 +264,7 @@ def main() -> int:
     except (FileNotFoundError, ValueError) as exc:
         parser.error(str(exc))
     print(stable_json(report), end="")
-    return 0
+    return 1 if report["status"] == "INCOMPLETE" else 0
 
 
 if __name__ == "__main__":

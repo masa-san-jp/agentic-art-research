@@ -1,0 +1,15 @@
+version: 1
+project_id: project/harmony-study
+objective: "Traceable research plan"
+required_outputs: [executive_brief]
+budget:
+  max_questions: 12
+  max_total_sources: 120
+  max_runtime_minutes: 240
+stopping_policy: config/stopping-policy.yaml
+source_priority: [primary]
+status: DRAFT
+minimums:
+  evidence: 0
+tasks: []
+unknown: true

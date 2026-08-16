@@ -12,6 +12,7 @@ from jsonschema.exceptions import SchemaError
 from referencing import Registry, Resource
 
 from canonical import canonical_json_bytes, handoff_hash_payload, handoff_sha256
+from completion_quality import CompletionQualityConfigError, load_completion_quality_policy
 from _common import (
     InputParseError,
     PROJECT_REQUIRED_FILES,
@@ -27,16 +28,19 @@ from security_check import scan_advanced_security
 SCHEMA_FOR_JSONL = {
     "02_evidence/evidence-ledger.jsonl": "evidence",
     "03_knowledge/claims.jsonl": "claim",
+    "03_knowledge/prior-art.jsonl": "prior-art",
 }
 SCHEMA_FOR_YAML_COLLECTION = {
     "04_decisions/insight-register.yaml": ("insights", "insight"),
     "04_decisions/decision-log.yaml": ("decisions", "decision"),
     "05_production/production-requirements.yaml": ("requirements", "requirement"),
+    "04_decisions/self-repetition-review.yaml": ("reviews", "self-repetition-review"),
     "04_decisions/production-hypotheses.yaml": ("hypotheses", "production-hypothesis"),
     "04_decisions/hypothesis-comparison.yaml": ("comparisons", "hypothesis-comparison"),
     "05_production/prototype-plans.yaml": ("prototype_plans", "prototype-plan"),
 }
 SCHEMA_FOR_YAML_OBJECT = {
+    "01_planning/research-plan.yaml": "research-plan",
     "05_production/production-handoff.yaml": "production-handoff",
     "00_intake/research-request.yaml": "research-request",
     "00_intake/research-request-receipt.yaml": "research-request-receipt",
@@ -60,6 +64,9 @@ DOMAIN_SCHEMAS = (
     "research-request-receipt",
     "research-state",
     "completion-report",
+    "research-plan",
+    "prior-art",
+    "self-repetition-review",
 )
 RecordEntry = tuple[str, Path, int | None, dict[str, Any]]
 REFERENCE_FIELDS = {
@@ -76,6 +83,7 @@ REFERENCE_FIELDS = {
         ("uncertainty_ids", "uncertainty"),
         ("acceptance_test_ids", "acceptance_test"),
     ],
+    "self-repetition-review": [("prior_work_refs", "prior-art")],
     "prototype_task": [("depends_on", "prototype_task")],
     "production-handoff": [
         ("selected_hypothesis_id", "production-hypothesis"),
@@ -1741,6 +1749,19 @@ def validate_repository(root: Path, project_target: str | None = None) -> list[F
                 validator = schema_validators.get(schema_name)
                 if validator:
                     findings.extend(_schema_findings(root, path, validator, value))
+                if relative == "01_planning/research-plan.yaml":
+                    try:
+                        load_completion_quality_policy(root, value)
+                    except CompletionQualityConfigError as exc:
+                        findings.append(
+                            Finding(
+                                _relative_path(root, path),
+                                "COMPLETION-MINIMUM-OVERRIDE",
+                                str(exc),
+                                field="minimums",
+                                remediation="Use canonical completion minimum keys and provide minimums.reason when lowering a default.",
+                            )
+                        )
                 handoff_value = value
             elif relative == "01_planning/question-register.yaml":
                 if isinstance(value, dict) and isinstance(value.get("questions"), list):
