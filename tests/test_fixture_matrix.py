@@ -186,6 +186,16 @@ class ValidationFixtureMatrixTest(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
+            # The rule is about a project that says it is finished while a
+            # mandatory question is still open, so the fixture has to say it.
+            for relative, key in (("07_runtime/research-state.json", None), ("07_runtime/completion-report.json", None)):
+                document = json.loads((project / relative).read_text(encoding="utf-8"))
+                document["status"] = "COMPLETE_WITH_GAPS"
+                (project / relative).write_text(json.dumps(document, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            manifest = yaml.safe_load((project / "manifest.yaml").read_text(encoding="utf-8"))
+            manifest["project"]["status"] = "COMPLETE_WITH_GAPS"
+            (project / "manifest.yaml").write_text(
+                yaml.safe_dump(manifest, allow_unicode=True, sort_keys=False), encoding="utf-8")
         elif setup == "claim-cycle":
             claims = [
                 {

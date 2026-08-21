@@ -1,5 +1,40 @@
 {
-  "edges": [],
-  "nodes": [],
-  "projects": []
+  "edges": [
+    {
+      "from": "project/probe-unattended::Q001",
+      "to": "project/probe-unattended::EV001",
+      "type": "answered_by"
+    },
+    {
+      "from": "project/probe-unattended::Q001",
+      "to": "project/probe-unattended::EV002",
+      "type": "answered_by"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "EV001",
+      "key": "project/probe-unattended::EV001",
+      "kind": "evidence",
+      "project_id": "project/probe-unattended"
+    },
+    {
+      "id": "EV002",
+      "key": "project/probe-unattended::EV002",
+      "kind": "evidence",
+      "project_id": "project/probe-unattended"
+    },
+    {
+      "id": "Q001",
+      "key": "project/probe-unattended::Q001",
+      "kind": "question",
+      "project_id": "project/probe-unattended"
+    }
+  ],
+  "projects": [
+    {
+      "id": "project/probe-unattended",
+      "path": "projects/probe-unattended"
+    }
+  ]
 }

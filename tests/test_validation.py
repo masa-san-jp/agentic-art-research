@@ -17,6 +17,22 @@ from new_project import create_project
 from validate import Finding, validate_repository
 
 
+def _declare_finished(project, status: str) -> None:
+    """Put a fixture project into a status that claims the work is over."""
+    state_path = project / "07_runtime" / "research-state.json"
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+    state["status"] = status
+    state_path.write_text(json.dumps(state, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    manifest_path = project / "manifest.yaml"
+    manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+    manifest["project"]["status"] = status
+    manifest_path.write_text(yaml.safe_dump(manifest, allow_unicode=True, sort_keys=False), encoding="utf-8")
+    report_path = project / "07_runtime" / "completion-report.json"
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    report["status"] = status
+    report_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
 class ValidationErrorContractTest(unittest.TestCase):
     def make_root(self) -> Path:
         temporary = Path(tempfile.mkdtemp())
@@ -129,7 +145,8 @@ class ValidationErrorContractTest(unittest.TestCase):
         self.assertEqual("evidence-ledger.jsonl", Path(finding.path).name)
         self.assertEqual("EV001.related_questions[0]", finding.field)
 
-    def test_mandatory_question_must_be_terminal(self) -> None:
+    def test_mandatory_question_left_open_by_a_finished_project_is_reported(self) -> None:
+        """A question is asked before it is answered, so "still open" is only wrong once the project says it is done."""
         root = self.make_root()
         project = create_project(root, "open-question", "Open Question")
         question_path = project / "01_planning" / "question-register.yaml"
@@ -140,10 +157,26 @@ class ValidationErrorContractTest(unittest.TestCase):
             ),
             encoding="utf-8",
         )
+        _declare_finished(project, "COMPLETE_WITH_GAPS")
 
         findings = validate_repository(root)
         finding = next(item for item in findings if item.rule == "QUESTION-TERMINAL")
         self.assertEqual("Q001.status", finding.field)
+
+    def test_a_project_still_working_may_hold_an_open_mandatory_question(self) -> None:
+        root = self.make_root()
+        project = create_project(root, "working-question", "Working Question")
+        (project / "01_planning" / "question-register.yaml").write_text(
+            yaml.safe_dump(
+                {"questions": [{"id": "Q001", "text": "Question", "priority": "mandatory", "status": "OPEN"}]},
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+
+        findings = validate_repository(root)
+
+        self.assertEqual([], [item for item in findings if item.rule == "QUESTION-TERMINAL"])
 
     def test_illegal_lifecycle_transition_fails(self) -> None:
         root = self.make_root()
