@@ -1,0 +1,140 @@
+{
+  "blocked_by": [],
+  "current_task": "TASK002",
+  "last_event_id": null,
+  "project_id": "project/harmony-proof",
+  "resume_from": "Claim the lowest-ID ready task from 07_runtime task_runtime.",
+  "status": "DRAFT",
+  "task_runtime": {
+    "initialized_at": "2026-08-22T07:33:00+09:00",
+    "tasks": {
+      "TASK001": {
+        "attempts": 1,
+        "depends_on": [],
+        "effect_key": "TASK001",
+        "failure": null,
+        "lease": null,
+        "max_attempts": 3,
+        "result": {
+          "acceptance_passed": 2,
+          "questions": 3
+        },
+        "status": "SUCCEEDED",
+        "title": "Fix the questions and the plan"
+      },
+      "TASK002": {
+        "attempts": 1,
+        "depends_on": [
+          "TASK001"
+        ],
+        "effect_key": null,
+        "failure": null,
+        "lease": {
+          "expires_at": "2026-08-22T08:11:00+09:00",
+          "owner": "aiko-art",
+          "token": "TASK002:attempt:1"
+        },
+        "max_attempts": 3,
+        "result": null,
+        "status": "RUNNING",
+        "title": "Collect evidence for the first question"
+      },
+      "TASK003": {
+        "attempts": 0,
+        "depends_on": [
+          "TASK001"
+        ],
+        "effect_key": null,
+        "failure": null,
+        "lease": null,
+        "max_attempts": 3,
+        "result": null,
+        "status": "PENDING",
+        "title": "Collect evidence for the second question"
+      },
+      "TASK004": {
+        "attempts": 0,
+        "depends_on": [
+          "TASK001"
+        ],
+        "effect_key": null,
+        "failure": null,
+        "lease": null,
+        "max_attempts": 3,
+        "result": null,
+        "status": "PENDING",
+        "title": "Collect evidence for the third question"
+      },
+      "TASK005": {
+        "attempts": 0,
+        "depends_on": [
+          "TASK002",
+          "TASK003",
+          "TASK004"
+        ],
+        "effect_key": null,
+        "failure": null,
+        "lease": null,
+        "max_attempts": 3,
+        "result": null,
+        "status": "PENDING",
+        "title": "Settle rights and remove duplicate sources"
+      },
+      "TASK006": {
+        "attempts": 0,
+        "depends_on": [
+          "TASK005"
+        ],
+        "effect_key": null,
+        "failure": null,
+        "lease": null,
+        "max_attempts": 3,
+        "result": null,
+        "status": "PENDING",
+        "title": "Turn evidence into claims, relations and contradictions"
+      },
+      "TASK007": {
+        "attempts": 0,
+        "depends_on": [
+          "TASK006"
+        ],
+        "effect_key": null,
+        "failure": null,
+        "lease": null,
+        "max_attempts": 3,
+        "result": null,
+        "status": "PENDING",
+        "title": "Reject options, register uncertainty, review prior art and self-repetition"
+      },
+      "TASK008": {
+        "attempts": 0,
+        "depends_on": [
+          "TASK007"
+        ],
+        "effect_key": null,
+        "failure": null,
+        "lease": null,
+        "max_attempts": 3,
+        "result": null,
+        "status": "PENDING",
+        "title": "Derive requirements, acceptance tests and the medium decision"
+      },
+      "TASK009": {
+        "attempts": 0,
+        "depends_on": [
+          "TASK008"
+        ],
+        "effect_key": null,
+        "failure": null,
+        "lease": null,
+        "max_attempts": 3,
+        "result": null,
+        "status": "PENDING",
+        "title": "Verify the project and close it"
+      }
+    },
+    "version": 1
+  },
+  "updated_at": "2026-08-22T07:30:00+09:00",
+  "version": 1
+}

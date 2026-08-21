@@ -1,0 +1,38 @@
+workflow_mode: RESEARCH_ONLY
+project:
+  id: project/harmony-proof
+  title: 調和 無人完走の実証
+  version: 0.1.0
+  status: DRAFT
+  creator_id: null
+  created_at: '2026-08-22T07:30:00+09:00'
+  updated_at: '2026-08-22T07:30:00+09:00'
+entry_points:
+  human_summary: 05_production/creative-direction.md
+  research_plan: 01_planning/research-plan.yaml
+  evidence_ledger: 02_evidence/evidence-ledger.jsonl
+  prior_art: 03_knowledge/prior-art.jsonl
+  decision_log: 04_decisions/decision-log.yaml
+  self_repetition_review: 04_decisions/self-repetition-review.yaml
+  production_requirements: 05_production/production-requirements.yaml
+  production_hypotheses: 04_decisions/production-hypotheses.yaml
+  hypothesis_comparison: 04_decisions/hypothesis-comparison.yaml
+  prototype_plans: 05_production/prototype-plans.yaml
+  production_handoff: 05_production/production-handoff.yaml
+  production_change_requests: 06_governance/production-change-requests.yaml
+  production_feedback_imports: 07_runtime/production-feedback-imports.jsonl
+  completion_report: 07_runtime/completion-report.json
+  research_request: 00_intake/research-request.yaml
+  research_request_receipt: 00_intake/research-request-receipt.yaml
+access:
+  classification: PROJECT_INTERNAL
+  allowed_agents:
+  - orchestrator
+  - planner
+  - collector
+  - curator
+  - analyst
+  - critic
+  - production-translator
+  - validator
+  - auditor

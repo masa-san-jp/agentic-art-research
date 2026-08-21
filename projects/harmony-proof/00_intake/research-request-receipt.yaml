@@ -1,0 +1,5 @@
+version: 1
+request_id: RR001
+project_id: project/harmony-proof
+request_sha256: sha256:5ab85b21d57014bca8902dfeb7371cb7aabeb5b34da12062d3dae5f4e47eacb7
+accepted_at: '2026-08-22T07:32:00+09:00'
