@@ -74,9 +74,14 @@ roles:
       - {path: "04_decisions/uncertainty-register.yaml", record: uncertainty}
       - {path: "04_decisions/rejected-options.yaml", record: rejected-option}
       - {path: "04_decisions/decision-log.yaml", record: decision, schema: "schemas/decision.schema.json"}
+      - {path: "03_knowledge/prior-art.jsonl", record: prior-art, schema: "schemas/prior-art.schema.json"}
+      - {path: "04_decisions/self-repetition-review.yaml", record: self-repetition-review, schema: "schemas/self-repetition-review.schema.json"}
     acceptance:
       - "python3 tools/validate.py --project {slug} --check"
       - "python3 -c \"import yaml;r=yaml.safe_load(open('projects/{slug}/04_decisions/rejected-options.yaml'))['rejected_options'];assert r,'棄却案が0件。選んでいない';print(len(r))\""
+      - "python3 -c \"import yaml;u=yaml.safe_load(open('projects/{slug}/04_decisions/uncertainty-register.yaml'))['uncertainties'];assert u,'不確実性が0件。調べていない';print(len(u))\""
+      - "python3 -c \"n=sum(1 for l in open('projects/{slug}/03_knowledge/prior-art.jsonl') if l.strip());assert n>0,'先行作品調査が0件。新しいと確かめていない';print(n)\""
+      - "python3 -c \"import yaml;r=yaml.safe_load(open('projects/{slug}/04_decisions/self-repetition-review.yaml'));assert r and r.get('past_works_considered'),'過去作との距離を測っていない';print(r['risk'])\""
 
   production-translator:
     protocol_sections: [8]
@@ -84,10 +89,18 @@ roles:
       - {path: "05_production/production-requirements.yaml", record: requirement, schema: "schemas/requirement.schema.json"}
       - {path: "05_production/acceptance-tests.yaml", record: acceptance-test}
       - {path: "05_production/prototype-plans.yaml", record: prototype-plan, schema: "schemas/prototype-plan.schema.json"}
+      - {path: "04_decisions/production-hypotheses.yaml", record: production-hypothesis, schema: "schemas/production-hypothesis.schema.json"}
+      - {path: "04_decisions/hypothesis-comparison.yaml", record: hypothesis-comparison, schema: "schemas/hypothesis-comparison.schema.json"}
+      - {path: "04_decisions/decision-log.yaml", record: decision, schema: "schemas/decision.schema.json"}
       - {path: "05_production/creative-direction.md", record: prose}
     acceptance:
       - "python3 tools/validate.py --project {slug} --check"
       - "python3 -c \"import yaml;r=yaml.safe_load(open('projects/{slug}/05_production/production-requirements.yaml'))['requirements'];assert r,'制作要件が0件';print(len(r))\""
+      # 比較が COMPLETE で推薦が一意なら、build_handoff は変更なしで AGENT_RECOMMENDED を出す。
+      # 人の承認を外すのではなく、選べる状態まで書き切ることで承認待ちにしない。
+      - "python3 -c \"import yaml;c=yaml.safe_load(open('projects/{slug}/04_decisions/hypothesis-comparison.yaml'))['comparisons'];assert c,'仮説比較が0件';x=c[0];assert x.get('status')=='COMPLETE',x.get('status');r=[o for o in x['options'] if o.get('recommendation')=='RECOMMENDED'];assert len(r)==1,f'推薦が一意でない: {{len(r)}}件';print(r[0]['hypothesis_id'])\""
+      # 媒体を決めた記録が無いと、制作は「何で作るか」を自分で決め直すことになる。
+      - "python3 -c \"import yaml;d=yaml.safe_load(open('projects/{slug}/04_decisions/decision-log.yaml'))['decisions'];m=[x for x in d if 'medium' in (x.get('question','')+x.get('selected_option','')).lower() or '媒体' in x.get('question','')];assert m,'媒体の判断が記録されていない';assert all(x.get('rejected_options') for x in m),'媒体を棄却案なしで決めている';print(m[0]['id'])\""
 
   validator:
     protocol_sections: [9, 10]

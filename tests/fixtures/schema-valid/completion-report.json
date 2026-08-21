@@ -1,27 +1,31 @@
 {
-  "project_id": "project/harmony-study",
-  "status": "COMPLETE_WITH_GAPS",
-  "completed_at": "2026-08-11T15:00:00+09:00",
+  "blockers": [],
   "checks": {
-    "manifest_valid": true,
-    "mandatory_questions_terminal": true,
-    "evidence_ledger_valid": true,
     "claim_references_resolved": true,
-    "decisions_traceable": true,
-    "requirements_testable": true,
-    "rights_review_complete": true,
-    "privacy_review_complete": true,
-    "no_private_raw_in_git": true,
     "completion_report_terminal": true,
-    "research_quality_sufficient": true
+    "decisions_traceable": true,
+    "evidence_ledger_valid": true,
+    "mandatory_questions_terminal": true,
+    "manifest_valid": true,
+    "no_private_raw_in_git": true,
+    "privacy_review_complete": true,
+    "requirements_testable": true,
+    "research_quality_sufficient": true,
+    "rights_review_complete": true,
+    "sources_independent_enough": true
   },
+  "completed_at": "2026-08-11T15:00:00+09:00",
   "gaps": [
     {
       "id": "GAP001",
-      "reason": "Installation-scale audience response was not tested.",
-      "impact": "External validation is required before final production."
+      "impact": "External validation is required before final production.",
+      "reason": "Installation-scale audience response was not tested."
     }
   ],
-  "blockers": [],
-  "reopen_triggers": ["new_candidate_work"]
+  "project_id": "project/harmony-study",
+  "questions_without_independent_sources": [],
+  "reopen_triggers": [
+    "new_candidate_work"
+  ],
+  "status": "COMPLETE_WITH_GAPS"
 }

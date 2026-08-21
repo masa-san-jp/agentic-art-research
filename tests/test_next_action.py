@@ -8,6 +8,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import yaml
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 
 import log_event
@@ -145,6 +147,78 @@ class EntryPointTests(unittest.TestCase):
 
         self.assertNotEqual("TASK_RESUMED", other["status"])
 
+
+class TaskTemplateTests(unittest.TestCase):
+    """One task is one session, so the plan is split into sessions rather than into phases."""
+
+    PLAN = yaml.safe_load((ROOT / "templates/project/01_planning/research-plan.yaml").read_text(encoding="utf-8"))
+
+    def test_every_task_declares_the_role_that_runs_it(self):
+        self.assertTrue(all(task.get("role") for task in self.PLAN["tasks"]))
+
+    def test_every_declared_role_is_described_in_the_role_table(self):
+        table = yaml.safe_load((ROOT / "config/task-roles.yaml").read_text(encoding="utf-8"))
+
+        for task in self.PLAN["tasks"]:
+            self.assertIn(task["role"], table["roles"], task["id"])
+
+    def test_evidence_is_collected_one_question_at_a_time(self):
+        collectors = [task for task in self.PLAN["tasks"] if task["role"] == "collector"]
+
+        self.assertGreater(len(collectors), 1)
+
+    def test_the_plan_reaches_a_validator(self):
+        self.assertEqual("validator", self.PLAN["tasks"][-1]["role"])
+
+
+class BudgetEnforcementTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.root = Path(self.temporary.name)
+        for name in ("config", "schemas", "docs", "templates", "tools"):
+            shutil.copytree(ROOT / name, self.root / name)
+        (self.root / "projects").mkdir()
+        _new_project(self.root, "spent")
+        task_runtime.initialize_runtime(self.root, "project/spent", initialized_at=NOW)
+        project = self.root / "projects/spent"
+        plan_path = project / "01_planning/research-plan.yaml"
+        plan = yaml.safe_load(plan_path.read_text(encoding="utf-8"))
+        plan["budget"] = {"max_questions": 1, "max_total_sources": 1}
+        plan_path.write_text(yaml.safe_dump(plan, sort_keys=False, allow_unicode=True), encoding="utf-8")
+        (project / "01_planning/question-register.yaml").write_text(
+            yaml.safe_dump({"questions": [{"id": "Q001", "question": "spent", "priority": "preferred",
+                                           "status": "OPEN"}]}, sort_keys=False, allow_unicode=True),
+            encoding="utf-8",
+        )
+        (project / "07_runtime/run-log.jsonl").write_text(
+            "".join(
+                json.dumps({"event_id": f"E{index}", "event_type": "SOURCE_REVIEWED",
+                            "question_id": "Q001", "source_id": f"S{index}"}) + "\n"
+                for index in range(4)
+            ),
+            encoding="utf-8",
+        )
+        self.addCleanup(self.temporary.cleanup)
+
+    def test_a_project_past_its_budget_is_not_given_another_task(self):
+        answer = next_action.build_next_action(self.root, "project/spent", "tester", NOW)
+
+        self.assertEqual("BUDGET_EXCEEDED", answer["status"])
+        self.assertNotIn("task_id", answer)
+
+    def test_the_answer_says_how_to_close_out_instead_of_stopping(self):
+        answer = next_action.build_next_action(self.root, "project/spent", "tester", NOW)
+
+        self.assertTrue(answer["directive"])
+        self.assertTrue(answer["next_steps"])
+
+    def test_a_task_already_in_hand_is_still_finished(self):
+        held = {"tasks": {"TASK001": {"status": "RUNNING",
+                                      "lease": {"owner": "tester", "token": "t", "expires_at": LATER}}}}
+
+        claim = next_action._held_by(held, "tester", NOW)
+
+        self.assertEqual("TASK001", claim["task_id"])
 
 class LogEventTests(unittest.TestCase):
     def setUp(self):

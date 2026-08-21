@@ -18,13 +18,48 @@ status: DRAFT
 # minimums:
 #   evidence: 0
 #   reason: "Small exploratory study with an explicitly bounded scope."
+
+# 1タスク = 1起動を基本にする。1つの起動で読み切れる量に割るための構成であって、
+# 工程を細かくすること自体が目的ではない。
+#
+# collector は質問1件ずつに割る。質問が3件より多いプロジェクトは、
+# **タスク実行を始める前に** collector タスクを足す（runtime はここを正本として初期化する）。
+# 各タスクは `role:` で自分の役割を宣言する。役割ごとの手順・書込先・受入条件は
+# config/task-roles.yaml にある。
 tasks:
   - id: TASK001
-    title: Validate intake and research plan
+    role: planner
+    title: Fix the questions and the plan
     depends_on: []
   - id: TASK002
-    title: Collect and normalize evidence
+    role: collector
+    title: Collect evidence for the first question
     depends_on: [TASK001]
   - id: TASK003
-    title: Analyze evidence and derive production requirements
-    depends_on: [TASK002]
+    role: collector
+    title: Collect evidence for the second question
+    depends_on: [TASK001]
+  - id: TASK004
+    role: collector
+    title: Collect evidence for the third question
+    depends_on: [TASK001]
+  - id: TASK005
+    role: curator
+    title: Settle rights and remove duplicate sources
+    depends_on: [TASK002, TASK003, TASK004]
+  - id: TASK006
+    role: analyst
+    title: Turn evidence into claims, relations and contradictions
+    depends_on: [TASK005]
+  - id: TASK007
+    role: critic
+    title: Reject options, register uncertainty, review prior art and self-repetition
+    depends_on: [TASK006]
+  - id: TASK008
+    role: production-translator
+    title: Derive requirements, acceptance tests and the medium decision
+    depends_on: [TASK007]
+  - id: TASK009
+    role: validator
+    title: Verify the project and close it
+    depends_on: [TASK008]

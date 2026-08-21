@@ -3,36 +3,105 @@
   "$id": "https://example.invalid/agentic-art-research/research-plan.schema.json",
   "title": "Research plan",
   "type": "object",
-  "required": ["version", "project_id", "objective", "required_outputs", "budget", "stopping_policy", "source_priority", "status", "tasks"],
+  "required": [
+    "version",
+    "project_id",
+    "objective",
+    "required_outputs",
+    "budget",
+    "stopping_policy",
+    "source_priority",
+    "status",
+    "tasks"
+  ],
   "additionalProperties": false,
   "properties": {
-    "version": {"type": "integer", "minimum": 1},
-    "project_id": {"$ref": "common.schema.json#/$defs/projectId"},
-    "objective": {"type": ["string", "null"]},
-    "required_outputs": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/nonEmptyString"}, "minItems": 1, "uniqueItems": true},
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "project_id": {
+      "$ref": "common.schema.json#/$defs/projectId"
+    },
+    "objective": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "required_outputs": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/nonEmptyString"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
     "budget": {
       "type": "object",
-      "required": ["max_questions", "max_total_sources", "max_runtime_minutes"],
+      "required": [
+        "max_questions",
+        "max_total_sources",
+        "max_runtime_minutes"
+      ],
       "additionalProperties": false,
       "properties": {
-        "max_questions": {"type": "integer", "minimum": 1},
-        "max_total_sources": {"type": "integer", "minimum": 1},
-        "max_runtime_minutes": {"type": "integer", "minimum": 1}
+        "max_questions": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_total_sources": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_runtime_minutes": {
+          "type": "integer",
+          "minimum": 1
+        }
       }
     },
-    "stopping_policy": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
-    "source_priority": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/nonEmptyString"}, "minItems": 1, "uniqueItems": true},
-    "status": {"$ref": "common.schema.json#/$defs/projectStatus"},
+    "stopping_policy": {
+      "$ref": "common.schema.json#/$defs/nonEmptyString"
+    },
+    "source_priority": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/nonEmptyString"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "status": {
+      "$ref": "common.schema.json#/$defs/projectStatus"
+    },
     "tasks": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "title", "depends_on"],
+        "required": [
+          "id",
+          "title",
+          "depends_on"
+        ],
         "additionalProperties": false,
         "properties": {
-          "id": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
-          "title": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
-          "depends_on": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/nonEmptyString"}, "uniqueItems": true}
+          "id": {
+            "$ref": "common.schema.json#/$defs/nonEmptyString"
+          },
+          "title": {
+            "$ref": "common.schema.json#/$defs/nonEmptyString"
+          },
+          "depends_on": {
+            "type": "array",
+            "items": {
+              "$ref": "common.schema.json#/$defs/nonEmptyString"
+            },
+            "uniqueItems": true
+          },
+          "role": {
+            "$ref": "common.schema.json#/$defs/nonEmptyString",
+            "$comment": "誰がこのタスクを実行するか。config/task-roles.yaml の roles のキー。宣言が無いタスクは同ファイルの対応表で解決する。"
+          }
         }
       }
     },
@@ -40,12 +109,29 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "evidence": {"type": "integer", "minimum": 0},
-        "claims": {"type": "integer", "minimum": 0},
-        "insights": {"type": "integer", "minimum": 0},
-        "decisions": {"type": "integer", "minimum": 0},
-        "requirements": {"type": "integer", "minimum": 0},
-        "reason": {"$ref": "common.schema.json#/$defs/nonEmptyString"}
+        "evidence": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "claims": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "insights": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "decisions": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "requirements": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reason": {
+          "$ref": "common.schema.json#/$defs/nonEmptyString"
+        }
       }
     }
   }

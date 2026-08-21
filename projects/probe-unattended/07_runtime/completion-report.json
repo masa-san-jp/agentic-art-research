@@ -17,11 +17,13 @@
     "privacy_review_complete": false,
     "requirements_testable": false,
     "research_quality_sufficient": false,
-    "rights_review_complete": false
+    "rights_review_complete": false,
+    "sources_independent_enough": false
   },
   "completed_at": "2026-08-21T09:04:24+09:00",
   "gaps": [],
   "project_id": "project/probe-unattended",
+  "questions_without_independent_sources": [],
   "reopen_triggers": [],
   "status": "BLOCKED"
 }
