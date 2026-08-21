@@ -27,6 +27,7 @@ from security_check import scan_advanced_security
 SCHEMA_FOR_JSONL = {
     "02_evidence/evidence-ledger.jsonl": "evidence",
     "03_knowledge/claims.jsonl": "claim",
+    "03_knowledge/prior-art.jsonl": "prior-art",
 }
 SCHEMA_FOR_YAML_COLLECTION = {
     "04_decisions/insight-register.yaml": ("insights", "insight"),
@@ -37,6 +38,7 @@ SCHEMA_FOR_YAML_COLLECTION = {
     "05_production/prototype-plans.yaml": ("prototype_plans", "prototype-plan"),
 }
 SCHEMA_FOR_YAML_OBJECT = {
+    "04_decisions/self-repetition-review.yaml": "self-repetition-review",
     "05_production/production-handoff.yaml": "production-handoff",
     "00_intake/research-request.yaml": "research-request",
     "00_intake/research-request-receipt.yaml": "research-request-receipt",
@@ -61,6 +63,8 @@ DOMAIN_SCHEMAS = (
     "research-state",
     "completion-report",
     "run-log-event",
+    "prior-art",
+    "self-repetition-review",
 )
 RecordEntry = tuple[str, Path, int | None, dict[str, Any]]
 REFERENCE_FIELDS = {

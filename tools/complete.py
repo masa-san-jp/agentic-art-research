@@ -36,6 +36,55 @@ CORE_CHECKS = {
     "completion_report_terminal",
 }
 TERMINAL_STATUSES = {"COMPLETE", "COMPLETE_WITH_GAPS"}
+MINIMUM_KEYS = (
+    "evidence", "claims", "insights", "decisions", "requirements",
+    "rejected_options", "uncertainties", "prior_art", "self_repetition_review",
+)
+
+
+def _minimums(root: Path, project: Path) -> tuple[dict[str, int], list[str]]:
+    """The floor, and the reason for any part of it the project lowered.
+
+    A project may need less than the default, but lowering the bar silently is
+    the same as not having one, so a lowered value without a written reason is
+    treated as no override at all.
+    """
+    policy = load_yaml(root / "config" / "stopping-policy.yaml") or {}
+    defaults = ((policy.get("defaults") or {}).get("research_minimums") or {})
+    floor = {key: int(defaults.get(key, 0)) for key in MINIMUM_KEYS}
+    plan = load_yaml(project / "01_planning" / "research-plan.yaml") or {}
+    override = plan.get("minimums") if isinstance(plan.get("minimums"), dict) else {}
+    unexplained: list[str] = []
+    reason = override.get("reason")
+    for key in MINIMUM_KEYS:
+        value = override.get(key)
+        if not isinstance(value, int):
+            continue
+        if value < floor[key] and not (isinstance(reason, str) and reason.strip()):
+            unexplained.append(key)
+            continue
+        floor[key] = value
+    return floor, unexplained
+
+
+def _count_jsonl(path: Path) -> int:
+    return len(read_jsonl(path)) if path.is_file() else 0
+
+
+def _volume(project: Path) -> dict[str, int]:
+    review_path = project / "04_decisions" / "self-repetition-review.yaml"
+    review = load_yaml(review_path) if review_path.is_file() else None
+    return {
+        "evidence": _count_jsonl(project / "02_evidence" / "evidence-ledger.jsonl"),
+        "claims": _count_jsonl(project / "03_knowledge" / "claims.jsonl"),
+        "insights": len(yaml_list(project / "04_decisions" / "insight-register.yaml", "insights")),
+        "decisions": len(yaml_list(project / "04_decisions" / "decision-log.yaml", "decisions")),
+        "requirements": len(yaml_list(project / "05_production" / "production-requirements.yaml", "requirements")),
+        "rejected_options": len(yaml_list(project / "04_decisions" / "rejected-options.yaml", "rejected_options")),
+        "uncertainties": len(yaml_list(project / "04_decisions" / "uncertainty-register.yaml", "uncertainties")),
+        "prior_art": _count_jsonl(project / "03_knowledge" / "prior-art.jsonl"),
+        "self_repetition_review": 1 if isinstance(review, dict) and review else 0,
+    }
 
 
 def _project_path(root: Path, target: str) -> Path:
@@ -135,8 +184,16 @@ def evaluate_project(root: Path, target: str) -> dict[str, Any]:
         "completion_report_terminal": isinstance(completion_report, dict)
         and completion_report.get("status") in set(vocab.get("terminal_statuses", [])),
     }
+    floor, unexplained_overrides = _minimums(root, project)
+    volume = _volume(project)
+    shortfall = {key: {"required": floor[key], "actual": volume[key]} for key in MINIMUM_KEYS if volume[key] < floor[key]}
+
     core_ok = all(checks[name] for name in CORE_CHECKS)
-    status = "COMPLETE" if core_ok and all(checks.values()) else "COMPLETE_WITH_GAPS" if core_ok else "BLOCKED"
+    if shortfall or unexplained_overrides:
+        # "調べたうえで埋まらなかった"(COMPLETE_WITH_GAPS) と "調べていない" は別物なので混ぜない。
+        status = "INCOMPLETE"
+    else:
+        status = "COMPLETE" if core_ok and all(checks.values()) else "COMPLETE_WITH_GAPS" if core_ok else "BLOCKED"
     gaps = [
         {
             "id": f"GAP-{name.upper()}",
@@ -167,6 +224,8 @@ def evaluate_project(root: Path, target: str) -> dict[str, Any]:
         "gaps": gaps,
         "blockers": blockers,
         "reopen_triggers": ["new_evidence", "material_change", "rights_or_privacy_change"],
+        "volume": {"counts": volume, "minimums": floor, "shortfall": shortfall,
+                   "unexplained_overrides": unexplained_overrides},
     }
 
 
@@ -182,7 +241,7 @@ def complete_project(root: Path, target: str, *, completed_at: str | None = None
     current_status = (manifest.get("project") or {}).get("status")
     if current_status != state.get("status"):
         raise ValueError("manifest and research-state statuses must match before completion")
-    if current_status not in {"VALIDATING", *TERMINAL_STATUSES}:
+    if current_status not in {"VALIDATING", "INCOMPLETE", *TERMINAL_STATUSES}:
         raise ValueError("completion requires project status VALIDATING or an idempotent terminal status")
     report = evaluate_project(root, target)
     if completed_at is not None:
@@ -190,7 +249,7 @@ def complete_project(root: Path, target: str, *, completed_at: str | None = None
         if normalized is None:
             raise ValueError("completed_at must be an RFC 3339 timestamp")
         report["completed_at"] = normalized
-    if current_status in TERMINAL_STATUSES and current_status == report["status"]:
+    if current_status == report["status"] and current_status in {*TERMINAL_STATUSES, "INCOMPLETE"}:
         return report
 
     before = {path: path.read_text(encoding="utf-8") for path in (manifest_path, state_path, report_path, run_log_path)}
@@ -236,7 +295,9 @@ def main() -> int:
     except (FileNotFoundError, ValueError) as exc:
         parser.error(str(exc))
     print(stable_json(report), end="")
-    return 0
+    # A caller that only reads the exit code must not be told a project is done
+    # when it has not been researched.
+    return 0 if report["status"] in TERMINAL_STATUSES else 1
 
 
 if __name__ == "__main__":

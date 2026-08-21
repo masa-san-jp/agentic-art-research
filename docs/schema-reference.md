@@ -91,3 +91,43 @@ handoff-bundle/
 - キー重複を禁止する。
 - 日時は引用符付きRFC 3339。
 - 状態と語彙は `config/vocabularies.yaml` に限定する。
+
+## 調査の量の床
+
+証拠10件・棄却案0・先行作品調査0のプロジェクトが `COMPLETE` と判定され、handoff を通り、制作プランまで出たことがある（2026-08-16 実測）。**どこにも止まらなかった。** 床はそこを止めるためにある。
+
+既定は `config/stopping-policy.yaml` の `defaults.research_minimums`。仕様書の1作品分の例の約1/4を出発点にしている——例の値そのものは要求しない。止めたいのは1桁違う状態であって、規模を揃えることではない。
+
+| 記録 | 既定 | 置き場 |
+|---|---|---|
+| 証拠 | 30 | `02_evidence/evidence-ledger.jsonl` |
+| 主張 | 18 | `03_knowledge/claims.jsonl` |
+| インサイト | 4 | `04_decisions/insight-register.yaml` |
+| 判断 | 3 | `04_decisions/decision-log.yaml` |
+| 要件 | 4 | `05_production/production-requirements.yaml` |
+| 棄却案 | 1 | `04_decisions/rejected-options.yaml` |
+| 不確実性 | 1 | `04_decisions/uncertainty-register.yaml` |
+| 先行作品調査 | 1 | `03_knowledge/prior-art.jsonl` |
+| 自己反復リスクの評価 | 1 | `04_decisions/self-repetition-review.yaml` |
+
+下4つは件数に関わらず必須である。何も棄却していない調査は選んでいない。不確かさが1件も無い調査は調べていない。誰も同じことをしていないと確かめていない調査は先行を見ていない。過去の自分との距離を測っていない企画は、既視感を評価していない。
+
+### 下限を下げる
+
+`01_planning/research-plan.yaml` の `minimums:` で上書きできる。小品と大作に同じ床を強制しない。
+
+```yaml
+minimums:
+  reason: なぜこの作品では既定より少なくてよいのか
+  evidence: 12
+```
+
+**`reason` が無い引き下げは、引き下げとして扱わない。** 既定のままで判定され、`volume.unexplained_overrides` に記録される。黙って床を下げられるなら、床が無いのと同じである。
+
+### INCOMPLETE と COMPLETE_WITH_GAPS を混ぜない
+
+床に届かないプロジェクトは `INCOMPLETE` になる。`COMPLETE_WITH_GAPS` は「調べたうえで埋まらなかった」を表す語で、「調べていない」とは別物である。
+
+- `INCOMPLETE` は終端ではない。`COLLECTING` などへ戻して積み直す。
+- `tools/complete.py` は `INCOMPLETE` のとき非0で終了する。終了コードしか見ない呼び出し側に、済んでいない仕事を済んだと伝えない。
+- `tools/build_handoff.py` は `INCOMPLETE` の完了報告を拒否する。handoff は「調査が終わった」という主張なので、起きていない調査についてそれを言えない。
