@@ -49,7 +49,9 @@ class ContextPackContractTest(unittest.TestCase):
         first = build_context_pack(root, "project/context-task", "TASK001", "planner")
         second = build_context_pack(root, "project/context-task", "TASK001", "planner")
         self.assertEqual(first, second)
-        self.assertEqual({"id", "title", "depends_on"}, set(first["task"]))
+        # The pack carries the task as the plan states it, and a task now states
+        # which role runs it. It still carries only that task.
+        self.assertEqual({"id", "title", "depends_on", "role"}, set(first["task"]))
         self.assertEqual("TASK001", first["task"]["id"])
         self.assertNotIn("tasks", first["task"])
 

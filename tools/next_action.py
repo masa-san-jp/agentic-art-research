@@ -136,11 +136,36 @@ def _held_by(runtime: dict[str, Any], worker_id: str, now: str) -> dict[str, Any
     return None
 
 
+def _over_budget(root: Path, target: str, slug: str, project: Path, events: list[dict[str, Any]],
+                 budget: dict[str, Any]) -> dict[str, Any]:
+    """The plan states a budget. Claiming another task past it spends what the project said it would not."""
+    return {
+        "project_id": target,
+        "status": "BUDGET_EXCEEDED",
+        "budget_remaining": budget,
+        "stopping": stopping_policy.evaluate_project(root, target),
+        "directive": (
+            "予算を超えている。新しいタスクを取らない。開いている必須質問を "
+            "ANSWERED か UNRESOLVED で終端させ、理由を question-register に書いてから、"
+            "停止判定を適用して完了工程へ進む。"
+        ),
+        "next_steps": [
+            f"# 01_planning/question-register.yaml の OPEN な質問を終端させる（推測で埋めない）",
+            f"python3 tools/stopping_policy.py project/{slug} apply --evaluated-at <RFC3339>",
+            f"python3 tools/complete.py project/{slug}",
+        ],
+    }
+
+
 def build_next_action(root: Path, target: str, worker_id: str, now: str) -> dict[str, Any]:
     project = _project(root, target)
     slug = target.split("/", 1)[1]
     events = read_jsonl(project / "07_runtime" / "run-log.jsonl")
+    budget = budget_remaining(project, events)
     claim = _held_by(task_runtime.load_runtime(root, target), worker_id, now)
+    if claim is None and budget["exceeded"]:
+        # 保持中のタスクは終わらせてよい。取っていないタスクを新たに取るのは止める。
+        return _over_budget(root, target, slug, project, events, budget)
     if claim is None:
         fresh = task_runtime.claim_next(root, target, worker_id, now=now)
         if fresh is not None:
@@ -177,7 +202,7 @@ def build_next_action(root: Path, target: str, worker_id: str, now: str) -> dict
         "instructions": protocol_sections(protocol, list(role_entry.get("protocol_sections") or [])),
         "write_targets": _write_targets(role_entry),
         "acceptance": _acceptance(role_entry, slug),
-        "budget_remaining": budget_remaining(project, events),
+        "budget_remaining": budget,
         "stopping": stopping_policy.evaluate_project(root, target),
         "forbidden": {
             "operations": (boundary.get("worker_policy") or {}).get("forbidden_operations") or [],

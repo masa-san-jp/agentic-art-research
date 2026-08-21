@@ -92,6 +92,49 @@ class CompletionContractTest(unittest.TestCase):
         errors = list(validator_for("completion-report").iter_errors(report))
         self.assertEqual([], errors, "\n".join(error.message for error in errors))
 
+    def test_a_mandatory_question_with_no_primary_needs_independent_seconds(self):
+        """一次資料が無いまま二次1件で答えた質問は、1つの語り直しに寄りかかっている。"""
+        from complete import _questions_without_primary
+
+        policy = {"minimum_independent_secondary_sources_when_no_primary": 2}
+        questions = [{"id": "Q001", "priority": "mandatory"}]
+        evidence = [{"source_type": "independent-secondary-review", "source_location": "a", "related_questions": ["Q001"]}]
+
+        self.assertEqual(["Q001"], _questions_without_primary(policy, questions, evidence))
+
+    def test_two_independent_seconds_stand_in_for_a_missing_primary(self):
+        from complete import _questions_without_primary
+
+        policy = {"minimum_independent_secondary_sources_when_no_primary": 2}
+        questions = [{"id": "Q001", "priority": "mandatory"}]
+        evidence = [
+            {"source_type": "independent-secondary-review", "source_location": "a", "related_questions": ["Q001"]},
+            {"source_type": "independent-secondary-book", "source_location": "b", "related_questions": ["Q001"]},
+        ]
+
+        self.assertEqual([], _questions_without_primary(policy, questions, evidence))
+
+    def test_one_primary_source_is_enough_on_its_own(self):
+        from complete import _questions_without_primary
+
+        policy = {"minimum_independent_secondary_sources_when_no_primary": 2}
+        questions = [{"id": "Q001", "priority": "mandatory"}]
+        evidence = [{"source_type": "primary-web-page", "source_location": "a", "related_questions": ["Q001"]}]
+
+        self.assertEqual([], _questions_without_primary(policy, questions, evidence))
+
+    def test_the_same_secondary_source_cited_twice_counts_once(self):
+        from complete import _questions_without_primary
+
+        policy = {"minimum_independent_secondary_sources_when_no_primary": 2}
+        questions = [{"id": "Q001", "priority": "mandatory"}]
+        evidence = [
+            {"source_type": "independent-secondary-review", "source_location": "a", "related_questions": ["Q001"]},
+            {"source_type": "independent-secondary-review", "source_location": "a", "related_questions": ["Q001"]},
+        ]
+
+        self.assertEqual(["Q001"], _questions_without_primary(policy, questions, evidence))
+
     def test_complete_report_is_schema_valid_and_reproducible(self) -> None:
         root_a = self.prepare_validating_project(governance_complete=True)
         root_b = self.prepare_validating_project(governance_complete=True)

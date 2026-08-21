@@ -3,40 +3,108 @@
   "$id": "https://example.invalid/agentic-art-research/completion-report.schema.json",
   "title": "Completion report",
   "type": "object",
-  "required": ["project_id", "status", "completed_at", "checks", "gaps", "blockers", "reopen_triggers"],
+  "required": [
+    "project_id",
+    "status",
+    "completed_at",
+    "checks",
+    "gaps",
+    "blockers",
+    "reopen_triggers"
+  ],
   "additionalProperties": false,
   "properties": {
-    "project_id": {"$ref": "common.schema.json#/$defs/projectId"},
-    "status": {"enum": ["COMPLETE", "COMPLETE_WITH_GAPS", "INCOMPLETE", "BLOCKED", "CANCELLED"]},
-    "completed_at": {"$ref": "common.schema.json#/$defs/timestamp"},
+    "project_id": {
+      "$ref": "common.schema.json#/$defs/projectId"
+    },
+    "status": {
+      "enum": [
+        "COMPLETE",
+        "COMPLETE_WITH_GAPS",
+        "INCOMPLETE",
+        "BLOCKED",
+        "CANCELLED"
+      ]
+    },
+    "completed_at": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
     "checks": {
       "type": "object",
-      "required": ["manifest_valid", "mandatory_questions_terminal", "evidence_ledger_valid", "claim_references_resolved", "decisions_traceable", "requirements_testable", "rights_review_complete", "privacy_review_complete", "no_private_raw_in_git", "completion_report_terminal", "research_quality_sufficient"],
+      "required": [
+        "manifest_valid",
+        "mandatory_questions_terminal",
+        "evidence_ledger_valid",
+        "claim_references_resolved",
+        "decisions_traceable",
+        "requirements_testable",
+        "rights_review_complete",
+        "privacy_review_complete",
+        "no_private_raw_in_git",
+        "completion_report_terminal",
+        "research_quality_sufficient",
+        "sources_independent_enough"
+      ],
       "additionalProperties": false,
       "properties": {
-        "manifest_valid": {"type": "boolean"},
-        "mandatory_questions_terminal": {"type": "boolean"},
-        "evidence_ledger_valid": {"type": "boolean"},
-        "claim_references_resolved": {"type": "boolean"},
-        "decisions_traceable": {"type": "boolean"},
-        "requirements_testable": {"type": "boolean"},
-        "rights_review_complete": {"type": "boolean"},
-        "privacy_review_complete": {"type": "boolean"},
-        "no_private_raw_in_git": {"type": "boolean"},
-        "completion_report_terminal": {"type": "boolean"},
-        "research_quality_sufficient": {"type": "boolean"}
+        "manifest_valid": {
+          "type": "boolean"
+        },
+        "mandatory_questions_terminal": {
+          "type": "boolean"
+        },
+        "evidence_ledger_valid": {
+          "type": "boolean"
+        },
+        "claim_references_resolved": {
+          "type": "boolean"
+        },
+        "decisions_traceable": {
+          "type": "boolean"
+        },
+        "requirements_testable": {
+          "type": "boolean"
+        },
+        "rights_review_complete": {
+          "type": "boolean"
+        },
+        "privacy_review_complete": {
+          "type": "boolean"
+        },
+        "no_private_raw_in_git": {
+          "type": "boolean"
+        },
+        "completion_report_terminal": {
+          "type": "boolean"
+        },
+        "research_quality_sufficient": {
+          "type": "boolean"
+        },
+        "sources_independent_enough": {
+          "type": "boolean"
+        }
       }
     },
     "gaps": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "reason", "impact"],
+        "required": [
+          "id",
+          "reason",
+          "impact"
+        ],
         "additionalProperties": false,
         "properties": {
-          "id": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
-          "reason": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
-          "impact": {"$ref": "common.schema.json#/$defs/nonEmptyString"}
+          "id": {
+            "$ref": "common.schema.json#/$defs/nonEmptyString"
+          },
+          "reason": {
+            "$ref": "common.schema.json#/$defs/nonEmptyString"
+          },
+          "impact": {
+            "$ref": "common.schema.json#/$defs/nonEmptyString"
+          }
         }
       }
     },
@@ -44,19 +112,40 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "reason", "release_condition"],
+        "required": [
+          "id",
+          "reason",
+          "release_condition"
+        ],
         "additionalProperties": false,
         "properties": {
-          "id": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
-          "reason": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
-          "release_condition": {"$ref": "common.schema.json#/$defs/nonEmptyString"}
+          "id": {
+            "$ref": "common.schema.json#/$defs/nonEmptyString"
+          },
+          "reason": {
+            "$ref": "common.schema.json#/$defs/nonEmptyString"
+          },
+          "release_condition": {
+            "$ref": "common.schema.json#/$defs/nonEmptyString"
+          }
         }
       }
     },
     "reopen_triggers": {
       "type": "array",
-      "items": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+      "items": {
+        "$ref": "common.schema.json#/$defs/nonEmptyString"
+      },
       "uniqueItems": true
+    },
+    "questions_without_independent_sources": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^Q[0-9]{3,}$"
+      },
+      "uniqueItems": true,
+      "$comment": "一次資料が無く、独立した二次資料も規定数に届いていない必須質問。"
     }
   }
 }

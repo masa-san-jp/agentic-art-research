@@ -26,6 +26,7 @@ CHECK_NAMES = (
     "no_private_raw_in_git",
     "completion_report_terminal",
     "research_quality_sufficient",
+    "sources_independent_enough",
 )
 CORE_CHECKS = {
     "manifest_valid",
@@ -92,6 +93,43 @@ def _review_complete(path: Path, key: str) -> bool:
     return False
 
 
+def _questions_without_primary(policy: dict[str, Any], questions: list[dict[str, Any]],
+                               evidence: list[dict[str, Any]]) -> list[str]:
+    """A question resting on one retelling is not resting on anything.
+
+    The policy has always said how many independent secondary sources stand in
+    for a missing primary one, and nothing read the setting. Source tiers are
+    the ones the plan names in `source_priority`, matched on the leading term of
+    `source_type`, so `primary-web-page` is primary and
+    `independent-secondary-review` is an independent secondary.
+    """
+    minimum = policy.get("minimum_independent_secondary_sources_when_no_primary")
+    if not isinstance(minimum, int) or minimum <= 0:
+        return []
+    mandatory = {
+        str(question.get("id"))
+        for question in questions
+        if question.get("priority") == "mandatory" and question.get("id")
+    }
+    primary: set[str] = set()
+    secondary: dict[str, set[str]] = {question_id: set() for question_id in mandatory}
+    for record in evidence:
+        source_type = str(record.get("source_type", ""))
+        related = [str(item) for item in record.get("related_questions", []) or []]
+        for question_id in related:
+            if question_id not in mandatory:
+                continue
+            if source_type.startswith("primary"):
+                primary.add(question_id)
+            elif source_type.startswith("independent-secondary"):
+                secondary[question_id].add(str(record.get("source_location", record.get("id", ""))))
+    return sorted(
+        question_id
+        for question_id in mandatory
+        if question_id not in primary and len(secondary[question_id]) < minimum
+    )
+
+
 def evaluate_project(root: Path, target: str) -> dict[str, Any]:
     root = root.resolve()
     project = _project_path(root, target)
@@ -126,6 +164,8 @@ def evaluate_project(root: Path, target: str) -> dict[str, Any]:
         "self_repetition_review": len(self_repetition_reviews),
     }
     quality_gaps = quality_failures(quality_policy, quality_counts)
+    stopping_defaults = (load_yaml(root / "config" / "stopping-policy.yaml") or {}).get("defaults") or {}
+    thin_questions = _questions_without_primary(stopping_defaults, questions, evidence)
     tests_by_id = {record.get("id"): record for record in acceptance_tests}
 
     checks = {
@@ -154,6 +194,7 @@ def evaluate_project(root: Path, target: str) -> dict[str, Any]:
         "completion_report_terminal": isinstance(completion_report, dict)
         and completion_report.get("status") in set(vocab.get("terminal_statuses", [])),
         "research_quality_sufficient": not quality_gaps,
+        "sources_independent_enough": not thin_questions,
     }
     core_ok = all(checks[name] for name in CORE_CHECKS)
     status = (
@@ -194,6 +235,7 @@ def evaluate_project(root: Path, target: str) -> dict[str, Any]:
         "checks": checks,
         "gaps": gaps,
         "blockers": blockers,
+        "questions_without_independent_sources": thin_questions,
         "reopen_triggers": ["new_evidence", "material_change", "rights_or_privacy_change"],
     }
 
