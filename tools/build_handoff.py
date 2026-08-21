@@ -167,6 +167,23 @@ def _gap_id(raw_id: Any, index: int, used: set[str]) -> str:
     return candidate
 
 
+def _assert_researched(sources: HandoffSources) -> None:
+    """A handoff says the research is done. It cannot say that about research that did not happen."""
+    report = sources.completion_report
+    if report.get("status") != "INCOMPLETE":
+        return
+    volume = report.get("volume") if isinstance(report.get("volume"), dict) else {}
+    shortfall = volume.get("shortfall") if isinstance(volume.get("shortfall"), dict) else {}
+    detail = ", ".join(
+        f"{key} {value.get('actual')}/{value.get('required')}"
+        for key, value in sorted(shortfall.items())
+    ) or "the research minimums are not met"
+    raise HandoffBuildError(
+        f"completion-report.json status is INCOMPLETE: {detail}. "
+        "Collect the missing records; INCOMPLETE means the research was not done, not that it left gaps."
+    )
+
+
 def _open_gaps(sources: HandoffSources) -> list[dict[str, Any]]:
     report = sources.completion_report
     gaps = report.get("gaps", [])
@@ -392,6 +409,7 @@ def build_handoff(
     supersedes: str | None = None,
 ) -> Path:
     sources = load_handoff_sources(root, target)
+    _assert_researched(sources)
     payload = build_handoff_payload(
         sources,
         generated_at=generated_at,

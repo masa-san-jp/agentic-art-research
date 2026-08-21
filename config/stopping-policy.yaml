@@ -6,6 +6,22 @@ defaults:
   saturation_rounds_without_new_evidence: 2
   minimum_independent_secondary_sources_when_no_primary: 2
   default_sufficient_answers: 1
+  # 調査の量の床。仕様書の1作品分の例（証拠132・主張74・インサイト14・判断9・要件18）の
+  # 約1/4を出発点にしている。例の値そのものは要求しない——作品によって要る量は違う。
+  # 止めたいのは1桁違う状態であって、規模の均一化ではない。
+  research_minimums:
+    evidence: 30
+    claims: 18
+    insights: 4
+    decisions: 3
+    requirements: 4
+    # 件数に関わらず必須。何も棄却していない調査は選んでいないし、
+    # 不確かさが1件も無い調査は調べていないし、
+    # 誰も同じことをしていないと確かめていない調査は先行を見ていない。
+    rejected_options: 1
+    uncertainties: 1
+    prior_art: 1
+    self_repetition_review: 1
   allow_complete_with_gaps: true
   require_terminal_state: true
   task_runtime:

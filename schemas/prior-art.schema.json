@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/prior-art.schema.json",
+  "title": "Prior art",
+  "$comment": "仕様書 §8.1 は先行作品調査を企画工程の出力に挙げているが、置き場が無かった。",
+  "type": "object",
+  "required": ["id", "title", "source_location", "reviewed_at", "difference_from_this_work", "reviewed_by"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {"type": "string", "pattern": "^PA[0-9]{3,}$"},
+    "title": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "creator": {"type": ["string", "null"], "minLength": 1},
+    "year": {"type": ["integer", "string", "null"]},
+    "source_location": {"$ref": "common.schema.json#/$defs/uri"},
+    "reviewed_at": {"$ref": "common.schema.json#/$defs/timestamp"},
+    "reviewed_by": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "relation": {"enum": ["SAME_SUBJECT", "SAME_METHOD", "SAME_MEDIUM", "ADJACENT", "UNRELATED"]},
+    "difference_from_this_work": {
+      "$ref": "common.schema.json#/$defs/nonEmptyString",
+      "$comment": "「似ていない」で終わらせない。何が違うから別の作品なのかを書く。"
+    },
+    "related_questions": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^Q[0-9]{3,}$"},
+      "uniqueItems": true
+    }
+  }
+}
