@@ -1,0 +1,25 @@
+version: 1
+
+# 実行主体がこのリポジトリの中でしてよいこと・してはならないこと。
+#
+# 正本は親リポジトリ agentic-art-orchestration の `config/research-execution-boundary.yaml`
+# にある `worker_policy` である。ここはその写しで、無人運転の入口
+# （`tools/next_action.py`）が兄弟チェックアウトの有無に依存せずに禁止事項を
+# 返せるようにするために置いている。
+#
+# **変更するときは親を先に変える。** ここだけ変えても境界は動かない。
+
+upstream:
+  repository: agentic-art-orchestration
+  path: config/research-execution-boundary.yaml
+  key: worker_policy
+
+worker_policy:
+  allowed_operations: [retrieve, normalize, classify, match, execute, verify]
+  forbidden_operations:
+    - invent
+    - free_form_ideation
+    - open_ended_artistic_synthesis
+    - add_unproven_concept
+    - alter_source_provenance
+    - bypass_gate
