@@ -60,6 +60,7 @@ DOMAIN_SCHEMAS = (
     "research-request-receipt",
     "research-state",
     "completion-report",
+    "run-log-event",
 )
 RecordEntry = tuple[str, Path, int | None, dict[str, Any]]
 REFERENCE_FIELDS = {
@@ -243,9 +244,12 @@ def _check_question_terminality(
     entries: dict[str, RecordEntry],
     vocab: dict[str, Any],
     findings: list[Finding],
+    project_status: str | None = None,
 ) -> None:
+    """A question is asked before it is answered, so "still open" is only wrong once the project claims to be finished."""
     statuses = set(vocab.get("question_statuses", []))
     terminal_statuses = set(vocab.get("question_terminal_statuses", []))
+    settled = project_status in set(vocab.get("terminal_statuses", []))
     for record_id, (kind, path, line, record) in entries.items():
         if kind != "question":
             continue
@@ -261,7 +265,7 @@ def _check_question_terminality(
                     remediation="Use a question status from config/vocabularies.yaml.",
                 )
             )
-        if record.get("priority") == "mandatory" and status not in terminal_statuses:
+        if settled and record.get("priority") == "mandatory" and status not in terminal_statuses:
             findings.append(
                 Finding(
                     _record_path(root, path),
@@ -1778,6 +1782,13 @@ def validate_repository(root: Path, project_target: str | None = None) -> list[F
             validator = schema_validators.get(schema_name) if schema_name else None
             if relative == "07_runtime/run-log.jsonl":
                 run_events.extend(records)
+                # An event the stopping policy cannot read looks the same as no
+                # event at all, so a malformed line is caught here rather than
+                # leaving the policy to count silently past it.
+                event_validator = schema_validators.get("run-log-event")
+                if event_validator:
+                    for line_number, record in records:
+                        findings.extend(_schema_findings(root, path, event_validator, record, line=line_number))
             if relative == FEEDBACK_PATH:
                 feedback_records.extend(records)
             for line_number, record in records:
@@ -1798,7 +1809,8 @@ def validate_repository(root: Path, project_target: str | None = None) -> list[F
                     )
 
         _check_references(root, entries, project_ids, findings)
-        _check_question_terminality(root, entries, vocab if isinstance(vocab, dict) else {}, findings)
+        _check_question_terminality(root, entries, vocab if isinstance(vocab, dict) else {}, findings,
+                                    state_value.get("status") if isinstance(state_value, dict) else None)
         _check_requirement_tests(root, entries, findings)
         _check_claim_cycles(root, entries, findings)
         _check_handoff_contract(

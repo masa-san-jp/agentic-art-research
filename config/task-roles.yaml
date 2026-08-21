@@ -1,0 +1,101 @@
+version: 1
+
+# タスクと、それを実行する役割の対応。
+#
+# タスクは `research-plan.yaml` の task に `role:` を書いて自分の役割を宣言できる。
+# 宣言が無いタスク（テンプレートから作った既存プロジェクト）のために、タスクIDと
+# 題名からの対応を持つ。宣言が最優先で、次にID、次に題名、最後に default_role。
+
+default_role: collector
+
+by_task_id:
+  TASK001: planner
+  TASK002: collector
+  TASK003: analyst
+
+by_title_contains:
+  - {match: "Validate intake", role: planner}
+  - {match: "Collect", role: collector}
+  - {match: "Analyze", role: analyst}
+  - {match: "Critique", role: critic}
+  - {match: "Translate", role: production-translator}
+  - {match: "Verify", role: validator}
+
+# 役割ごとに「手順書のどの段を読むか」「どこへ書いてよいか」「何が満たされたら完了か」。
+#
+# acceptance のコマンドは実行可能な形で書く。`{slug}` は入口が実際の slug に置き換える。
+# 判定できない文（「十分に調べる」等）はここに置かない。
+
+roles:
+  planner:
+    protocol_sections: [1, 2, 3]
+    write_targets:
+      - {path: "01_planning/question-register.yaml", record: question}
+      - {path: "01_planning/research-plan.yaml", record: plan}
+    acceptance:
+      - "python3 tools/validate.py --project {slug} --check"
+      - "python3 -c \"import yaml;q=yaml.safe_load(open('projects/{slug}/01_planning/question-register.yaml'))['questions'];assert q,'質問が0件';print(len(q))\""
+
+  collector:
+    protocol_sections: [4, 5]
+    write_targets:
+      - {path: "02_evidence/evidence-ledger.jsonl", record: evidence, schema: "schemas/evidence.schema.json"}
+      - {path: "02_evidence/source-ledger.jsonl", record: source}
+      - {path: "07_runtime/run-log.jsonl", record: run-log-event, schema: "schemas/run-log-event.schema.json"}
+    acceptance:
+      - "python3 tools/validate.py --project {slug} --check"
+      - "python3 -c \"import sys;n=sum(1 for l in open('projects/{slug}/02_evidence/evidence-ledger.jsonl') if l.strip());assert n>0,'証拠が0件';print(n)\""
+      - "grep -c SEARCH_ATTEMPT projects/{slug}/07_runtime/run-log.jsonl"
+      - "python3 tools/stopping_policy.py project/{slug} evaluate"
+
+  curator:
+    protocol_sections: [5]
+    write_targets:
+      - {path: "02_evidence/evidence-ledger.jsonl", record: evidence, schema: "schemas/evidence.schema.json"}
+      - {path: "06_governance/rights-register.yaml", record: right}
+    acceptance:
+      - "python3 tools/validate.py --project {slug} --check"
+
+  analyst:
+    protocol_sections: [6]
+    write_targets:
+      - {path: "03_knowledge/observations.jsonl", record: observation}
+      - {path: "03_knowledge/claims.jsonl", record: claim, schema: "schemas/claim.schema.json"}
+      - {path: "03_knowledge/relationships.jsonl", record: relationship}
+      - {path: "03_knowledge/contradictions.jsonl", record: contradiction}
+    acceptance:
+      - "python3 tools/validate.py --project {slug} --check"
+      - "python3 -c \"n=sum(1 for l in open('projects/{slug}/03_knowledge/claims.jsonl') if l.strip());assert n>0,'主張が0件';print(n)\""
+
+  critic:
+    protocol_sections: [6, 7]
+    write_targets:
+      - {path: "04_decisions/insight-register.yaml", record: insight, schema: "schemas/insight.schema.json"}
+      - {path: "04_decisions/uncertainty-register.yaml", record: uncertainty}
+      - {path: "04_decisions/rejected-options.yaml", record: rejected-option}
+      - {path: "04_decisions/decision-log.yaml", record: decision, schema: "schemas/decision.schema.json"}
+    acceptance:
+      - "python3 tools/validate.py --project {slug} --check"
+      - "python3 -c \"import yaml;r=yaml.safe_load(open('projects/{slug}/04_decisions/rejected-options.yaml'))['rejected_options'];assert r,'棄却案が0件。選んでいない';print(len(r))\""
+
+  production-translator:
+    protocol_sections: [8]
+    write_targets:
+      - {path: "05_production/production-requirements.yaml", record: requirement, schema: "schemas/requirement.schema.json"}
+      - {path: "05_production/acceptance-tests.yaml", record: acceptance-test}
+      - {path: "05_production/prototype-plans.yaml", record: prototype-plan, schema: "schemas/prototype-plan.schema.json"}
+      - {path: "05_production/creative-direction.md", record: prose}
+    acceptance:
+      - "python3 tools/validate.py --project {slug} --check"
+      - "python3 -c \"import yaml;r=yaml.safe_load(open('projects/{slug}/05_production/production-requirements.yaml'))['requirements'];assert r,'制作要件が0件';print(len(r))\""
+
+  validator:
+    protocol_sections: [9, 10]
+    write_targets:
+      - {path: "06_governance/privacy-review.yaml", record: review}
+      - {path: "06_governance/safety-risk-register.yaml", record: risk}
+      - {path: "07_runtime/research-state.json", record: state}
+    acceptance:
+      - "python3 tools/validate.py --project {slug} --check"
+      - "python3 tools/build_graph.py --check"
+      - "python3 tools/complete.py project/{slug}"

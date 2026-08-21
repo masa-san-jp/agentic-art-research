@@ -9,7 +9,7 @@ defaults:
   allow_complete_with_gaps: true
   require_terminal_state: true
   task_runtime:
-    default_lease_seconds: 300
+    default_lease_seconds: 1800
     default_max_attempts: 3
     retryable_failure_classes: [TRANSIENT, TIMEOUT, RATE_LIMIT, LEASE_EXPIRED]
     terminal_failure_classes: [PERMANENT, VALIDATION, AUTHORIZATION, DEPENDENCY_FAILED]

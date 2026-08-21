@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/run-log-event.schema.json",
+  "title": "Run log event",
+  "type": "object",
+  "required": ["event_id", "event_type"],
+  "properties": {
+    "event_id": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "event_type": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "occurred_at": {"$ref": "common.schema.json#/$defs/timestamp"},
+    "question_id": {"type": "string", "pattern": "^Q[0-9]{3,}$"},
+    "strategy_id": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "source_id": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "evidence_id": {"type": "string", "pattern": "^EV[0-9]{3,}$"},
+    "worker_id": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "note": {"$ref": "common.schema.json#/$defs/nonEmptyString"}
+  },
+  "allOf": [
+    {
+      "$comment": "停止判定は探索戦略の種類を数える。戦略が無い探索は数えられない。",
+      "if": {"properties": {"event_type": {"enum": ["SEARCH_ATTEMPT", "SEARCH_ATTEMPTED"]}}, "required": ["event_type"]},
+      "then": {"required": ["question_id", "strategy_id"]}
+    },
+    {
+      "$comment": "同じ資料を二度数えないために、見た資料は識別子で記録する。",
+      "if": {"properties": {"event_type": {"enum": ["SOURCE_REVIEWED", "SOURCE_ACCESSED"]}}, "required": ["event_type"]},
+      "then": {"anyOf": [{"required": ["question_id", "source_id"]}, {"required": ["question_id", "evidence_id"]}]}
+    },
+    {
+      "$comment": "回答は質問に紐づいて初めて終了判定の材料になる。",
+      "if": {"properties": {"event_type": {"enum": ["ANSWER_FOUND", "QUESTION_ANSWERED"]}}, "required": ["event_type"]},
+      "then": {"required": ["question_id"]}
+    },
+    {
+      "$comment": "新しい証拠が出なかった回を数えるので、質問が要る。",
+      "if": {"properties": {"event_type": {"const": "EVIDENCE_ROUND"}}, "required": ["event_type"]},
+      "then": {"required": ["question_id"]}
+    }
+  ]
+}

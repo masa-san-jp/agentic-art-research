@@ -29,6 +29,32 @@
 - 実装後は `python3 -m unittest discover -s tests -v` と `python3 tools/validate.py --check` を実行する。
 - 完了時にタスク状態、実行コマンド、結果、残課題、次の開始点を更新する。
 
+## 無人でプロジェクトを進めるとき
+
+調査プロジェクトの中で作業するエージェントは、この節だけで動けるようにする。仕様書と手順書を
+全文読んでから組み立てる必要は無い——**入口が、そのタスクに要る分だけを返す。**
+
+```
+python3 tools/next_action.py project/<slug> --worker <id> --now <RFC3339>
+```
+
+返る JSON が、そのターンの全てである。
+
+- **入口はこれだけにする。** 自分でタスクを選ばない。同じ worker が既に持っているタスクがあれば
+  それが返る（`TASK_RESUMED`）ので、途中で落ちても取り直しにならない。
+- **書いてよい場所は `write_targets` だけ。** そこに無いファイルを書き換えない。
+- **探索は記録してから進む。** `tools/log_event.py` で `SEARCH_ATTEMPT` / `SOURCE_REVIEWED` /
+  `EVIDENCE_ROUND` / `ANSWER_FOUND` を残す。停止判定と予算はこの記録だけを見ているので、
+  **記録しない探索は、していない探索と区別が付かない。**
+- **`acceptance` のコマンドを全部通してから完了させる。** 通らないまま `complete` しない。
+- **判断は `decision-log.yaml` に残す。** `authority: agent-recommended`、理由、棄却案を書く。
+  棄却案が無い判断は、選んでいない。参照した対象の commit も書く。
+- **`forbidden` に挙がった操作をしない。** `operations` はリポジトリ全体の境界、
+  `project_prohibited_actions` はそのプロジェクト固有の禁止事項。
+- **`budget_remaining.exceeded` が空でないなら、そこで打ち切る。** 質問を `ANSWERED` か
+  `UNRESOLVED` で終端させて返す。上限を越えて調べ続けない。
+- 全タスクが終わると入口は `NO_TASK_READY` と次の工程名を返す。そこから先も人を待たない。
+
 ## Engineering rules
 
 - Python 3.11以上。初期段階では依存を最小化する。
