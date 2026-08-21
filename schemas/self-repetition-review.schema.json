@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/self-repetition-review.schema.json",
+  "title": "Self-repetition review",
+  "type": "object",
+  "required": ["id", "scope", "prior_work_refs", "risk_level", "assessment", "mitigation", "reviewed_at"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {"type": "string", "pattern": "^SR[0-9]{3,}$"},
+    "scope": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "prior_work_refs": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/nonEmptyString"}, "minItems": 1, "uniqueItems": true},
+    "risk_level": {"enum": ["LOW", "MEDIUM", "HIGH", "UNKNOWN"]},
+    "assessment": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "mitigation": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "reviewed_at": {"$ref": "common.schema.json#/$defs/timestamp"}
+  }
+}

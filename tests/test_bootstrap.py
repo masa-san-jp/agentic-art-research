@@ -39,6 +39,8 @@ class BootstrapTest(unittest.TestCase):
         project = create_project(root, "harmony-study", "Harmony Study", "creator/test")
         self.assertTrue((project / "manifest.yaml").exists())
         self.assertTrue((project / "02_evidence" / "evidence-ledger.jsonl").exists())
+        self.assertTrue((project / "03_knowledge" / "prior-art.jsonl").exists())
+        self.assertTrue((project / "04_decisions" / "self-repetition-review.yaml").exists())
         manifest = yaml.safe_load((project / "manifest.yaml").read_text(encoding="utf-8"))
         self.assertEqual("RESEARCH_ONLY", manifest["workflow_mode"])
         for relative in (

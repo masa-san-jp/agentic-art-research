@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/prior-art.schema.json",
+  "title": "Prior art review record",
+  "type": "object",
+  "required": ["id", "work_title", "source_url", "difference"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {"type": "string", "pattern": "^PA[0-9]{3,}$"},
+    "work_title": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "creator": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "source_url": {"$ref": "common.schema.json#/$defs/uri"},
+    "relation_to_proposal": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "difference": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "rights_status": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "access_class": {"$ref": "common.schema.json#/$defs/accessClass"}
+  }
+}

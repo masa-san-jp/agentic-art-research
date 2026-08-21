@@ -20,7 +20,7 @@ python3 tools/impact.py --evidence EV001
 python3 tools/bundle.py project/harmony-study --audience human
 ```
 
-最後の状態は `COMPLETE` または `COMPLETE_WITH_GAPS` であり、`BLOCKED` の場合は解除条件が機械可読で残る。
+最後の状態は `COMPLETE`、`COMPLETE_WITH_GAPS`、または調査量不足を明示する `INCOMPLETE` であり、`BLOCKED` の場合は解除条件が機械可読で残る。`INCOMPLETE` は制作handoffへ進めない。
 
 ## Agent operating contract
 
@@ -67,6 +67,7 @@ python3 tools/bundle.py project/harmony-study --audience human
 - [x] (2026-08-12) I0: 上流セッション／別リポジトリからresearchへ依頼を受ける入力契約を追加。
 - [x] (2026-08-12) I1: `research-request` のschema、受け入れCLI、冪等性、安全境界、fixture、運用文書を実装。
 - [x] (2026-08-12) I2: inbound request release gateを3回連続で実行し、公開前の検証済み変更として固定。
+- [x] (2026-08-16) `COMPLETION-QUALITY-001`: Issue #44の調査量・先行作品調査・自己反復レビューを完了条件へ組み込み、未達を`INCOMPLETE`としてhandoffから拒否。
 
 ## Surprises & Discoveries
 
@@ -94,6 +95,7 @@ python3 tools/bundle.py project/harmony-study --audience human
 - 2026-08-12: 上流入力を会話やローカルパスで受けると再開性・安全性・冪等性を検証できないため、`research-request`をYAML/JSONのversioned contractとして受け付け、受理後は必ず`RESEARCH_ONLY` projectへmaterializeする。
 - 2026-08-12: 既存のproject雛形は研究専用とproduction handoffの両方の空ファイルを持つため、受理時に`PRODUCTION_HANDOFF`へ切り替えると未完成handoffを作る。受理CLIは常に`RESEARCH_ONLY`を維持し、productionへの切替を後段へ委ねる。
 - 2026-08-12: requestの再適用はrequest本文のcanonical SHA-256とproject内receiptで判定し、accepted_atの違いを既存projectへ反映しない。これにより再試行が既存intakeを変更しない。
+- 2026-08-16: 証拠・主張・判断だけの件数下限では、制作上の差分検討と自己反復リスクを捉えられないため、先行作品の差分記録と自己反復レビューを必須のcompletion-quality recordとして追加した。下限未達は既存の`COMPLETE_WITH_GAPS`へ混ぜず、`INCOMPLETE`でhandoffを止める。
 
 ## Decision Log
 
@@ -124,6 +126,7 @@ python3 tools/bundle.py project/harmony-study --audience human
 | 2026-08-11 | 明示承認後、v1.0.0を検証済みmain commit `d0f2df8d2e6b639d0c5a45104368943ebfb7d1e7`へ固定して公開し、release taskとstateをterminalへ更新する | 公開対象を検証済みcommitへ固定し、承認済み外部操作と完了記録を追跡可能にするため |
 | 2026-08-12 | 上流依頼は`research-request` schemaと`accept_research_request.py`で受け、入力のhashをreceiptへ固定する。受理projectは`RESEARCH_ONLY`から開始し、同一hashのみ冪等再適用を許可する | upstream→researchの境界で未知フィールド、raw/private data、project衝突をfail closedし、production handoffと責任を混ぜないため |
 | 2026-08-12 | requestの受理結果はproject内のYAML receiptに保存し、グローバルな受理DBや`data/`へ書かない | canonical project単位で再開でき、protocol repositoryへ実案件を常設しない境界を維持するため |
+| 2026-08-16 | completionの既定下限を証拠30、主張18、インサイト4、判断3、要件4とし、`research-plan.yaml#minimums`で下げる場合は理由を必須にする。棄却案、不確実性、先行作品、自己反復レビューも各1件以上要求する | 調査不足を非ブロッキングgapとしてhandoffへ流さず、プロジェクトごとの小規模研究の例外は理由付きで監査可能にするため |
 
 ## Outcomes & Retrospective
 
@@ -134,6 +137,8 @@ v1.2 inbound request拡張では、上流セッション／別リポジトリが
 I0/I1では、入力schemaとreceipt schema、schema-aware validator接続、dry-run/applyの受理CLI、canonical hashによる冪等性、project衝突・同一ID改変・秘密・local pathのfail-closed検査、intake派生物、fixture、CLIテスト、README/operations/schema referenceを追加した。I2の全ゲートも3回連続で合格し、v1.2.0としてmain commit `a11d14b22323bdb7173839889b7b5a64754919f7`へ公開済みである。
 
 v1.0.1候補では、symlink・path traversal・unsafe archive検査、停止・破損・中断・重複のchaos検査、運用文書契約を追加し、release check 11項目と67テストをmain基点で再確認した。
+
+Issue #44対応では、`config/stopping-policy.yaml`をcompletion-qualityの正本として、`tools/completion_quality.py`、`research-plan.schema.json`、`prior-art.schema.json`、`self-repetition-review.schema.json`を追加した。`tools/complete.py`は不足時に非0終了の`INCOMPLETE` reportを生成し、`tools/build_handoff.py`は既存handoffを変更せず拒否する。123件のunittest、validator、docs、security、chaos、graph、offline evaluation、release gate、handoff release gateが合格した。
 
 ## Context and Orientation
 

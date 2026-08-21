@@ -1,5 +1,5 @@
-version: 3
-updated_at: "2026-08-14T00:00:00+09:00"
+version: 5
+updated_at: "2026-08-16T09:53:21+09:00"
 selection_policy: lowest_id_ready_with_dependencies_done
 allowed_statuses: [BACKLOG, READY, IN_PROGRESS, BLOCKED, DONE]
 tasks:
@@ -223,4 +223,15 @@ tasks:
     checks:
       - python3 -m unittest tests.test_handoff_build.HandoffBuildContractTest.test_export_source_ref_index_uses_contract_keys_and_canonical_hashes
       - python3 -m unittest tests.test_handoff_build.HandoffBuildContractTest.test_export_rejects_quoted_local_paths_in_public_artifacts
+      - python3 tools/validate.py --check
+  - id: COMPLETION-QUALITY-001
+    milestone: H7
+    title: Prevent under-researched projects from reaching handoff
+    status: DONE
+    depends_on: [HANDOFF-REFERENCE-CONTRACT-001]
+    acceptance: Completion enforces configurable quantitative minimums plus rejected options, uncertainty, prior-art, and self-repetition records; unmet quality returns INCOMPLETE and build_handoff rejects it without mutation.
+    issue_refs: ["agentic-art-research#44"]
+    checks:
+      - python3 -m unittest tests.test_complete.CompletionContractTest.test_under_researched_project_is_incomplete_and_nonzero
+      - python3 -m unittest tests.test_handoff_build.HandoffBuildContractTest.test_incomplete_project_rejects_handoff_without_mutation
       - python3 tools/validate.py --check

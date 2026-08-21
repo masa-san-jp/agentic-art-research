@@ -392,6 +392,10 @@ def build_handoff(
     supersedes: str | None = None,
 ) -> Path:
     sources = load_handoff_sources(root, target)
+    if sources.project_data.get("status") == "INCOMPLETE" or sources.completion_report.get("status") == "INCOMPLETE":
+        raise HandoffBuildError(
+            "cannot build a production handoff from an INCOMPLETE project; satisfy completion quality requirements and rerun completion"
+        )
     payload = build_handoff_payload(
         sources,
         generated_at=generated_at,

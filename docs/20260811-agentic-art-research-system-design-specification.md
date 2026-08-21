@@ -202,6 +202,9 @@ agentic-art-research/
 │   ├── insight.schema.json
 │   ├── decision.schema.json
 │   ├── requirement.schema.json
+│   ├── research-plan.schema.json
+│   ├── prior-art.schema.json
+│   ├── self-repetition-review.schema.json
 │   └── completion-report.schema.json
 ├── docs/
 │   ├── 20260811-agentic-art-research-system-design-specification.md
@@ -716,6 +719,10 @@ SemVerを使う。
 - `PRIVATE_RAW` と `RESTRICTED` がGitに存在しない。
 - 権利、安全、プライバシーのレビュー結果がある。
 - 終了状態と再開条件を持つ `completion-report.json` がある。
+- `config/stopping-policy.yaml` の調査量下限を満たしている。
+- 棄却案、不確実性、先行作品との差分、自己反復レビューが記録されている。
+
+調査量または品質レビューが不足している場合の状態は `INCOMPLETE` とする。これは調査後に残る非ブロッキングの未解決事項を示す `COMPLETE_WITH_GAPS` とは別であり、`INCOMPLETE` のプロジェクトからproduction handoffを生成してはならない。既定下限は証拠30、主張18、インサイト4、判断3、要件4で、`01_planning/research-plan.yaml#minimums`に理由を添えて下げられる。
 
 ```python
 def research_project_is_usable(project):
@@ -730,6 +737,7 @@ def research_project_is_usable(project):
         project.privacy_review_complete,
         project.no_private_raw_in_git,
         project.completion_report_terminal,
+        project.research_quality_sufficient,
     ])
 ```
 

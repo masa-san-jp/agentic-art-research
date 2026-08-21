@@ -12,7 +12,8 @@
     "rights_review_complete": true,
     "privacy_review_complete": true,
     "no_private_raw_in_git": true,
-    "completion_report_terminal": true
+    "completion_report_terminal": true,
+    "research_quality_sufficient": true
   },
   "gaps": [
     {

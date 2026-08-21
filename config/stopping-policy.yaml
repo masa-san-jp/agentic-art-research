@@ -8,6 +8,17 @@ defaults:
   default_sufficient_answers: 1
   allow_complete_with_gaps: true
   require_terminal_state: true
+  completion_minimums:
+    evidence: 30
+    claims: 18
+    insights: 4
+    decisions: 3
+    requirements: 4
+  completion_required_records:
+    - rejected_options
+    - uncertainty
+    - prior_art
+    - self_repetition_review
   task_runtime:
     default_lease_seconds: 1800
     default_max_attempts: 3

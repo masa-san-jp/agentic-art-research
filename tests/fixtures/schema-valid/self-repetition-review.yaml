@@ -1,0 +1,7 @@
+id: SR001
+scope: Proposal concept and visual language
+prior_work_refs: [PA001]
+risk_level: LOW
+assessment: The proposal has a distinct audience interaction.
+mitigation: Preserve the documented difference during prototyping.
+reviewed_at: '2026-08-11T15:00:00+09:00'

@@ -1,20 +1,4 @@
 {
-  "project_id": "project/probe-unattended",
-  "status": "BLOCKED",
-  "completed_at": "2026-08-21T09:04:24+09:00",
-  "checks": {
-    "manifest_valid": false,
-    "mandatory_questions_terminal": false,
-    "evidence_ledger_valid": false,
-    "claim_references_resolved": false,
-    "decisions_traceable": false,
-    "requirements_testable": false,
-    "rights_review_complete": false,
-    "privacy_review_complete": false,
-    "no_private_raw_in_git": true,
-    "completion_report_terminal": true
-  },
-  "gaps": [],
   "blockers": [
     {
       "id": "INITIALIZATION",
@@ -22,5 +6,22 @@
       "release_condition": "Complete intake, planning, research, decisions, production requirements, and validation."
     }
   ],
-  "reopen_triggers": []
+  "checks": {
+    "claim_references_resolved": false,
+    "completion_report_terminal": true,
+    "decisions_traceable": false,
+    "evidence_ledger_valid": false,
+    "mandatory_questions_terminal": false,
+    "manifest_valid": false,
+    "no_private_raw_in_git": true,
+    "privacy_review_complete": false,
+    "requirements_testable": false,
+    "research_quality_sufficient": false,
+    "rights_review_complete": false
+  },
+  "completed_at": "2026-08-21T09:04:24+09:00",
+  "gaps": [],
+  "project_id": "project/probe-unattended",
+  "reopen_triggers": [],
+  "status": "BLOCKED"
 }

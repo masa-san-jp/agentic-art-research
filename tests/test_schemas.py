@@ -76,6 +76,21 @@ SCHEMA_CASES = {
         "invalid": "completion-invalid-status.json",
         "rule": "enum",
     },
+    "research-plan": {
+        "valid": "research-plan.yaml",
+        "invalid": "research-plan-lowered-without-reason.yaml",
+        "rule": "additionalProperties",
+    },
+    "prior-art": {
+        "valid": "prior-art.json",
+        "invalid": "prior-art-invalid-url.json",
+        "rule": "pattern",
+    },
+    "self-repetition-review": {
+        "valid": "self-repetition-review.yaml",
+        "invalid": "self-repetition-review-invalid-risk.yaml",
+        "rule": "enum",
+    },
     "research-state": {
         "valid": "research-state.json",
         "invalid": "research-state-invalid-task-status.json",

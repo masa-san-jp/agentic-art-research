@@ -22,6 +22,8 @@ JSON Schemaを構造の正本、本文を意味と運用規律の正本とする
 | prototype task | `PT001` |
 | production handoff | `HO001` |
 | production gap | `GP001` |
+| prior-art review | `PA001` |
+| self-repetition review | `SR001` |
 
 一度公開されたIDは変更しない。表示名の変更でIDを変えない。
 
@@ -78,6 +80,22 @@ handoff-bundle/
 - アクセス不能: status `BLOCKED` と解除条件
 
 空文字で状態を表現しない。
+
+## Completion quality
+
+`COMPLETE_WITH_GAPS`は、必要な調査を実施した後に残る非ブロッキングの未解決事項を表す。調査量または品質レビューが不足している場合は`INCOMPLETE`とし、制作handoffを生成しない。
+
+既定の最低件数は`config/stopping-policy.yaml#defaults.completion_minimums`にある。
+
+| 対象 | 既定の最低件数 |
+|---|---:|
+| evidence | 30 |
+| claims | 18 |
+| insights | 4 |
+| decisions | 3 |
+| requirements | 4 |
+
+さらに、`04_decisions/rejected-options.yaml`、`04_decisions/uncertainty-register.yaml`、`03_knowledge/prior-art.jsonl`、`04_decisions/self-repetition-review.yaml`に各1件以上の記録を要求する。小規模な研究で最低件数を下げる場合は、`01_planning/research-plan.yaml#minimums.reason`に理由を残す。先行作品記録には作品名、出典URL、提案との差分を含め、非公開原文や作品実体は保存しない。
 
 ## JSONL
 
