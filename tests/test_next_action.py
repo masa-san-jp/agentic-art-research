@@ -126,6 +126,18 @@ class EntryPointTests(unittest.TestCase):
                     "instructions", "write_targets", "acceptance", "forbidden"):
             self.assertIn(key, answer, key)
 
+    def test_the_role_comes_from_the_plan_not_from_the_id_table(self):
+        """The runtime keeps only scheduling fields, so reading the role from it hands over another role's work."""
+        project = self.root / "projects/probe"
+        plan_path = project / "01_planning/research-plan.yaml"
+        plan = yaml.safe_load(plan_path.read_text(encoding="utf-8"))
+        plan["tasks"][0]["role"] = "critic"
+        plan_path.write_text(yaml.safe_dump(plan, sort_keys=False, allow_unicode=True), encoding="utf-8")
+
+        answer = next_action.build_next_action(self.root, "project/probe", "tester", NOW)
+
+        self.assertEqual("critic", answer["role"])
+
     def test_acceptance_commands_name_the_actual_project(self):
         answer = next_action.build_next_action(self.root, "project/probe", "tester", NOW)
 
