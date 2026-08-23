@@ -180,11 +180,15 @@ def evaluate_project(root: Path, target: str) -> dict[str, Any]:
         and not any("claims.jsonl" in finding.path and finding.rule in {"JSONL", "SCHEMA:required"} for finding in findings),
         "decisions_traceable": all(record.get("insight_ids") or record.get("evidence_ids") for record in decisions)
         and not any("decision-log.yaml" in finding.path and _has_rule([finding], "CROSS-REFERENCE", "SCHEMA") for finding in findings),
+        # Testable, not tested. A requirement for the work that does not exist
+        # yet cannot have a passing test, and demanding one here made every
+        # requirement about the artwork impossible to declare mandatory —
+        # which pushed them out of the handoff, where production needs them.
         "requirements_testable": all(
             requirement.get("priority") != "mandatory"
-            or all(
-                test_id in tests_by_id and tests_by_id[test_id].get("result") == "PASS"
-                for test_id in requirement.get("acceptance_test_ids", [])
+            or (
+                requirement.get("acceptance_test_ids")
+                and all(test_id in tests_by_id for test_id in requirement["acceptance_test_ids"])
             )
             for requirement in requirements
         ),
