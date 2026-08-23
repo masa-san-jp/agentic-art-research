@@ -1,4 +1,14 @@
 categories:
+  EV002:
+  - CONCEPT
+  EV008:
+  - VISUAL
+  EV003:
+  - METHOD
+  EV004:
+  - METHOD
+  EV005:
+  - METHOD
   DC001:
   - CONCEPT
   DC002:
@@ -13,14 +23,6 @@ categories:
   - METHOD
   IN004:
   - CONCEPT
-  EV002:
-  - METHOD
-  EV003:
-  - METHOD
-  EV008:
-  - METHOD
-  EV004:
-  - METHOD
   EV015:
   - OTHER
   EV024:

@@ -87,3 +87,12 @@
 {"event_id": "COMPLETION-001", "event_type": "STATE_TRANSITION", "from_status": "VALIDATING", "to_status": "BLOCKED"}
 {"event_id": "LIFE-VALIDATING-2", "event_type": "STATE_TRANSITION", "from_status": "BLOCKED", "to_status": "VALIDATING"}
 {"event_id": "COMPLETION-002", "event_type": "STATE_TRANSITION", "from_status": "VALIDATING", "to_status": "COMPLETE"}
+{"event_id": "LIFE-A7", "event_type": "STATE_TRANSITION", "from_status": "COMPLETE", "to_status": "ANALYZING"}
+{"event_id": "LIFE-DECIDING-7", "event_type": "STATE_TRANSITION", "from_status": "ANALYZING", "to_status": "DECIDING"}
+{"event_id": "LIFE-READY_FOR_PRODUCTION-7", "event_type": "STATE_TRANSITION", "from_status": "DECIDING", "to_status": "READY_FOR_PRODUCTION"}
+{"event_id": "LIFE-VALIDATING-7", "event_type": "STATE_TRANSITION", "from_status": "READY_FOR_PRODUCTION", "to_status": "VALIDATING"}
+{"event_id": "LIFE-ANALYZING-8", "event_type": "STATE_TRANSITION", "from_status": "VALIDATING", "to_status": "ANALYZING"}
+{"event_id": "LIFE-DECIDING-8", "event_type": "STATE_TRANSITION", "from_status": "ANALYZING", "to_status": "DECIDING"}
+{"event_id": "LIFE-READY_FOR_PRODUCTION-8", "event_type": "STATE_TRANSITION", "from_status": "DECIDING", "to_status": "READY_FOR_PRODUCTION"}
+{"event_id": "LIFE-VALIDATING-8", "event_type": "STATE_TRANSITION", "from_status": "READY_FOR_PRODUCTION", "to_status": "VALIDATING"}
+{"event_id": "COMPLETION-003", "event_type": "STATE_TRANSITION", "from_status": "VALIDATING", "to_status": "COMPLETE"}

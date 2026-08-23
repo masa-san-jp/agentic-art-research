@@ -30,3 +30,37 @@ prototype_plans:
   estimated_duration_band: DAYS
   executor_capability: ローカル生成環境と距離センサを扱えること
   status: PLANNED
+- id: PP002
+  hypothesis_id: PH001
+  question: 近距離のとき、要素は実際に分離して識別できるか。生成過程は後から復元できるか。
+  uncertainty_ids:
+  - U003
+  method: 規定距離未満の状態の出力フレームを取得して要素の分離を目視で確認し、同じ生成の実行ログからモデル・シード・プロンプト・データセットを復元する。
+  inputs:
+  - 試作機の出力フレーム
+  - 生成の実行ログ
+  constraints:
+  - 試作機が動いていること
+  tasks:
+  - id: PT003
+    title: 近距離フレームを取得して要素の分離を確認する
+    depends_on: []
+    completion_condition: 規定距離未満のフレームで要素が分離して識別できることを記録した
+  - id: PT004
+    title: 実行ログから生成過程を復元する
+    depends_on:
+    - PT003
+    completion_condition: 無作為の生成物5件でモデル・シード・プロンプト・データセットを特定できた
+  - id: PT005
+    title: 判断が参照する証拠が実在し一次資料であることを照合する
+    depends_on: []
+    completion_condition: DC001 が参照する証拠がすべて evidence-ledger に実在し一次資料である
+  acceptance_test_ids:
+  - AT003
+  - AT005
+  - AT006
+  expected_evidence: 近距離フレームの標本、生成過程の復元記録、判断と証拠の照合表
+  estimated_cost_band: LOW
+  estimated_duration_band: DAYS
+  executor_capability: 試作機の出力とログを扱えること
+  status: PLANNED

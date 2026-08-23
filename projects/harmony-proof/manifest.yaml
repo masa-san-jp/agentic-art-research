@@ -1,12 +1,12 @@
 workflow_mode: PRODUCTION_HANDOFF
 project:
   id: project/harmony-proof
-  title: 調和 無人完走の実証
+  title: "\u8ABF\u548C \u7121\u4EBA\u5B8C\u8D70\u306E\u5B9F\u8A3C"
   version: 0.1.0
   status: COMPLETE
   creator_id: null
   created_at: '2026-08-22T07:30:00+09:00'
-  updated_at: '2026-08-23T09:42:00+09:00'
+  updated_at: '2026-08-23T10:28:00+09:00'
 entry_points:
   human_summary: 05_production/creative-direction.md
   research_plan: 01_planning/research-plan.yaml

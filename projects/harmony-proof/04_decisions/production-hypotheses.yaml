@@ -37,6 +37,12 @@ hypotheses:
     prototype_plan_ids:
     - PP001
     external_validation_reason: null
+  - id: U003
+    statement: 近距離で要素が実際に分離して見えるか、生成過程を後から復元できるかを、試作で確かめていない。
+    severity: MAJOR
+    prototype_plan_ids:
+    - PP002
+    external_validation_reason: null
   recommendation: RECOMMENDED
   status: ADOPTED
 - id: PH002
