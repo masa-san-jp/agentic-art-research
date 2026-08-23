@@ -182,6 +182,16 @@ def build_next_action(root: Path, target: str, worker_id: str, now: str) -> dict
     task_id = str(claim["task_id"])
     runtime = task_runtime.load_runtime(root, target)
     task = dict(runtime["tasks"][task_id])
+    # The runtime keeps only what it needs to schedule, so the role the plan
+    # declared is not in it. Reading the role from the runtime silently fell
+    # back to the id table and handed the agent another role's instructions.
+    plan = load_yaml(project / "01_planning/research-plan.yaml") or {}
+    declared = next(
+        (item for item in plan.get("tasks") or [] if str(item.get("id")) == task_id),
+        {},
+    )
+    if declared.get("role"):
+        task["role"] = declared["role"]
     table = load_yaml(root / ROLE_TABLE_PATH) or {}
     role = resolve_role(table, task, task_id)
     role_entry = (table.get("roles") or {}).get(role)

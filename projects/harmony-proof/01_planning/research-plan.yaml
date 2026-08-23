@@ -1,0 +1,67 @@
+version: 1
+project_id: project/harmony-proof
+objective: 命題 proposition:5ab4c437b82b9282 が制作に耐えるかを確かめる。「距離が近いために目を離せない一方で、その近さが介入を可能にはしていない」という状態を、距離が知覚の条件になる技法（新印象派）と、媒体が置き換わる途中の現場（デジタル教科書）に照らして、作るべきものを定める。
+required_outputs:
+- executive_brief
+- creative_direction
+- decision_log
+- production_requirements
+- acceptance_tests
+budget:
+  max_questions: 12
+  max_total_sources: 120
+  max_runtime_minutes: 240
+stopping_policy: config/stopping-policy.yaml
+source_priority:
+- primary
+- independent-secondary
+- approved-personal-derived
+- simulation
+status: COLLECTING
+tasks:
+- id: TASK001
+  role: planner
+  title: Fix the questions and the plan
+  depends_on: []
+- id: TASK002
+  role: collector
+  title: Collect evidence for the first question
+  depends_on:
+  - TASK001
+- id: TASK003
+  role: collector
+  title: Collect evidence for the second question
+  depends_on:
+  - TASK001
+- id: TASK004
+  role: collector
+  title: Collect evidence for the third question
+  depends_on:
+  - TASK001
+- id: TASK005
+  role: curator
+  title: Settle rights and remove duplicate sources
+  depends_on:
+  - TASK002
+  - TASK003
+  - TASK004
+- id: TASK006
+  role: analyst
+  title: Turn evidence into claims, relations and contradictions
+  depends_on:
+  - TASK005
+- id: TASK007
+  role: critic
+  title: Reject options, register uncertainty, review prior art and self-repetition
+  depends_on:
+  - TASK006
+- id: TASK008
+  role: production-translator
+  title: Derive requirements, acceptance tests and the medium decision
+  depends_on:
+  - TASK007
+- id: TASK009
+  role: validator
+  title: Verify the project and close it
+  depends_on:
+  - TASK008

@@ -1,0 +1,41 @@
+acceptance_tests:
+- id: AT001
+  target_requirement: RQ001
+  method: two_position_observation
+  preconditions: 作品が設営され稼働している
+  pass_condition: 同一の鑑賞者が近距離と規定距離の двух位置で観察し、像の状態が異なると報告する
+  evidence_to_record: two-position-observation-log
+  executor: production-validator
+  result: NOT_RUN
+- id: AT002
+  target_requirement: RQ002
+  method: input_trace
+  preconditions: 距離計測が動作している
+  pass_condition: 実行ログに距離の実測値が時系列で記録されており、像の状態変化と対応している
+  evidence_to_record: distance-input-trace
+  executor: production-validator
+  result: NOT_RUN
+- id: AT003
+  target_requirement: RQ003
+  method: frame_inspection
+  preconditions: 出力フレームが取得できる
+  pass_condition: 規定距離未満の状態のフレームで、要素が分離して識別できる
+  evidence_to_record: near-frame-sample
+  executor: production-validator
+  result: NOT_RUN
+- id: AT005
+  target_requirement: RQ005
+  method: log_replay
+  preconditions: 生成物の実行ログが揃っている
+  pass_condition: 無作為に選んだ生成物5件について、モデル名・シード値・プロンプト・データセットがログから特定できる
+  evidence_to_record: disclosure-sample-5
+  executor: production-validator
+  result: NOT_RUN
+- id: AT006
+  target_requirement: RQ006
+  method: reference_trace
+  preconditions: 決定記録と証拠台帳が揃っている
+  pass_condition: DC001 が参照する証拠がすべて evidence-ledger に実在し、一次資料である
+  evidence_to_record: decision-evidence-trace
+  executor: aiko-art
+  result: PASS

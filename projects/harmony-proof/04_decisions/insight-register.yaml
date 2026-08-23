@@ -1,0 +1,32 @@
+insights:
+- id: IN001
+  statement: この技法の調和は作品の側に無く、必要な距離まで離れた鑑賞者の網膜にだけ成立する。近づくことは鑑賞の深化ではなく、成立条件の破壊である。
+  claim_ids:
+  - CL011
+  - CL012
+  opposing_claim_ids: []
+  epistemic_status: SUPPORTED
+  production_implication: 鑑賞者の位置を作品の変数として扱う。近づいた状態を「よく見える」ではなく「壊れた」として設計する。
+- id: IN002
+  statement: 技法を国境を越えて運んだのは様式の魅力ではなく、展覧会組織という制度である。伝播の主語は作品ではなく仕組みだった。
+  claim_ids:
+  - CL018
+  opposing_claim_ids: []
+  epistemic_status: SUPPORTED
+  production_implication: 作品を単体で完結させず、それを運ぶ仕組みの側も見えるようにする。
+- id: IN003
+  statement: 要素を混ぜないことが調和の手段になっている。混ぜれば濁る、という否定形が技法全体を規定している。
+  claim_ids:
+  - CL005
+  - CL002
+  opposing_claim_ids: []
+  epistemic_status: SUPPORTED
+  production_implication: 要素を統合して見せない。分離を保ったまま、合成を鑑賞者側に残す。
+- id: IN004
+  statement: 命題の「近さが介入を可能にしない」状態と、この技法の「近づくと成立しない」構造は同じ形をしている。距離を詰められないことが条件になっている点で一致する。
+  claim_ids:
+  - CL012
+  - CL011
+  opposing_claim_ids: []
+  epistemic_status: HYPOTHESIS
+  production_implication: この一致を作品の中心に置く。技法の紹介ではなく、距離が条件であることの提示にする。

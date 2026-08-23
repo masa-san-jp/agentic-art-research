@@ -1,0 +1,27 @@
+{
+  "blockers": [],
+  "checks": {
+    "claim_references_resolved": true,
+    "completion_report_terminal": true,
+    "decisions_traceable": true,
+    "evidence_ledger_valid": true,
+    "mandatory_questions_terminal": true,
+    "manifest_valid": true,
+    "no_private_raw_in_git": true,
+    "privacy_review_complete": true,
+    "requirements_testable": true,
+    "research_quality_sufficient": true,
+    "rights_review_complete": true,
+    "sources_independent_enough": true
+  },
+  "completed_at": "2026-08-23T10:28:00+09:00",
+  "gaps": [],
+  "project_id": "project/harmony-proof",
+  "questions_without_independent_sources": [],
+  "reopen_triggers": [
+    "new_evidence",
+    "material_change",
+    "rights_or_privacy_change"
+  ],
+  "status": "COMPLETE"
+}

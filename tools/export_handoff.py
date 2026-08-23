@@ -19,10 +19,25 @@ from validate import validate_repository
 
 
 PROHIBITED_CLASSIFICATION_PATTERN = re.compile(r"(?<![A-Z0-9_])(?:PRIVATE_RAW|RESTRICTED)(?![A-Z0-9_])", re.IGNORECASE)
+# A path that would only resolve on the machine that wrote the bundle. The
+# leading ":" case exists to catch "key:/home/..." but an ARK identifier looks
+# the same ("ark:/12148/..."), so a match inside a well-formed absolute URL is
+# not a local path.
 ABSOLUTE_PATH_PATTERN = re.compile(
     r"(?:^|[\s\"'(=:])(?:/(?!/)\S+|[A-Za-z]:[\\/]\S*|~[\\/]\S*|file://\S+)",
     re.IGNORECASE,
 )
+URL_PATTERN = re.compile(r"https?://\S+", re.IGNORECASE)
+
+
+def _local_path_hit(text: str) -> re.Match | None:
+    spans = [match.span() for match in URL_PATTERN.finditer(text)]
+    for match in ABSOLUTE_PATH_PATTERN.finditer(text):
+        start, end = match.span()
+        if any(begin <= start and end <= finish for begin, finish in spans):
+            continue
+        return match
+    return None
 
 
 class HandoffExportError(ValueError):
@@ -53,8 +68,31 @@ def _summary(kind: str, record: dict[str, Any]) -> str:
     return " ".join(str(value).split())[:280]
 
 
+def _reference_categories(sources: HandoffSources) -> dict[str, list[str]]:
+    """Which production question a reference answers.
+
+    Production requires concept, visual and method to be answered by something,
+    and only the study knows which of its records answers which. Unstated
+    records fall to OTHER rather than being guessed.
+    """
+    path = sources.project / "05_production/reference-categories.yaml"
+    if not path.is_file():
+        return {}
+    document = load_yaml(path) or {}
+    mapping = document.get("categories") if isinstance(document, dict) else None
+    if not isinstance(mapping, dict):
+        raise HandoffExportError("reference-categories.yaml must map record IDs to a list of category IDs")
+    result: dict[str, list[str]] = {}
+    for record_id, values in mapping.items():
+        if not isinstance(values, list) or not all(isinstance(v, str) and v for v in values):
+            raise HandoffExportError(f"reference-categories.yaml entry {record_id!r} must be a list of category IDs")
+        result[str(record_id)] = list(values)
+    return result
+
+
 def source_ref_index(sources: HandoffSources, handoff: dict[str, Any]) -> dict[str, Any]:
     maps = _source_maps(sources)
+    categories = _reference_categories(sources)
     source_fields = {
         "decision_ids": ("decision", "04_decisions/decision-log.yaml"),
         "insight_ids": ("insight", "04_decisions/insight-register.yaml"),
@@ -74,15 +112,22 @@ def source_ref_index(sources: HandoffSources, handoff: dict[str, Any]) -> dict[s
                 raise HandoffExportError(
                     f"handoff source_refs.{field} includes prohibited evidence classification {record.get('sensitivity')!r}"
                 )
-            records.append(
-                {
-                    "id": record_id,
-                    "kind": kind,
-                    "source_path": source_path,
-                    "record_hash": canonical_sha256(record),
-                    "summary": _summary(kind, record),
-                }
-            )
+            entry = {
+                "id": record_id,
+                "kind": kind,
+                "source_path": source_path,
+                "record_hash": canonical_sha256(record),
+                "summary": _summary(kind, record),
+                "reference_categories": categories.get(record_id, ["OTHER"]),
+            }
+            # Production asks where a reference can be read. Evidence already
+            # carries that; a decision or an insight lives in this repository
+            # and has no external address, so it stays absent rather than
+            # inventing one.
+            location = record.get("source_location")
+            if kind == "evidence" and isinstance(location, str) and location and not any(c.isspace() for c in location):
+                entry["access_url"] = location
+            records.append(entry)
     return {"source_project": sources.project_id, "references": sorted(records, key=lambda item: (item["kind"], item["id"]))}
 
 
@@ -132,7 +177,7 @@ def _security_scan(files: dict[str, bytes], sources: HandoffSources) -> None:
             raise HandoffExportError(f"bundle file is not UTF-8 text: {relative}") from exc
         if PROHIBITED_CLASSIFICATION_PATTERN.search(text):
             raise HandoffExportError(f"bundle file contains a prohibited classification: {relative}")
-        if ABSOLUTE_PATH_PATTERN.search(text):
+        if _local_path_hit(text):
             raise HandoffExportError(f"bundle file contains an absolute or local path: {relative}")
         lowered = text.lower()
         if any(marker in lowered for marker in markers):
@@ -155,6 +200,8 @@ def _media_type(relative: str) -> str:
 def _role(relative: str) -> str:
     if relative == "production-handoff.yaml":
         return "HANDOFF"
+    if relative == "artifacts/production-brief.yaml":
+        return "PRODUCTION_BRIEF"
     if relative == "provenance.yaml":
         return "PROVENANCE"
     if relative.startswith("schemas/"):
@@ -184,6 +231,12 @@ def _bundle_files(sources: HandoffSources, handoff: dict[str, Any]) -> dict[str,
         "artifacts/source-ref-index.yaml": yaml_text(source_ref_index(sources, handoff)).encode("utf-8"),
         "artifacts/creative-direction.md": creative_path.read_bytes(),
     }
+    # The plan a person reads opens with what is being made, what it argues and
+    # how it works. Only the study can write that, so it travels with the bundle.
+    brief_path = (project / "05_production" / "production-brief.yaml").resolve()
+    if project.resolve() not in brief_path.parents or not brief_path.is_file():
+        raise HandoffExportError("05_production/production-brief.yaml is required for the handoff bundle")
+    files["artifacts/production-brief.yaml"] = brief_path.read_bytes()
     for schema_name in schema_names:
         schema_path = sources.root / "schemas" / schema_name
         if not schema_path.is_file():

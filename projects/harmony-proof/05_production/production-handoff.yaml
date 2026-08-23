@@ -1,0 +1,87 @@
+schema_version: 1.0.0
+handoff_id: HO008
+revision: 8
+status: READY
+supersedes: HO007
+research_project_id: project/harmony-proof
+research_project_version: 0.1.0
+research_commit: c3a15c5961ffa773e9ac99d19b46d7bbd1f1baae
+generated_at: '2026-08-23T11:20:00+09:00'
+selection:
+  status: AGENT_RECOMMENDED
+  selected_hypothesis_id: PH001
+  alternative_hypothesis_ids: []
+  authority: agent-recommended
+  human_approval_required: false
+creative_direction_ref: 05_production/creative-direction.md
+requirements:
+- id: RQ001
+  statement: 鑑賞者の位置が変わると作品の状態が変わる。近い位置では像が要素へ分解し、必要な距離では像として成立する。
+  priority: mandatory
+  source_decision_ids:
+  - DC001
+  acceptance_test_ids:
+  - AT001
+- id: RQ002
+  statement: 鑑賞者との距離を入力として受け取る。距離は説明ではなく実測値として作品に入る。
+  priority: mandatory
+  source_decision_ids:
+  - DC002
+  acceptance_test_ids:
+  - AT002
+- id: RQ003
+  statement: 要素は画面上で統合されない。合成は鑑賞者の側に残す。
+  priority: mandatory
+  source_decision_ids:
+  - DC001
+  acceptance_test_ids:
+  - AT003
+- id: RQ005
+  statement: 生成に用いたモデル・シード値・プロンプト・データセットを実行ログから復元して開示できる。
+  priority: mandatory
+  source_decision_ids:
+  - DC001
+  - DC002
+  acceptance_test_ids:
+  - AT005
+- id: RQ006
+  statement: 制作案の中心（調和が鑑賞者の位置にのみ成立する）が、一次資料の証拠に紐づいている。
+  priority: mandatory
+  source_decision_ids:
+  - DC001
+  acceptance_test_ids:
+  - AT006
+prototype_plan_ids:
+- PP001
+- PP002
+constraints:
+  rights: []
+  safety: []
+  privacy: []
+  prohibited_actions:
+  - publish
+  - submit
+  - send
+  - purchase
+  - contract
+  - delete
+open_gaps: []
+replan_triggers:
+- new_evidence
+- material_change
+- rights_or_privacy_change
+source_refs:
+  decision_ids:
+  - DC001
+  - DC002
+  insight_ids:
+  - IN001
+  - IN003
+  - IN004
+  evidence_ids:
+  - EV002
+  - EV003
+  - EV004
+  - EV008
+integrity:
+  content_sha256: sha256:66a98c3f295304f36f0bb00951f5b2e4f073b84ae36104d6b75bb9331bd6c7a0
