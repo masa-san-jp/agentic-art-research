@@ -17,11 +17,13 @@ prototype_plans:
     title: 距離入力で像が分解・再構成する最小の試作を作る
     depends_on: []
     completion_condition: 距離の実測値で像の状態が変わることをログで確認できる
+    effect_type: PHYSICAL_EXTERNAL
   - id: PT002
     title: 2位置での観察を行い、聞き取りを記録する
     depends_on:
     - PT001
     completion_condition: 観察記録が2位置分そろい、状態の差が記録されている
+    effect_type: PHYSICAL_EXTERNAL
   acceptance_test_ids:
   - AT001
   - AT002
@@ -46,15 +48,18 @@ prototype_plans:
     title: 近距離フレームを取得して要素の分離を確認する
     depends_on: []
     completion_condition: 規定距離未満のフレームで要素が分離して識別できることを記録した
+    effect_type: READ_ONLY
   - id: PT004
     title: 実行ログから生成過程を復元する
     depends_on:
     - PT003
     completion_condition: 無作為の生成物5件でモデル・シード・プロンプト・データセットを特定できた
+    effect_type: READ_ONLY
   - id: PT005
     title: 判断が参照する証拠が実在し一次資料であることを照合する
     depends_on: []
     completion_condition: DC001 が参照する証拠がすべて evidence-ledger に実在し一次資料である
+    effect_type: READ_ONLY
   acceptance_test_ids:
   - AT003
   - AT005
