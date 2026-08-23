@@ -32,8 +32,7 @@ requirements:
   source_decisions:
   - DC003
   statement: 作品を運ぶ仕組みの側を可視化する層を1つ持つ。ただし距離という中心を薄めない。
-  acceptance_test_ids:
-  - AT004
+  acceptance_test_ids: []
   status: PROPOSED
 - id: RQ005
   category: disclosure

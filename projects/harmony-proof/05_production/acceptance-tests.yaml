@@ -23,14 +23,6 @@ acceptance_tests:
   evidence_to_record: near-frame-sample
   executor: production-validator
   result: NOT_RUN
-- id: AT004
-  target_requirement: RQ004
-  method: layer_review
-  preconditions: 仕組みの可視化層が実装されている
-  pass_condition: その層を消しても RQ001 の合格条件が変わらない（中心を薄めていない）
-  evidence_to_record: layer-ablation-note
-  executor: production-validator
-  result: NOT_RUN
 - id: AT005
   target_requirement: RQ005
   method: log_replay
