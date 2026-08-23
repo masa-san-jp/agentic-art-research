@@ -1,12 +1,12 @@
 schema_version: 1.0.0
-handoff_id: HO007
-revision: 7
+handoff_id: HO008
+revision: 8
 status: READY
-supersedes: HO006
+supersedes: HO007
 research_project_id: project/harmony-proof
 research_project_version: 0.1.0
-research_commit: 234ae5364f565c98855470a95fb485e17f67b107
-generated_at: '2026-08-23T11:05:00+09:00'
+research_commit: c3a15c5961ffa773e9ac99d19b46d7bbd1f1baae
+generated_at: '2026-08-23T11:20:00+09:00'
 selection:
   status: AGENT_RECOMMENDED
   selected_hypothesis_id: PH001
@@ -84,4 +84,4 @@ source_refs:
   - EV004
   - EV008
 integrity:
-  content_sha256: sha256:cf9d1d1093f2f1545a7c7f1fbf7b7d96f2d008e0518777456479bba45bdda771
+  content_sha256: sha256:66a98c3f295304f36f0bb00951f5b2e4f073b84ae36104d6b75bb9331bd6c7a0
