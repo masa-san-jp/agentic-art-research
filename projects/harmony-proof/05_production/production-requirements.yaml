@@ -1,2 +1,56 @@
-requirements: []
-
+requirements:
+- id: RQ001
+  category: experience
+  priority: preferred
+  source_decisions:
+  - DC001
+  statement: 鑑賞者の位置が変わると作品の状態が変わる。近い位置では像が要素へ分解し、必要な距離では像として成立する。
+  acceptance_test_ids:
+  - AT001
+  status: PROPOSED
+- id: RQ002
+  category: medium
+  priority: preferred
+  source_decisions:
+  - DC002
+  statement: 鑑賞者との距離を入力として受け取る。距離は説明ではなく実測値として作品に入る。
+  acceptance_test_ids:
+  - AT002
+  status: PROPOSED
+- id: RQ003
+  category: composition
+  priority: preferred
+  source_decisions:
+  - DC001
+  statement: 要素は画面上で統合されない。合成は鑑賞者の側に残す。
+  acceptance_test_ids:
+  - AT003
+  status: PROPOSED
+- id: RQ004
+  category: structure
+  priority: preferred
+  source_decisions:
+  - DC003
+  statement: 作品を運ぶ仕組みの側を可視化する層を1つ持つ。ただし距離という中心を薄めない。
+  acceptance_test_ids:
+  - AT004
+  status: PROPOSED
+- id: RQ005
+  category: disclosure
+  priority: preferred
+  source_decisions:
+  - DC001
+  - DC002
+  statement: 生成に用いたモデル・シード値・プロンプト・データセットを実行ログから復元して開示できる。
+  acceptance_test_ids:
+  - AT005
+  status: PROPOSED
+- id: RQ006
+  category: research-output
+  priority: mandatory
+  source_decisions:
+  - DC001
+  statement: 制作案の中心（調和が鑑賞者の位置にのみ成立する）が、一次資料の証拠に紐づいている。
+  acceptance_test_ids:
+  - AT006
+  status: ADOPTED

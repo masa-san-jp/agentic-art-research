@@ -269,9 +269,19 @@ def complete_project(root: Path, target: str, *, completed_at: str | None = None
         manifest["project"]["updated_at"] = report["completed_at"]
         state["status"] = report["status"]
         state["updated_at"] = report["completed_at"]
-        state["last_event_id"] = "COMPLETION-001"
+        # A project that went BLOCKED and came back has completed before, and a
+        # fixed event id makes the second attempt collide with the first.
+        existing = {
+            str(item.get("event_id"))
+            for item in read_jsonl(run_log_path)
+            if str(item.get("event_id", "")).startswith("COMPLETION-")
+        }
+        event_id = next(
+            f"COMPLETION-{index:03d}" for index in range(1, 1000) if f"COMPLETION-{index:03d}" not in existing
+        )
+        state["last_event_id"] = event_id
         event = {
-            "event_id": "COMPLETION-001",
+            "event_id": event_id,
             "event_type": "STATE_TRANSITION",
             "from_status": current_status,
             "to_status": report["status"],

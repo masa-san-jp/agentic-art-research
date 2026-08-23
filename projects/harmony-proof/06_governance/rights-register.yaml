@@ -1,2 +1,9 @@
-rights: []
-
+rights:
+- id: RT001
+  status: CLEARED
+  scope: 一次資料の引用
+  note: Signac・Fénéon・Rood はパブリックドメイン。文部科学省は政府公開情報。引用の範囲で使用する。
+- id: RT002
+  status: CLEARED
+  scope: 制作物
+  note: 制作物は自作。第三者の素材を含めない。

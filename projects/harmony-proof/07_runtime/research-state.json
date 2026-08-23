@@ -1,10 +1,10 @@
 {
   "blocked_by": [],
-  "current_task": "TASK002",
-  "last_event_id": null,
+  "current_task": null,
+  "last_event_id": "COMPLETION-002",
   "project_id": "project/harmony-proof",
-  "resume_from": "Claim the lowest-ID ready task from 07_runtime task_runtime.",
-  "status": "DRAFT",
+  "resume_from": "All questions are terminal; run validation and completion checks.",
+  "status": "COMPLETE",
   "task_runtime": {
     "initialized_at": "2026-08-22T07:33:00+09:00",
     "tasks": {
@@ -23,118 +23,138 @@
         "title": "Fix the questions and the plan"
       },
       "TASK002": {
+        "attempts": 2,
+        "depends_on": [
+          "TASK001"
+        ],
+        "effect_key": "TASK002",
+        "failure": null,
+        "lease": null,
+        "max_attempts": 3,
+        "result": {
+          "evidence": 10,
+          "finding": "harmony is produced on the retina at the required distance, not on the canvas",
+          "note": "attempt 1 expired: real collection spans wall-clock hours, not the 1800s lease",
+          "question": "Q001",
+          "sources": 10,
+          "strategies": 4
+        },
+        "status": "SUCCEEDED",
+        "title": "Collect evidence for the first question"
+      },
+      "TASK003": {
+        "attempts": 2,
+        "depends_on": [
+          "TASK001"
+        ],
+        "effect_key": "TASK003",
+        "failure": null,
+        "lease": null,
+        "max_attempts": 3,
+        "result": {
+          "done_by": "collector/curator pass",
+          "evidence_total": 31
+        },
+        "status": "SUCCEEDED",
+        "title": "Collect evidence for the second question"
+      },
+      "TASK004": {
         "attempts": 1,
         "depends_on": [
           "TASK001"
         ],
-        "effect_key": null,
+        "effect_key": "TASK004",
         "failure": null,
-        "lease": {
-          "expires_at": "2026-08-22T08:11:00+09:00",
-          "owner": "aiko-art",
-          "token": "TASK002:attempt:1"
+        "lease": null,
+        "max_attempts": 3,
+        "result": {
+          "done_by": "collector/curator pass",
+          "evidence_total": 31
         },
-        "max_attempts": 3,
-        "result": null,
-        "status": "RUNNING",
-        "title": "Collect evidence for the first question"
-      },
-      "TASK003": {
-        "attempts": 0,
-        "depends_on": [
-          "TASK001"
-        ],
-        "effect_key": null,
-        "failure": null,
-        "lease": null,
-        "max_attempts": 3,
-        "result": null,
-        "status": "PENDING",
-        "title": "Collect evidence for the second question"
-      },
-      "TASK004": {
-        "attempts": 0,
-        "depends_on": [
-          "TASK001"
-        ],
-        "effect_key": null,
-        "failure": null,
-        "lease": null,
-        "max_attempts": 3,
-        "result": null,
-        "status": "PENDING",
+        "status": "SUCCEEDED",
         "title": "Collect evidence for the third question"
       },
       "TASK005": {
-        "attempts": 0,
+        "attempts": 1,
         "depends_on": [
           "TASK002",
           "TASK003",
           "TASK004"
         ],
-        "effect_key": null,
+        "effect_key": "TASK005",
         "failure": null,
         "lease": null,
         "max_attempts": 3,
-        "result": null,
-        "status": "PENDING",
+        "result": {
+          "done_by": "collector/curator pass",
+          "evidence_total": 31
+        },
+        "status": "SUCCEEDED",
         "title": "Settle rights and remove duplicate sources"
       },
       "TASK006": {
-        "attempts": 0,
+        "attempts": 1,
         "depends_on": [
           "TASK005"
         ],
-        "effect_key": null,
+        "effect_key": "TASK006",
         "failure": null,
         "lease": null,
         "max_attempts": 3,
-        "result": null,
-        "status": "PENDING",
+        "result": {
+          "role": "analyst"
+        },
+        "status": "SUCCEEDED",
         "title": "Turn evidence into claims, relations and contradictions"
       },
       "TASK007": {
-        "attempts": 0,
+        "attempts": 1,
         "depends_on": [
           "TASK006"
         ],
-        "effect_key": null,
+        "effect_key": "TASK007",
         "failure": null,
         "lease": null,
         "max_attempts": 3,
-        "result": null,
-        "status": "PENDING",
+        "result": {
+          "role": "critic"
+        },
+        "status": "SUCCEEDED",
         "title": "Reject options, register uncertainty, review prior art and self-repetition"
       },
       "TASK008": {
-        "attempts": 0,
+        "attempts": 1,
         "depends_on": [
           "TASK007"
         ],
-        "effect_key": null,
+        "effect_key": "TASK008",
         "failure": null,
         "lease": null,
         "max_attempts": 3,
-        "result": null,
-        "status": "PENDING",
+        "result": {
+          "role": "production-translator"
+        },
+        "status": "SUCCEEDED",
         "title": "Derive requirements, acceptance tests and the medium decision"
       },
       "TASK009": {
-        "attempts": 0,
+        "attempts": 1,
         "depends_on": [
           "TASK008"
         ],
-        "effect_key": null,
+        "effect_key": "TASK009",
         "failure": null,
         "lease": null,
         "max_attempts": 3,
-        "result": null,
-        "status": "PENDING",
+        "result": {
+          "role": "validator"
+        },
+        "status": "SUCCEEDED",
         "title": "Verify the project and close it"
       }
     },
     "version": 1
   },
-  "updated_at": "2026-08-22T07:30:00+09:00",
+  "updated_at": "2026-08-23T09:42:00+09:00",
   "version": 1
 }

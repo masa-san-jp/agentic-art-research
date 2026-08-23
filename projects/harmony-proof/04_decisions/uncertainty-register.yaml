@@ -1,2 +1,29 @@
-uncertainties: []
-
+uncertainties:
+- id: U001
+  severity: MAJOR
+  statement: デジタル教科書の側は制度文書しか読めておらず、教室で実際に何が採用可否を決めているかの一次データ（普及率の実数・現場の判断理由）に届いていない。
+  impact: 3項目のうち1項目が制度の記述で止まり、命題の trend 側が薄い。
+  resolution_plan: 学校における教育の情報化の実態等に関する調査の数表に当たる。
+  owner: aiko-art
+  due: '2026-09-05'
+  related_questions:
+  - Q003
+- id: U002
+  severity: MAJOR
+  statement: 「近づくと壊れる」は Signac と Fénéon の記述からの推論であり、鑑賞距離を変えた知覚実験の記録には当たっていない。
+  impact: 作品の中心に置く構造が、当事者の言明であって観測ではない。
+  resolution_plan: 視距離と点描の知覚に関する実験研究を当たる。
+  owner: aiko-art
+  due: '2026-09-05'
+  related_questions:
+  - Q001
+- id: U003
+  severity: MINOR
+  statement: Gallica の ContentSearch は該当箇所の抜粋しか返さないため、前後の文脈を読み切っていないページがある。
+  impact: 引用の意味が文脈で変わる可能性が残る。
+  resolution_plan: 中心的な引用については IIIF 経由で該当ページ全体を取得する。
+  owner: aiko-art
+  due: '2026-09-05'
+  related_questions:
+  - Q001
+  - Q002

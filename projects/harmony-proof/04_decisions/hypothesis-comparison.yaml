@@ -1,1 +1,34 @@
-comparisons: []
+comparisons:
+- id: HC001
+  hypothesis_ids:
+  - PH001
+  - PH002
+  axes:
+  - name: 命題の核に触れているか
+    assessments:
+    - hypothesis_id: PH001
+      statement: 距離が条件であることを鑑賞者の身体で成立させる。命題の「近さが介入を可能にしない」と同じ形になる。
+      rating: 5
+    - hypothesis_id: PH002
+      statement: 伝播の記録を見せるだけで、鑑賞者の位置は動かない。
+      rating: 2
+  - name: 調査の裏づけの厚さ
+    assessments:
+    - hypothesis_id: PH001
+      statement: Signac・Fénéon の一次資料に直接支えられている（EV002・EV003・EV008）。
+      rating: 5
+    - hypothesis_id: PH002
+      statement: Les XX の記録はあるが、制度史としての厚みは今回の証拠では足りない。
+      rating: 3
+  - name: 実現可能性
+    assessments:
+    - hypothesis_id: PH001
+      statement: 会場依存が高い。距離計測と実時間生成の試作が要る。
+      rating: 3
+    - hypothesis_id: PH002
+      statement: 資料提示のみで容易。
+      rating: 5
+  recommended_hypothesis_id: PH001
+  reason: 実現可能性では PH002 が上回るが、PH001 だけが命題の核（距離が条件になっていること）を鑑賞者の身体で成立させる。容易さは、核に触れないことの埋め合わせにならない。PH002
+    で失うのは設営の手間、PH001 で失うのは作品の中心であり、失うものの大きさが違う。
+  status: COMPLETE

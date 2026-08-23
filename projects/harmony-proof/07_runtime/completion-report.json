@@ -1,29 +1,27 @@
 {
-  "blockers": [
-    {
-      "id": "INITIALIZATION",
-      "reason": "Project has not run.",
-      "release_condition": "Complete intake, planning, research, decisions, production requirements, and validation."
-    }
-  ],
+  "blockers": [],
   "checks": {
-    "claim_references_resolved": false,
+    "claim_references_resolved": true,
     "completion_report_terminal": true,
-    "decisions_traceable": false,
-    "evidence_ledger_valid": false,
-    "mandatory_questions_terminal": false,
-    "manifest_valid": false,
+    "decisions_traceable": true,
+    "evidence_ledger_valid": true,
+    "mandatory_questions_terminal": true,
+    "manifest_valid": true,
     "no_private_raw_in_git": true,
-    "privacy_review_complete": false,
-    "requirements_testable": false,
-    "research_quality_sufficient": false,
-    "rights_review_complete": false,
-    "sources_independent_enough": false
+    "privacy_review_complete": true,
+    "requirements_testable": true,
+    "research_quality_sufficient": true,
+    "rights_review_complete": true,
+    "sources_independent_enough": true
   },
-  "completed_at": "2026-08-22T07:30:00+09:00",
+  "completed_at": "2026-08-23T09:42:00+09:00",
   "gaps": [],
   "project_id": "project/harmony-proof",
   "questions_without_independent_sources": [],
-  "reopen_triggers": [],
-  "status": "BLOCKED"
+  "reopen_triggers": [
+    "new_evidence",
+    "material_change",
+    "rights_or_privacy_change"
+  ],
+  "status": "COMPLETE"
 }

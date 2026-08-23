@@ -1,1 +1,32 @@
-prototype_plans: []
+prototype_plans:
+- id: PP001
+  hypothesis_id: PH001
+  question: 鑑賞距離を変えたとき、像が壊れて戻ることを鑑賞者が自分の位置の結果として認識するか。
+  uncertainty_ids:
+  - U002
+  method: 規定距離と近距離の2位置で観察してもらい、何が起きたと思うかを聞き取る。距離の実測値と像の状態を同時に記録する。
+  inputs:
+  - 距離計測が動く試作機
+  - 2位置の観察手順
+  - 聞き取りの記録用紙
+  constraints:
+  - 設営できる実空間が要る
+  - 鑑賞者は事前に仕組みの説明を受けない
+  tasks:
+  - id: PT001
+    title: 距離入力で像が分解・再構成する最小の試作を作る
+    depends_on: []
+    completion_condition: 距離の実測値で像の状態が変わることをログで確認できる
+  - id: PT002
+    title: 2位置での観察を行い、聞き取りを記録する
+    depends_on:
+    - PT001
+    completion_condition: 観察記録が2位置分そろい、状態の差が記録されている
+  acceptance_test_ids:
+  - AT001
+  - AT002
+  expected_evidence: 2位置の観察記録と、距離の実測値の時系列
+  estimated_cost_band: LOW
+  estimated_duration_band: DAYS
+  executor_capability: ローカル生成環境と距離センサを扱えること
+  status: PLANNED

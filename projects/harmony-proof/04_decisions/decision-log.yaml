@@ -1,2 +1,54 @@
-decisions: []
-
+decisions:
+- id: DC001
+  question: この作品で「調和」をどこに置くか。画面の上か、鑑賞者の位置か。
+  selected_option: 鑑賞者の位置に置く。必要な距離まで離れたときにだけ調和が成立し、近づくと成立しない状態を作る。
+  rejected_options:
+  - 画面上で調和した像を提示する
+  - 調和を主題として説明的に描く
+  insight_ids:
+  - IN001
+  - IN003
+  evidence_ids:
+  - EV002
+  - EV003
+  - EV008
+  reason: Signac は分割の目的を色の調和と定義し、Fénéon は分離した色が網膜で再合成されると書いている。この技法の調和は物の側に無く、必要な後退距離でのみ成立する。画面上で調和させると、調和の所在という核が消える。
+  uncertainty: 近づくと壊れる、は当事者の記述からの推論で、知覚実験の記録には当たっていない（U002）。
+  review_trigger: 視距離と点描の知覚に関する実験研究に当たった時点。
+  authority: agent-recommended
+  status: ADOPTED
+- id: DC002
+  question: 媒体（medium）を何にするか。
+  selected_option: 鑑賞者との距離を計測して状態が変わる、実空間に置くインスタレーション映像。距離が入力になる媒体を採る。
+  rejected_options:
+  - 静止画（プリント）
+  - 距離の概念を説明する動画
+  - Webブラウザ上のインタラクティブ作品
+  insight_ids:
+  - IN001
+  - IN004
+  evidence_ids:
+  - EV003
+  - EV002
+  reason: 距離を作品の条件にすると決めた以上（DC001）、鑑賞者の位置を実際に受け取れる媒体でなければ条件が働かない。静止画は距離を条件にできるが状態を変えられない。説明動画は距離を主題にするだけで条件にしない。ブラウザは鑑賞者の身体的な距離を持たない。
+  uncertainty: 実空間の設営条件（会場・電源・センサ）に依存する。
+  review_trigger: 展示条件が確定した時点。
+  authority: agent-recommended
+  status: ADOPTED
+- id: DC003
+  question: 伝播（Les XX / デジタル教科書）を作品にどう入れるか。
+  selected_option: 主題にはせず、構造として使う。作品を運ぶ仕組みの側を可視化する層を1つ置く。
+  rejected_options:
+  - 伝播を年表として提示する
+  - デジタル教科書を主題として前面に出す
+  insight_ids:
+  - IN002
+  evidence_ids:
+  - EV015
+  - EV024
+  - EV025
+  reason: 伝播を成立させたのは様式でなく制度である（IN002）。年表の提示は鑑賞者の位置を動かさず、デジタル教科書は制度文書しか読めていないため主題として支えられない（U001）。
+  uncertainty: 可視化の層が、距離という中心を薄めうる。
+  review_trigger: 試作で中心が薄まったと判断した時点。
+  authority: agent-recommended
+  status: ADOPTED
