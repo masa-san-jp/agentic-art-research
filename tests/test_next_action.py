@@ -232,6 +232,29 @@ class BudgetEnforcementTests(unittest.TestCase):
 
         self.assertEqual("TASK001", claim["task_id"])
 
+class PrototypeTaskEffectTests(unittest.TestCase):
+    """A task that only reads should not wait for someone to approve reading."""
+
+    SCHEMA = json.loads((ROOT / "schemas/prototype-plan.schema.json").read_text(encoding="utf-8"))
+
+    def test_a_task_can_say_what_it_affects(self):
+        task = self.SCHEMA["properties"]["tasks"]["items"]["properties"]
+
+        self.assertIn("effect_type", task)
+
+    def test_the_vocabulary_matches_the_one_production_accepts(self):
+        allowed = set(self.SCHEMA["properties"]["tasks"]["items"]["properties"]["effect_type"]["enum"])
+
+        self.assertEqual(
+            {"READ_ONLY", "REPOSITORY_WRITE", "PHYSICAL_EXTERNAL", "PUBLICATION", "PURCHASE", "CONTRACT", "DELETION"},
+            allowed)
+
+    def test_declaring_it_stays_optional_so_older_plans_still_validate(self):
+        required = self.SCHEMA["properties"]["tasks"]["items"]["required"]
+
+        self.assertNotIn("effect_type", required)
+
+
 class LogEventTests(unittest.TestCase):
     def setUp(self):
         self.events: list[dict] = []

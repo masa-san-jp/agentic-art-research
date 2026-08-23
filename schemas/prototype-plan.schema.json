@@ -21,25 +21,42 @@
   ],
   "additionalProperties": false,
   "properties": {
-    "id": {"type": "string", "pattern": "^PP[0-9]{3,}$"},
-    "hypothesis_id": {"type": "string", "pattern": "^PH[0-9]{3,}$"},
-    "question": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "id": {
+      "type": "string",
+      "pattern": "^PP[0-9]{3,}$"
+    },
+    "hypothesis_id": {
+      "type": "string",
+      "pattern": "^PH[0-9]{3,}$"
+    },
+    "question": {
+      "$ref": "common.schema.json#/$defs/nonEmptyString"
+    },
     "uncertainty_ids": {
       "type": "array",
-      "items": {"type": "string", "pattern": "^U[0-9]{3,}$"},
+      "items": {
+        "type": "string",
+        "pattern": "^U[0-9]{3,}$"
+      },
       "minItems": 1,
       "uniqueItems": true
     },
-    "method": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "method": {
+      "$ref": "common.schema.json#/$defs/nonEmptyString"
+    },
     "inputs": {
       "type": "array",
-      "items": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+      "items": {
+        "$ref": "common.schema.json#/$defs/nonEmptyString"
+      },
       "minItems": 1,
       "uniqueItems": true
     },
     "constraints": {
       "type": "array",
-      "items": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+      "items": {
+        "$ref": "common.schema.json#/$defs/nonEmptyString"
+      },
       "uniqueItems": true
     },
     "tasks": {
@@ -47,31 +64,77 @@
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["id", "title", "depends_on", "completion_condition"],
+        "required": [
+          "id",
+          "title",
+          "depends_on",
+          "completion_condition"
+        ],
         "additionalProperties": false,
         "properties": {
-          "id": {"type": "string", "pattern": "^PT[0-9]{3,}$"},
-          "title": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+          "id": {
+            "type": "string",
+            "pattern": "^PT[0-9]{3,}$"
+          },
+          "title": {
+            "$ref": "common.schema.json#/$defs/nonEmptyString"
+          },
           "depends_on": {
             "type": "array",
-            "items": {"type": "string", "pattern": "^PT[0-9]{3,}$"},
+            "items": {
+              "type": "string",
+              "pattern": "^PT[0-9]{3,}$"
+            },
             "uniqueItems": true
           },
-          "completion_condition": {"$ref": "common.schema.json#/$defs/nonEmptyString"}
+          "completion_condition": {
+            "$ref": "common.schema.json#/$defs/nonEmptyString"
+          },
+          "effect_type": {
+            "enum": [
+              "READ_ONLY",
+              "REPOSITORY_WRITE",
+              "PHYSICAL_EXTERNAL",
+              "PUBLICATION",
+              "PURCHASE",
+              "CONTRACT",
+              "DELETION"
+            ],
+            "$comment": "この作業が外に及ぼす影響。宣言しないと制作側は最も強い分類を既定にして人の承認を待つので、読むだけの作業まで止まる。語彙は制作側の共通語彙に合わせる。"
+          }
         }
       }
     },
     "acceptance_test_ids": {
       "type": "array",
-      "items": {"type": "string", "pattern": "^AT[0-9]{3,}$"},
+      "items": {
+        "type": "string",
+        "pattern": "^AT[0-9]{3,}$"
+      },
       "minItems": 1,
       "uniqueItems": true
     },
-    "expected_evidence": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
-    "estimated_cost_band": {"$ref": "common.schema.json#/$defs/costBand"},
-    "estimated_duration_band": {"$ref": "common.schema.json#/$defs/durationBand"},
-    "executor_capability": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
-    "external_validation_reason": {"type": ["string", "null"], "minLength": 1},
-    "status": {"$ref": "common.schema.json#/$defs/prototypeStatus"}
+    "expected_evidence": {
+      "$ref": "common.schema.json#/$defs/nonEmptyString"
+    },
+    "estimated_cost_band": {
+      "$ref": "common.schema.json#/$defs/costBand"
+    },
+    "estimated_duration_band": {
+      "$ref": "common.schema.json#/$defs/durationBand"
+    },
+    "executor_capability": {
+      "$ref": "common.schema.json#/$defs/nonEmptyString"
+    },
+    "external_validation_reason": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1
+    },
+    "status": {
+      "$ref": "common.schema.json#/$defs/prototypeStatus"
+    }
   }
 }
