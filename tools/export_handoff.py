@@ -200,6 +200,8 @@ def _media_type(relative: str) -> str:
 def _role(relative: str) -> str:
     if relative == "production-handoff.yaml":
         return "HANDOFF"
+    if relative == "artifacts/production-brief.yaml":
+        return "PRODUCTION_BRIEF"
     if relative == "provenance.yaml":
         return "PROVENANCE"
     if relative.startswith("schemas/"):
@@ -229,6 +231,12 @@ def _bundle_files(sources: HandoffSources, handoff: dict[str, Any]) -> dict[str,
         "artifacts/source-ref-index.yaml": yaml_text(source_ref_index(sources, handoff)).encode("utf-8"),
         "artifacts/creative-direction.md": creative_path.read_bytes(),
     }
+    # The plan a person reads opens with what is being made, what it argues and
+    # how it works. Only the study can write that, so it travels with the bundle.
+    brief_path = (project / "05_production" / "production-brief.yaml").resolve()
+    if project.resolve() not in brief_path.parents or not brief_path.is_file():
+        raise HandoffExportError("05_production/production-brief.yaml is required for the handoff bundle")
+    files["artifacts/production-brief.yaml"] = brief_path.read_bytes()
     for schema_name in schema_names:
         schema_path = sources.root / "schemas" / schema_name
         if not schema_path.is_file():
