@@ -6,8 +6,10 @@ prototype_plans:
   - U002
   method: 1.5m幅で印刷し、4mの位置と手を伸ばせる位置の2箇所で観察してもらい、何が起きたと思うかを聞き取る。装置は使わない。
   inputs:
-  - 1.5m幅で印刷した原版
-  - 2位置の観察手順
+  - 入稿データ「必要な後退-印刷原版-300dpi.tif」（17717×12026px・1500×1018mm・300dpi・要素1辺14px＝1.164mm）
+  - 反射しない面への出力（マット紙またはマットラミネート。光沢面は要素の分離が反射で消える）
+  - 正面に4.0m以上の空きが取れる壁面と、鑑賞者が近接位置まで歩ける床
+  - 2位置の観察手順（4.0mの位置と手を伸ばせる位置の2箇所・説明は事前にしない）
   - 聞き取りの記録用紙
   constraints:
   - 正面に4m以上の空きが要る
@@ -30,7 +32,7 @@ prototype_plans:
   expected_evidence: 2位置の観察記録と、距離の実測値の時系列
   estimated_cost_band: LOW
   estimated_duration_band: DAYS
-  executor_capability: ローカル生成環境と距離センサを扱えること
+  executor_capability: 大判出力を入稿・掲示でき、観察の聞き取りを記録できること
   status: PLANNED
 - id: PP002
   hypothesis_id: PH001
