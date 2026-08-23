@@ -1,12 +1,12 @@
 schema_version: 1.0.0
-handoff_id: HO001
-revision: 1
+handoff_id: HO002
+revision: 2
 status: READY
-supersedes: null
+supersedes: HO001
 research_project_id: project/harmony-proof
 research_project_version: 0.1.0
-research_commit: 5756bc9df99e7516c408d64b33a4afb3106b230e
-generated_at: '2026-08-23T09:45:00+09:00'
+research_commit: b38dfd1f9ecee244cad0bb857eb514f7c409eb1b
+generated_at: '2026-08-23T09:55:00+09:00'
 selection:
   status: AGENT_RECOMMENDED
   selected_hypothesis_id: PH001
@@ -17,21 +17,21 @@ creative_direction_ref: 05_production/creative-direction.md
 requirements:
 - id: RQ001
   statement: 鑑賞者の位置が変わると作品の状態が変わる。近い位置では像が要素へ分解し、必要な距離では像として成立する。
-  priority: preferred
+  priority: mandatory
   source_decision_ids:
   - DC001
   acceptance_test_ids:
   - AT001
 - id: RQ002
   statement: 鑑賞者との距離を入力として受け取る。距離は説明ではなく実測値として作品に入る。
-  priority: preferred
+  priority: mandatory
   source_decision_ids:
   - DC002
   acceptance_test_ids:
   - AT002
 - id: RQ003
   statement: 要素は画面上で統合されない。合成は鑑賞者の側に残す。
-  priority: preferred
+  priority: mandatory
   source_decision_ids:
   - DC001
   acceptance_test_ids:
@@ -45,7 +45,7 @@ requirements:
   - AT004
 - id: RQ005
   statement: 生成に用いたモデル・シード値・プロンプト・データセットを実行ログから復元して開示できる。
-  priority: preferred
+  priority: mandatory
   source_decision_ids:
   - DC001
   - DC002
@@ -90,4 +90,4 @@ source_refs:
   - EV004
   - EV008
 integrity:
-  content_sha256: sha256:755f33bfed34cadc8d5ea93f7581ddb3456969131c6ca5e1ce514d565693e711
+  content_sha256: sha256:843983a9b4996c3bfc810a25e73ec2690c516266d9e217c20c2d51e17c9c1a11
