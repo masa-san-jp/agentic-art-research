@@ -1,12 +1,12 @@
 schema_version: 1.0.0
-handoff_id: HO002
-revision: 2
+handoff_id: HO003
+revision: 3
 status: READY
-supersedes: HO001
+supersedes: HO002
 research_project_id: project/harmony-proof
 research_project_version: 0.1.0
-research_commit: b38dfd1f9ecee244cad0bb857eb514f7c409eb1b
-generated_at: '2026-08-23T09:55:00+09:00'
+research_commit: afbc62f9164f42ca75734a07b812bb671f529a85
+generated_at: '2026-08-23T10:07:00+09:00'
 selection:
   status: AGENT_RECOMMENDED
   selected_hypothesis_id: PH001
@@ -36,13 +36,6 @@ requirements:
   - DC001
   acceptance_test_ids:
   - AT003
-- id: RQ004
-  statement: 作品を運ぶ仕組みの側を可視化する層を1つ持つ。ただし距離という中心を薄めない。
-  priority: preferred
-  source_decision_ids:
-  - DC003
-  acceptance_test_ids:
-  - AT004
 - id: RQ005
   statement: 生成に用いたモデル・シード値・プロンプト・データセットを実行ログから復元して開示できる。
   priority: mandatory
@@ -90,4 +83,4 @@ source_refs:
   - EV004
   - EV008
 integrity:
-  content_sha256: sha256:843983a9b4996c3bfc810a25e73ec2690c516266d9e217c20c2d51e17c9c1a11
+  content_sha256: sha256:b9352d751902e3faf625a816a781512fa2b502f930a26868ae654e14eed33e3f

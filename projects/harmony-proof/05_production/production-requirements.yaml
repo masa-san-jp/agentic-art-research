@@ -26,14 +26,6 @@ requirements:
   acceptance_test_ids:
   - AT003
   status: ADOPTED
-- id: RQ004
-  category: structure
-  priority: preferred
-  source_decisions:
-  - DC003
-  statement: 作品を運ぶ仕組みの側を可視化する層を1つ持つ。ただし距離という中心を薄めない。
-  acceptance_test_ids: []
-  status: PROPOSED
 - id: RQ005
   category: disclosure
   priority: mandatory
