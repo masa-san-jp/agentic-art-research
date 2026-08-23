@@ -98,8 +98,24 @@ def _interrupted_lease(repository_root: Path) -> dict[str, Any]:
         if second is None:
             raise ChaosCheckError("recovered lease could not be reclaimed")
         result = complete(root, "project/interrupted-lease", "TASK001", "worker-b", second["lease_token"], {"value": "committed"}, now="2026-08-11T00:00:07+09:00")
-        passed = recovered["recovered"] == ["TASK001"] and stale_rejected and result["status"] == "SUCCEEDED" and result["attempts"] == 2
-        return {"id": "interrupted-lease", "passed": passed, "stale_rejected": stale_rejected, "recovered": recovered["recovered"]}
+        # The expiry returns the attempt it took, so the task that ran twice has
+        # spent one attempt and recorded one expiry. Counting the expiry as an
+        # attempt is what made a slow task look like a failing one.
+        passed = (
+            recovered["recovered"] == ["TASK001"]
+            and stale_rejected
+            and result["status"] == "SUCCEEDED"
+            and result["attempts"] == 1
+            and result.get("lease_expiries") == 1
+        )
+        return {
+            "id": "interrupted-lease",
+            "passed": passed,
+            "stale_rejected": stale_rejected,
+            "recovered": recovered["recovered"],
+            "attempts": result["attempts"],
+            "lease_expiries": result.get("lease_expiries"),
+        }
     finally:
         shutil.rmtree(root, ignore_errors=True)
 

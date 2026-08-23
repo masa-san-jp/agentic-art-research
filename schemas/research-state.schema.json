@@ -3,28 +3,72 @@
   "$id": "https://example.invalid/agentic-art-research/research-state.schema.json",
   "title": "Research project runtime state",
   "type": "object",
-  "required": ["version", "project_id", "status", "updated_at", "current_task", "last_event_id", "blocked_by", "resume_from"],
+  "required": [
+    "version",
+    "project_id",
+    "status",
+    "updated_at",
+    "current_task",
+    "last_event_id",
+    "blocked_by",
+    "resume_from"
+  ],
   "additionalProperties": false,
   "properties": {
-    "version": {"const": 1},
-    "project_id": {"$ref": "common.schema.json#/$defs/projectId"},
-    "status": {"$ref": "common.schema.json#/$defs/projectStatus"},
-    "updated_at": {"$ref": "common.schema.json#/$defs/timestamp"},
-    "current_task": {"type": ["string", "null"]},
-    "last_event_id": {"type": ["string", "null"]},
-    "blocked_by": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/nonEmptyString"}},
-    "resume_from": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "version": {
+      "const": 1
+    },
+    "project_id": {
+      "$ref": "common.schema.json#/$defs/projectId"
+    },
+    "status": {
+      "$ref": "common.schema.json#/$defs/projectStatus"
+    },
+    "updated_at": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "current_task": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "last_event_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "blocked_by": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/nonEmptyString"
+      }
+    },
+    "resume_from": {
+      "$ref": "common.schema.json#/$defs/nonEmptyString"
+    },
     "task_runtime": {
       "type": "object",
-      "required": ["version", "initialized_at", "tasks"],
+      "required": [
+        "version",
+        "initialized_at",
+        "tasks"
+      ],
       "additionalProperties": false,
       "properties": {
-        "version": {"const": 1},
-        "initialized_at": {"$ref": "common.schema.json#/$defs/timestamp"},
+        "version": {
+          "const": 1
+        },
+        "initialized_at": {
+          "$ref": "common.schema.json#/$defs/timestamp"
+        },
         "tasks": {
           "type": "object",
           "patternProperties": {
-            "^[A-Z][A-Z0-9_-]{2,}$": {"$ref": "#/$defs/task"}
+            "^[A-Z][A-Z0-9_-]{2,}$": {
+              "$ref": "#/$defs/task"
+            }
           },
           "additionalProperties": false
         }
@@ -34,37 +78,103 @@
   "$defs": {
     "task": {
       "type": "object",
-      "required": ["depends_on", "max_attempts", "status", "attempts", "lease", "result", "failure", "effect_key"],
+      "required": [
+        "depends_on",
+        "max_attempts",
+        "status",
+        "attempts",
+        "lease",
+        "result",
+        "failure",
+        "effect_key"
+      ],
       "additionalProperties": false,
       "properties": {
-        "title": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
-        "depends_on": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/nonEmptyString"}, "uniqueItems": true},
-        "max_attempts": {"type": "integer", "minimum": 1},
-        "status": {"$ref": "common.schema.json#/$defs/taskStatus"},
-        "attempts": {"type": "integer", "minimum": 0},
+        "title": {
+          "$ref": "common.schema.json#/$defs/nonEmptyString"
+        },
+        "depends_on": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/nonEmptyString"
+          },
+          "uniqueItems": true
+        },
+        "max_attempts": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "$ref": "common.schema.json#/$defs/taskStatus"
+        },
+        "attempts": {
+          "type": "integer",
+          "minimum": 0
+        },
         "lease": {
-          "type": ["object", "null"],
-          "required": ["owner", "token", "expires_at"],
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "owner",
+            "token",
+            "expires_at"
+          ],
           "additionalProperties": false,
           "properties": {
-            "owner": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
-            "token": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
-            "expires_at": {"$ref": "common.schema.json#/$defs/timestamp"}
+            "owner": {
+              "$ref": "common.schema.json#/$defs/nonEmptyString"
+            },
+            "token": {
+              "$ref": "common.schema.json#/$defs/nonEmptyString"
+            },
+            "expires_at": {
+              "$ref": "common.schema.json#/$defs/timestamp"
+            }
           }
         },
         "result": {},
         "failure": {
-          "type": ["object", "null"],
-          "required": ["class", "message", "attempt", "occurred_at"],
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "class",
+            "message",
+            "attempt",
+            "occurred_at"
+          ],
           "additionalProperties": false,
           "properties": {
-            "class": {"$ref": "common.schema.json#/$defs/taskFailureClass"},
-            "message": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
-            "attempt": {"type": "integer", "minimum": 1},
-            "occurred_at": {"$ref": "common.schema.json#/$defs/timestamp"}
+            "class": {
+              "$ref": "common.schema.json#/$defs/taskFailureClass"
+            },
+            "message": {
+              "$ref": "common.schema.json#/$defs/nonEmptyString"
+            },
+            "attempt": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "occurred_at": {
+              "$ref": "common.schema.json#/$defs/timestamp"
+            }
           }
         },
-        "effect_key": {"type": ["string", "null"], "minLength": 1}
+        "effect_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "lease_expiries": {
+          "type": "integer",
+          "minimum": 0,
+          "$comment": "lease が切れた回数。作業の失敗ではないので attempts とは別に数える。この欄を持たない既存の state は 0 として扱う。"
+        }
       }
     }
   }
