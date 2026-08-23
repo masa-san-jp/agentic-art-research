@@ -1,1 +1,19 @@
-change_requests: []
+change_requests:
+- id: CR001
+  kind: DEVIATION
+  source_result_id: PR001
+  source_record_id: DV001
+  statement: 制作した媒体が、判断 DC002 が選んだ「距離を実測して状態が変わる実空間のインスタレーション映像」ではなく、静止画（プリント）である。
+  impact_level: MAJOR
+  research_review_required: true
+  requires_human_approval: false
+  status: PROPOSED
+- id: CR002
+  kind: RESEARCH_CHANGE_REQUEST
+  source_result_id: PR001
+  source_record_id: CR001
+  statement: DC002 の棄却案『静止画（プリント）』を、棄却理由が誤りであったものとして書き直す。静止画は距離センサなしで状態を変えられる。媒体の選択をこの事実の上でやり直す。
+  impact_level: MAJOR
+  research_review_required: true
+  requires_human_approval: false
+  status: PROPOSED

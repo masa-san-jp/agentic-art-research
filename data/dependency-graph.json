@@ -2,27 +2,32 @@
   "edges": [
     {
       "from": "project/harmony-proof::AT001",
-      "to": "project/harmony-proof::HO009",
+      "to": "project/harmony-proof::HO010",
       "type": "included_test"
     },
     {
       "from": "project/harmony-proof::AT002",
-      "to": "project/harmony-proof::HO009",
+      "to": "project/harmony-proof::HO010",
       "type": "included_test"
     },
     {
       "from": "project/harmony-proof::AT003",
-      "to": "project/harmony-proof::HO009",
+      "to": "project/harmony-proof::HO010",
       "type": "included_test"
     },
     {
+      "from": "project/harmony-proof::AT003",
+      "to": "project/harmony-proof::PR001",
+      "type": "evaluated_by_result"
+    },
+    {
       "from": "project/harmony-proof::AT005",
-      "to": "project/harmony-proof::HO009",
+      "to": "project/harmony-proof::HO010",
       "type": "included_test"
     },
     {
       "from": "project/harmony-proof::AT006",
-      "to": "project/harmony-proof::HO009",
+      "to": "project/harmony-proof::HO010",
       "type": "included_test"
     },
     {
@@ -107,7 +112,7 @@
     },
     {
       "from": "project/harmony-proof::DC001",
-      "to": "project/harmony-proof::HO009",
+      "to": "project/harmony-proof::HO010",
       "type": "source_ref"
     },
     {
@@ -137,7 +142,7 @@
     },
     {
       "from": "project/harmony-proof::DC002",
-      "to": "project/harmony-proof::HO009",
+      "to": "project/harmony-proof::HO010",
       "type": "source_ref"
     },
     {
@@ -192,7 +197,12 @@
     },
     {
       "from": "project/harmony-proof::EV002",
-      "to": "project/harmony-proof::HO009",
+      "to": "project/harmony-proof::DC004",
+      "type": "informs"
+    },
+    {
+      "from": "project/harmony-proof::EV002",
+      "to": "project/harmony-proof::HO010",
       "type": "source_ref"
     },
     {
@@ -217,7 +227,12 @@
     },
     {
       "from": "project/harmony-proof::EV003",
-      "to": "project/harmony-proof::HO009",
+      "to": "project/harmony-proof::DC004",
+      "type": "informs"
+    },
+    {
+      "from": "project/harmony-proof::EV003",
+      "to": "project/harmony-proof::HO010",
       "type": "source_ref"
     },
     {
@@ -232,7 +247,7 @@
     },
     {
       "from": "project/harmony-proof::EV004",
-      "to": "project/harmony-proof::HO009",
+      "to": "project/harmony-proof::HO010",
       "type": "source_ref"
     },
     {
@@ -262,7 +277,7 @@
     },
     {
       "from": "project/harmony-proof::EV008",
-      "to": "project/harmony-proof::HO009",
+      "to": "project/harmony-proof::HO010",
       "type": "source_ref"
     },
     {
@@ -377,7 +392,7 @@
     },
     {
       "from": "project/harmony-proof::HC001",
-      "to": "project/harmony-proof::HO009",
+      "to": "project/harmony-proof::HO010",
       "type": "comparison_basis"
     },
     {
@@ -392,7 +407,12 @@
     },
     {
       "from": "project/harmony-proof::IN001",
-      "to": "project/harmony-proof::HO009",
+      "to": "project/harmony-proof::DC004",
+      "type": "informs"
+    },
+    {
+      "from": "project/harmony-proof::IN001",
+      "to": "project/harmony-proof::HO010",
       "type": "source_ref"
     },
     {
@@ -417,7 +437,7 @@
     },
     {
       "from": "project/harmony-proof::IN003",
-      "to": "project/harmony-proof::HO009",
+      "to": "project/harmony-proof::HO010",
       "type": "source_ref"
     },
     {
@@ -432,7 +452,7 @@
     },
     {
       "from": "project/harmony-proof::IN004",
-      "to": "project/harmony-proof::HO009",
+      "to": "project/harmony-proof::HO010",
       "type": "source_ref"
     },
     {
@@ -447,7 +467,7 @@
     },
     {
       "from": "project/harmony-proof::PH001",
-      "to": "project/harmony-proof::HO009",
+      "to": "project/harmony-proof::HO010",
       "type": "selected_for"
     },
     {
@@ -492,7 +512,7 @@
     },
     {
       "from": "project/harmony-proof::PP001",
-      "to": "project/harmony-proof::HO009",
+      "to": "project/harmony-proof::HO010",
       "type": "included_prototype"
     },
     {
@@ -522,7 +542,7 @@
     },
     {
       "from": "project/harmony-proof::PP002",
-      "to": "project/harmony-proof::HO009",
+      "to": "project/harmony-proof::HO010",
       "type": "included_prototype"
     },
     {
@@ -539,6 +559,31 @@
       "from": "project/harmony-proof::PP002",
       "to": "project/harmony-proof::PT005",
       "type": "contains"
+    },
+    {
+      "from": "project/harmony-proof::PR001",
+      "to": "project/harmony-proof::EV034",
+      "type": "derived_test_evidence"
+    },
+    {
+      "from": "project/harmony-proof::PR001",
+      "to": "project/harmony-proof::PR001/OB001",
+      "type": "contains_observation"
+    },
+    {
+      "from": "project/harmony-proof::PR001",
+      "to": "project/harmony-proof::PR001/OB002",
+      "type": "contains_observation"
+    },
+    {
+      "from": "project/harmony-proof::PR001/OB001",
+      "to": "project/harmony-proof::EV032",
+      "type": "derived_as"
+    },
+    {
+      "from": "project/harmony-proof::PR001/OB002",
+      "to": "project/harmony-proof::EV033",
+      "type": "derived_as"
     },
     {
       "from": "project/harmony-proof::PT001",
@@ -712,8 +757,13 @@
     },
     {
       "from": "project/harmony-proof::RQ001",
-      "to": "project/harmony-proof::HO009",
+      "to": "project/harmony-proof::HO010",
       "type": "included_requirement"
+    },
+    {
+      "from": "project/harmony-proof::RQ001",
+      "to": "project/harmony-proof::PR001/OB001",
+      "type": "observed_by_result"
     },
     {
       "from": "project/harmony-proof::RQ002",
@@ -722,8 +772,18 @@
     },
     {
       "from": "project/harmony-proof::RQ002",
-      "to": "project/harmony-proof::HO009",
+      "to": "project/harmony-proof::HO010",
       "type": "included_requirement"
+    },
+    {
+      "from": "project/harmony-proof::RQ002",
+      "to": "project/harmony-proof::PR001/OB001",
+      "type": "observed_by_result"
+    },
+    {
+      "from": "project/harmony-proof::RQ002",
+      "to": "project/harmony-proof::PR001/OB002",
+      "type": "observed_by_result"
     },
     {
       "from": "project/harmony-proof::RQ003",
@@ -732,8 +792,13 @@
     },
     {
       "from": "project/harmony-proof::RQ003",
-      "to": "project/harmony-proof::HO009",
+      "to": "project/harmony-proof::HO010",
       "type": "included_requirement"
+    },
+    {
+      "from": "project/harmony-proof::RQ003",
+      "to": "project/harmony-proof::PR001/OB001",
+      "type": "observed_by_result"
     },
     {
       "from": "project/harmony-proof::RQ005",
@@ -742,7 +807,7 @@
     },
     {
       "from": "project/harmony-proof::RQ005",
-      "to": "project/harmony-proof::HO009",
+      "to": "project/harmony-proof::HO010",
       "type": "included_requirement"
     },
     {
@@ -752,7 +817,7 @@
     },
     {
       "from": "project/harmony-proof::RQ006",
-      "to": "project/harmony-proof::HO009",
+      "to": "project/harmony-proof::HO010",
       "type": "included_requirement"
     },
     {
@@ -952,6 +1017,12 @@
       "project_id": "project/harmony-proof"
     },
     {
+      "id": "DC004",
+      "key": "project/harmony-proof::DC004",
+      "kind": "decision",
+      "project_id": "project/harmony-proof"
+    },
+    {
       "id": "EV001",
       "key": "project/harmony-proof::EV001",
       "kind": "evidence",
@@ -1138,14 +1209,32 @@
       "project_id": "project/harmony-proof"
     },
     {
+      "id": "EV032",
+      "key": "project/harmony-proof::EV032",
+      "kind": "evidence",
+      "project_id": "project/harmony-proof"
+    },
+    {
+      "id": "EV033",
+      "key": "project/harmony-proof::EV033",
+      "kind": "evidence",
+      "project_id": "project/harmony-proof"
+    },
+    {
+      "id": "EV034",
+      "key": "project/harmony-proof::EV034",
+      "kind": "evidence",
+      "project_id": "project/harmony-proof"
+    },
+    {
       "id": "HC001",
       "key": "project/harmony-proof::HC001",
       "kind": "hypothesis_comparison",
       "project_id": "project/harmony-proof"
     },
     {
-      "id": "HO009",
-      "key": "project/harmony-proof::HO009",
+      "id": "HO010",
+      "key": "project/harmony-proof::HO010",
       "kind": "production_handoff",
       "project_id": "project/harmony-proof"
     },
@@ -1195,6 +1284,24 @@
       "id": "PP002",
       "key": "project/harmony-proof::PP002",
       "kind": "prototype_plan",
+      "project_id": "project/harmony-proof"
+    },
+    {
+      "id": "PR001",
+      "key": "project/harmony-proof::PR001",
+      "kind": "production_result",
+      "project_id": "project/harmony-proof"
+    },
+    {
+      "id": "PR001/OB001",
+      "key": "project/harmony-proof::PR001/OB001",
+      "kind": "production_observation",
+      "project_id": "project/harmony-proof"
+    },
+    {
+      "id": "PR001/OB002",
+      "key": "project/harmony-proof::PR001/OB002",
+      "kind": "production_observation",
       "project_id": "project/harmony-proof"
     },
     {
