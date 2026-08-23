@@ -46,6 +46,10 @@ python3 tools/next_action.py project/<slug> --worker <id> --now <RFC3339>
 - **探索は記録してから進む。** `tools/log_event.py` で `SEARCH_ATTEMPT` / `SOURCE_REVIEWED` /
   `EVIDENCE_ROUND` / `ANSWER_FOUND` を残す。停止判定と予算はこの記録だけを見ているので、
   **記録しない探索は、していない探索と区別が付かない。**
+- **長い作業では心拍を打つ。** 1つのタスクが lease（既定1800秒）より長くかかるなら、その間に
+  `python3 tools/task_runtime.py project/<slug> heartbeat --task-id <id> --worker-id <id> --lease-token <token> --now <RFC3339>`
+  で lease を延ばす。**期限切れは作業の失敗ではないので試行回数を減らさない**が、他の作業者が
+  そのタスクを取れる状態になるので、握ったまま黙っていない。
 - **`acceptance` のコマンドを全部通してから完了させる。** 通らないまま `complete` しない。
 - **判断は `decision-log.yaml` に残す。** `authority: agent-recommended`、理由、棄却案を書く。
   棄却案が無い判断は、選んでいない。参照した対象の commit も書く。

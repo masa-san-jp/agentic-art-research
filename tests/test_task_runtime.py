@@ -17,6 +17,7 @@ from task_runtime import (
     claim_next,
     complete,
     fail,
+    heartbeat,
     initialize_runtime,
     load_runtime,
     resume,
@@ -36,6 +37,51 @@ class TaskRuntimeContractTest(unittest.TestCase):
 
     def init(self, root: Path, definitions: list[dict]) -> None:
         initialize_runtime(root, "project/runtime-test", definitions, initialized_at="2026-08-11T00:00:00+09:00")
+
+    def test_an_expired_lease_does_not_spend_an_attempt(self) -> None:
+        """A task that took a long time did not fail; counting the expiry as a try makes length look like failure."""
+        root = self.make_root()
+        self.init(root, [{"id": "TASK001", "depends_on": [], "max_attempts": 2}])
+        claim_next(root, "project/runtime-test", "worker-a", now="2026-08-11T00:00:00+09:00", lease_seconds=5)
+
+        resume(root, "project/runtime-test", now="2026-08-11T00:00:06+09:00")
+
+        state = load_runtime(root, "project/runtime-test")
+        self.assertEqual(0, state["tasks"]["TASK001"]["attempts"])
+        self.assertEqual(1, state["tasks"]["TASK001"]["lease_expiries"])
+
+    def test_expiring_more_often_than_max_attempts_still_leaves_the_task_runnable(self) -> None:
+        root = self.make_root()
+        self.init(root, [{"id": "TASK001", "depends_on": [], "max_attempts": 2}])
+        for minute in range(4):
+            claim_next(root, "project/runtime-test", "worker-a",
+                       now=f"2026-08-11T00:{minute:02d}:00+09:00", lease_seconds=5)
+            resume(root, "project/runtime-test", now=f"2026-08-11T00:{minute:02d}:06+09:00")
+
+        state = load_runtime(root, "project/runtime-test")
+        self.assertEqual("PENDING", state["tasks"]["TASK001"]["status"])
+        self.assertEqual(4, state["tasks"]["TASK001"]["lease_expiries"])
+
+    def test_a_heartbeat_pushes_the_lease_forward(self) -> None:
+        root = self.make_root()
+        self.init(root, [{"id": "TASK001", "depends_on": [], "max_attempts": 2}])
+        claimed = claim_next(root, "project/runtime-test", "worker-a", now="2026-08-11T00:00:00+09:00", lease_seconds=5)
+
+        beat = heartbeat(root, "project/runtime-test", "TASK001", "worker-a", claimed["lease_token"],
+                         now="2026-08-11T00:00:04+09:00", lease_seconds=60)
+
+        self.assertGreater(beat["lease_expires_at"], claimed["lease_expires_at"])
+        resume(root, "project/runtime-test", now="2026-08-11T00:00:06+09:00")
+        self.assertEqual("RUNNING", load_runtime(root, "project/runtime-test")["tasks"]["TASK001"]["status"])
+
+    def test_a_heartbeat_from_another_worker_is_refused(self) -> None:
+        root = self.make_root()
+        self.init(root, [{"id": "TASK001", "depends_on": [], "max_attempts": 2}])
+        claimed = claim_next(root, "project/runtime-test", "worker-a", now="2026-08-11T00:00:00+09:00", lease_seconds=60)
+
+        with self.assertRaises(TaskRuntimeError):
+            heartbeat(root, "project/runtime-test", "TASK001", "worker-b", claimed["lease_token"],
+                      now="2026-08-11T00:00:04+09:00", lease_seconds=60)
 
     def test_kill_and_resume_reclaims_lease_without_duplicate_effect(self) -> None:
         root = self.make_root()
@@ -65,7 +111,11 @@ class TaskRuntimeContractTest(unittest.TestCase):
             )
 
         second = claim_next(root, "project/runtime-test", "worker-b", now="2026-08-11T00:00:06+09:00", lease_seconds=5)
-        self.assertEqual("TASK001:attempt:2", second["lease_token"])
+        # The expiry returned the attempt, so this is still attempt 1. The token
+        # carries the expiry count so the worker whose lease ran out cannot hand
+        # back a token that now matches.
+        self.assertEqual("TASK001:attempt:1:lease:1", second["lease_token"])
+        self.assertNotEqual(first["lease_token"], second["lease_token"])
         completed = complete(
             root,
             "project/runtime-test",

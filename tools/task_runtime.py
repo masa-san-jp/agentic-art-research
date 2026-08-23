@@ -107,6 +107,7 @@ def _canonical_tasks(root: Path, definitions: Iterable[dict[str, Any]]) -> dict[
             "max_attempts": max_attempts,
             "status": "PENDING",
             "attempts": 0,
+            "lease_expiries": 0,
             "lease": None,
             "result": None,
             "failure": None,
@@ -212,13 +213,19 @@ def _reconcile(runtime: dict[str, Any], events: list[dict[str, Any]], now: str) 
             continue
         attempts = task["attempts"]
         task["lease"] = None
+        # An expired lease says the worker stopped reporting, not that the work
+        # failed. Counting it as an attempt makes a long task run out of tries
+        # for taking a long time, so the attempt is returned and the expiry is
+        # counted on its own.
+        task["lease_expiries"] = int(task.get("lease_expiries", 0)) + 1
+        task["attempts"] = max(0, attempts - 1)
         task["failure"] = {
             "class": "LEASE_EXPIRED",
             "message": "The worker lease expired before the task completed.",
             "attempt": attempts,
             "occurred_at": now,
         }
-        if attempts < task["max_attempts"]:
+        if task["attempts"] < task["max_attempts"]:
             task["status"] = "PENDING"
             next_status = "PENDING"
             recovered.append(task_id)
@@ -374,7 +381,9 @@ def claim_next(
             task = _task(runtime, task_id)
             task["attempts"] += 1
             expires_at = (_parse_timestamp(occurred_at) + timedelta(seconds=seconds)).isoformat(timespec="seconds")
-            token = f"{task_id}:attempt:{task['attempts']}"
+            # A returned attempt would otherwise mint the same token twice, and
+            # the worker whose lease expired could still hold the old one.
+            token = f"{task_id}:attempt:{task['attempts']}:lease:{int(task.get('lease_expiries', 0))}"
             task["status"] = "RUNNING"
             task["lease"] = {"owner": worker_id, "token": token, "expires_at": expires_at}
             task["failure"] = None
@@ -417,6 +426,52 @@ def resume(root: Path, target: str, *, now: str | None = None) -> dict[str, Any]
         return state, generated, {"recovered": recovered, "blocked": blocked, "ready": ready}
 
     return _mutate(_project(root.resolve(), target), mutate)
+
+
+def heartbeat(
+    root: Path,
+    target: str,
+    task_id: str,
+    worker_id: str,
+    lease_token: str,
+    *,
+    now: str | None = None,
+    lease_seconds: int | None = None,
+) -> dict[str, Any]:
+    """Push the lease forward while the work is still going.
+
+    No default length is long enough for every task, and a length long enough
+    for the longest one cannot tell a working agent from a dead one. A worker
+    that is still there says so.
+    """
+    root = root.resolve()
+    policy, _, _, _ = _runtime_policy(root)
+    seconds = policy["default_lease_seconds"] if lease_seconds is None else lease_seconds
+    if not isinstance(seconds, int) or seconds <= 0:
+        raise TaskRuntimeError("lease_seconds must be a positive integer")
+    occurred_at = _timestamp(now)
+
+    def mutate(state: dict[str, Any], events: list[dict[str, Any]]) -> tuple[dict[str, Any], list[dict[str, Any]], Any]:
+        runtime = state[TASK_RUNTIME_KEY]
+        generated: list[dict[str, Any]] = []
+        task = _task(runtime, task_id)
+        _assert_lease(task, worker_id, lease_token)
+        expires_at = (_parse_timestamp(occurred_at) + timedelta(seconds=seconds)).isoformat(timespec="seconds")
+        task["lease"]["expires_at"] = expires_at
+        generated.append(
+            _event(
+                events + generated,
+                "TASK_LEASE_EXTENDED",
+                occurred_at,
+                task_id=task_id,
+                worker_id=worker_id,
+                lease_token=lease_token,
+                lease_expires_at=expires_at,
+            )
+        )
+        return state, generated, {"task_id": task_id, "lease_token": lease_token, "lease_expires_at": expires_at}
+
+    return _mutate(_project(root, target), mutate)
 
 
 def _assert_lease(task: dict[str, Any], worker_id: str, lease_token: str) -> None:
@@ -526,7 +581,7 @@ def fail(
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run the deterministic project task DAG runtime.")
     parser.add_argument("target")
-    parser.add_argument("command", choices=["init", "claim", "resume", "complete", "fail"])
+    parser.add_argument("command", choices=["init", "claim", "resume", "heartbeat", "complete", "fail"])
     parser.add_argument("--root", type=Path, default=ROOT)
     parser.add_argument("--now")
     parser.add_argument("--worker-id")
@@ -547,6 +602,18 @@ def main() -> int:
             result = claim_next(args.root.resolve(), args.target, args.worker_id, now=args.now, lease_seconds=args.lease_seconds)
         elif args.command == "resume":
             result = resume(args.root.resolve(), args.target, now=args.now)
+        elif args.command == "heartbeat":
+            if not all((args.task_id, args.worker_id, args.lease_token)):
+                parser.error("heartbeat requires --task-id, --worker-id, and --lease-token")
+            result = heartbeat(
+                args.root.resolve(),
+                args.target,
+                args.task_id,
+                args.worker_id,
+                args.lease_token,
+                now=args.now,
+                lease_seconds=args.lease_seconds,
+            )
         elif args.command == "complete":
             if not all((args.task_id, args.worker_id, args.lease_token, args.result_json)):
                 parser.error("complete requires --task-id, --worker-id, --lease-token, and --result-json")
