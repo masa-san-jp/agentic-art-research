@@ -1,0 +1,67 @@
+version: 1
+project_id: project/harness-check-3
+objective: 命題 proposition:2b824da0d76257ae が制作に耐えるかを確かめ、作るべきものを定める。
+required_outputs:
+- executive_brief
+- creative_direction
+- decision_log
+- production_requirements
+- acceptance_tests
+budget:
+  max_questions: 12
+  max_total_sources: 120
+  max_runtime_minutes: 240
+stopping_policy: config/stopping-policy.yaml
+source_priority:
+- primary
+- independent-secondary
+- approved-personal-derived
+- simulation
+status: DRAFT
+tasks:
+- id: TASK001
+  role: planner
+  title: Fix the questions and the plan
+  depends_on: []
+- id: TASK002
+  role: collector
+  title: Collect evidence for the first question
+  depends_on:
+  - TASK001
+- id: TASK003
+  role: collector
+  title: Collect evidence for the second question
+  depends_on:
+  - TASK001
+- id: TASK004
+  role: collector
+  title: Collect evidence for the third question
+  depends_on:
+  - TASK001
+- id: TASK005
+  role: curator
+  title: Settle rights and remove duplicate sources
+  depends_on:
+  - TASK002
+  - TASK003
+  - TASK004
+- id: TASK006
+  role: analyst
+  title: Turn evidence into claims, relations and contradictions
+  depends_on:
+  - TASK005
+- id: TASK007
+  role: critic
+  title: Reject options, register uncertainty, review prior art and self-repetition
+  depends_on:
+  - TASK006
+- id: TASK008
+  role: production-translator
+  title: Derive requirements, acceptance tests and the medium decision
+  depends_on:
+  - TASK007
+- id: TASK009
+  role: validator
+  title: Verify the project and close it
+  depends_on:
+  - TASK008

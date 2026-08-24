@@ -1,0 +1,35 @@
+schema_version: 1.0.0
+brief_id: PB001
+revision: 1
+completion_image:
+  encounter:
+  - 未記入
+  - 未記入
+  - 未記入
+  position: 未記入
+  first_seconds: 未記入
+  after_30s: 未記入
+  after_3min: 未記入
+theme:
+  field: 未記入
+  stands_against: 未記入
+  difference: 未記入
+  why_now: 未記入
+message:
+  claim: 未記入
+  who_disagrees: 未記入
+  denies: 未記入
+  shown_not_told: 未記入
+concept:
+  mechanism: 未記入
+  without_the_technique: MERELY_PLAINER
+  precedents: []
+  self_repetition_risk:
+    reference: 未記入
+    assessment: 未記入
+research_summary:
+  questions:
+  - 未記入
+  what_was_read: 未記入
+  what_came_out: 未記入
+  what_is_not_settled: 未記入

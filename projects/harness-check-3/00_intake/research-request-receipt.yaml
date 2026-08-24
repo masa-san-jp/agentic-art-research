@@ -1,0 +1,5 @@
+version: 1
+request_id: RR002
+project_id: project/harness-check-3
+request_sha256: sha256:383acab18f9e9acf0166457987588618ccf3a861a65ee855b4195e72b35a9cf8
+accepted_at: '2026-08-25T08:10:00+09:00'
