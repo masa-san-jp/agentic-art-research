@@ -3,7 +3,7 @@ acceptance_tests:
   target_requirement: RQ001
   method: two_position_observation
   preconditions: 作品が設営され稼働している
-  pass_condition: 同一の鑑賞者が近距離と規定距離の двух位置で観察し、像の状態が異なると報告する
+  pass_condition: 同一の鑑賞者が近距離と規定距離の2つの位置で観察し、像の状態が異なると報告する
   evidence_to_record: two-position-observation-log
   executor: production-validator
   result: NOT_RUN

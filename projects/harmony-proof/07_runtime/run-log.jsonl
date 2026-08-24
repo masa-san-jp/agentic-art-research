@@ -96,3 +96,9 @@
 {"event_id": "LIFE-READY_FOR_PRODUCTION-8", "event_type": "STATE_TRANSITION", "from_status": "DECIDING", "to_status": "READY_FOR_PRODUCTION"}
 {"event_id": "LIFE-VALIDATING-8", "event_type": "STATE_TRANSITION", "from_status": "READY_FOR_PRODUCTION", "to_status": "VALIDATING"}
 {"event_id": "COMPLETION-003", "event_type": "STATE_TRANSITION", "from_status": "VALIDATING", "to_status": "COMPLETE"}
+{"event_id":"FEEDBACK-PR001-REOPEN","event_type":"STATE_TRANSITION","from_status":"COMPLETE","to_status":"ANALYZING"}
+{"accepted_handoff_id":"HO009","change_request_ids":["CR001","CR002"],"effect_key":"production-result:PR001:sha256:b2bf48dbf4242f720c93e48d3b7c3c2dece1e7ae45d4796fd5fe94ae30be8131","event_id":"FEEDBACK-PR001-IMPORT","event_type":"PRODUCTION_FEEDBACK_IMPORTED","evidence_candidate_ids":["EV032","EV033","EV034"],"human_approval_required":false,"human_approval_status":"NOT_REQUIRED","impact_level":"MAJOR","occurred_at":"2026-08-23T14:05:00+09:00","production_project_id":"production/harmony-proof","reopen_event_id":"FEEDBACK-PR001-REOPEN","research_reopened":true,"result_id":"PR001","result_sha256":"sha256:b2bf48dbf4242f720c93e48d3b7c3c2dece1e7ae45d4796fd5fe94ae30be8131","schema_version":"1.0.0"}
+{"event_id": "LIFE-DECIDING-FB", "event_type": "STATE_TRANSITION", "from_status": "ANALYZING", "to_status": "DECIDING"}
+{"event_id": "LIFE-READY_FOR_PRODUCTION-FB", "event_type": "STATE_TRANSITION", "from_status": "DECIDING", "to_status": "READY_FOR_PRODUCTION"}
+{"event_id": "LIFE-VALIDATING-FB", "event_type": "STATE_TRANSITION", "from_status": "READY_FOR_PRODUCTION", "to_status": "VALIDATING"}
+{"event_id": "COMPLETION-004", "event_type": "STATE_TRANSITION", "from_status": "VALIDATING", "to_status": "COMPLETE"}

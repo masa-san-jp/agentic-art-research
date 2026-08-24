@@ -6,7 +6,7 @@ project:
   status: COMPLETE
   creator_id: null
   created_at: '2026-08-22T07:30:00+09:00'
-  updated_at: '2026-08-23T10:28:00+09:00'
+  updated_at: '2026-08-23T14:16:00+09:00'
 entry_points:
   human_summary: 05_production/creative-direction.md
   research_plan: 01_planning/research-plan.yaml
