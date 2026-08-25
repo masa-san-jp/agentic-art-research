@@ -1,0 +1,7 @@
+{
+  "id": "CT001",
+  "claim_ids": ["CL001", "CL002"],
+  "description": "The claims differ about whether the interval is sufficient.",
+  "status": "OPEN",
+  "resolution": null
+}

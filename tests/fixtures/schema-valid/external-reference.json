@@ -1,0 +1,8 @@
+{
+  "id": "XR001",
+  "title": "Reference work",
+  "location": "https://example.invalid/reference-work",
+  "reference_type": "publication",
+  "relevance": "Provides a comparison point.",
+  "evidence_ids": ["EV001"]
+}

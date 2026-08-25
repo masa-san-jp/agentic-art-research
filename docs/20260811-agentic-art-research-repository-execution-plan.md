@@ -12,12 +12,13 @@
 利用者は次で確認する。
 
 ```bash
-python3 tools/new_project.py harmony-study --title "Harmony Study"
-python3 tools/validate.py --check
-python3 tools/run_project.py harmony-study --offline-fixture tests/fixtures/harmony
-python3 tools/build_graph.py
-python3 tools/impact.py --evidence EV001
-python3 tools/bundle.py project/harmony-study --audience human
+python3 tools/new_project.py harmony-study --title "Harmony Study" --root <temporary-work-root>
+python3 tools/validate.py --check --root <temporary-work-root>
+python3 tools/run_project.py harmony-study --offline-fixture tests/fixtures/harmony --root <temporary-work-root>
+python3 tools/executive_brief.py project/harmony-study --root <temporary-work-root>
+python3 tools/build_graph.py --root <temporary-work-root>
+python3 tools/impact.py --evidence EV001 --root <temporary-work-root>
+python3 tools/bundle.py project/harmony-study --audience human --root <temporary-work-root>
 ```
 
 最後の状態は `COMPLETE`、`COMPLETE_WITH_GAPS`、または調査量不足を明示する `INCOMPLETE` であり、`BLOCKED` の場合は解除条件が機械可読で残る。`INCOMPLETE` は制作handoffへ進めない。
@@ -68,6 +69,11 @@ python3 tools/bundle.py project/harmony-study --audience human
 - [x] (2026-08-12) I1: `research-request` のschema、受け入れCLI、冪等性、安全境界、fixture、運用文書を実装。
 - [x] (2026-08-12) I2: inbound request release gateを3回連続で実行し、公開前の検証済み変更として固定。
 - [x] (2026-08-16) `COMPLETION-QUALITY-001`: Issue #44の調査量・先行作品調査・自己反復レビューを完了条件へ組み込み、未達を`INCOMPLETE`としてhandoffから拒否。
+- [x] (2026-08-25) `RUNTIME-005`: `task_runtime.peek_next()`、`next_action.py --dry-run`、preview/live一致、execution queue/stateのblocking validatorを実装。171 unittestと全ローカルgate合格。次は`BOUNDARY-001`。
+- [x] (2026-08-25) `BOUNDARY-001`: canonical repositoryから実プロジェクトを隔離し、空のgraph、`PROTOCOL-OUTPUT-BOUNDARY`検査、明示`--root` materialization CLI、CI/docs契約を追加。次は`DECISION-001`。
+- [x] (2026-08-25) `DECISION-001`: 棄却案・不確実性のtyped registry、双方向参照検証、決定的executive brief、graph edge、bundle/CLI接続を追加。177 unittestと全ローカルgate合格。次は`FEEDBACK-EXPORT-001`。
+- [x] (2026-08-25) `FEEDBACK-EXPORT-001`: import済みproduction resultから匿名化・決定的・冪等な`manifest.json`／`signals.jsonl`をatomic exportするCLI、schema、privacy/reference gateを追加。184 unittestと全ローカルgate合格。次は`KNOWLEDGE-001`。
+- [x] (2026-08-25) `KNOWLEDGE-001`: OB/RL/CT/XRのtyped knowledge schema、config語彙、profile aesthetic-signal外部root契約、validator/reference gate、deterministic graph/impact、正常・失敗fixtureを追加。全unittestとvalidator/security/docs/graph gate合格。次は`VISUAL-LANGUAGE-001`。
 
 ## Surprises & Discoveries
 
@@ -96,6 +102,13 @@ python3 tools/bundle.py project/harmony-study --audience human
 - 2026-08-12: 既存のproject雛形は研究専用とproduction handoffの両方の空ファイルを持つため、受理時に`PRODUCTION_HANDOFF`へ切り替えると未完成handoffを作る。受理CLIは常に`RESEARCH_ONLY`を維持し、productionへの切替を後段へ委ねる。
 - 2026-08-12: requestの再適用はrequest本文のcanonical SHA-256とproject内receiptで判定し、accepted_atの違いを既存projectへ反映しない。これにより再試行が既存intakeを変更しない。
 - 2026-08-16: 証拠・主張・判断だけの件数下限では、制作上の差分検討と自己反復リスクを捉えられないため、先行作品の差分記録と自己反復レビューを必須のcompletion-quality recordとして追加した。下限未達は既存の`COMPLETE_WITH_GAPS`へ混ぜず、`INCOMPLETE`でhandoffを止める。
+- 2026-08-25: queue/stateが旧releaseのterminal状態のままで未完了Issueを選択できなかった。#65ではrepository-level queue/stateを実行順序のSSOTにし、open/closed Issue照会や外部Issueをvalidatorの実行条件にしない。
+- 2026-08-25: dry-runのlease期限切れ・依存失敗判定はliveと同じreconcileを必要とする。永続state/logへ書かないため、runtimeのdeep copy上でreconcileし、同じready predicateを使う。
+- 2026-08-25: 文書上は出力境界が定義済みだったが、canonicalの`projects/`に実プロジェクト2件と非空graphが残り、validatorは検出していなかった。boundary検査はcanonical rootに限定し、fixture・一時cloneの正当なmaterializationを壊さない。
+- 2026-08-25: `.git` indexがsandboxで書けずtracked directoryを`git rm`できなかったため、対象プロジェクトは復元可能な`/private/tmp` quarantineへ移動し、作業ツリー上の削除として検証した。
+- 2026-08-25: 既存decision schemaは文字列の棄却案・単一不確実性を要求していたため、typed registryを追加しつつlegacyフィールドを任意の互換入力として残した。双方向参照はtyped recordに限定してblocking検証することで既存fixtureを壊さない。
+- 2026-08-25: feedback exportはproduction resultの再importやproject更新を行わず、import済みresultと監査eventのhashを照合して別directoryへ出力する必要がある。提示条件はproduction-result v1にないため、自由文から推測せず`null`固定にした。
+- 2026-08-25: profile実体をcanonical treeへ戻すとoutput boundaryと衝突するため、`templates/profile`だけを正本化し、profile rootは`--profiles-root`で外部入力する。profile edgeは`profile/<creator-id>::AS###`から既存のproject-qualified evidenceへ接続する。
 
 ## Decision Log
 
@@ -127,6 +140,11 @@ python3 tools/bundle.py project/harmony-study --audience human
 | 2026-08-12 | 上流依頼は`research-request` schemaと`accept_research_request.py`で受け、入力のhashをreceiptへ固定する。受理projectは`RESEARCH_ONLY`から開始し、同一hashのみ冪等再適用を許可する | upstream→researchの境界で未知フィールド、raw/private data、project衝突をfail closedし、production handoffと責任を混ぜないため |
 | 2026-08-12 | requestの受理結果はproject内のYAML receiptに保存し、グローバルな受理DBや`data/`へ書かない | canonical project単位で再開でき、protocol repositoryへ実案件を常設しない境界を維持するため |
 | 2026-08-16 | completionの既定下限を証拠30、主張18、インサイト4、判断3、要件4とし、`research-plan.yaml#minimums`で下げる場合は理由を必須にする。棄却案、不確実性、先行作品、自己反復レビューも各1件以上要求する | 調査不足を非ブロッキングgapとしてhandoffへ流さず、プロジェクトごとの小規模研究の例外は理由付きで監査可能にするため |
+| 2026-08-25 | RUNTIME-005のdry-runは明示フラグでのみpreviewし、未claim previewは`lease: null`、liveの既存claim互換性を維持する | 構造確認だけの実行でlease/eventを消費せず、previewと実行の選択結果を一致させるため |
+| 2026-08-25 | canonical rootの`projects/`はREADMEのみ、`data/`はREADMEと空graphのみを許可し、materialization CLIの`--root`を必須にする | protocol repositoryと一時作業rootを分離し、実プロジェクト・project-derived graphの誤commitをblockingにするため |
+| 2026-08-25 | 棄却案と不確実性はtyped registryのIDを判断側と双方向に保持し、既存の文字列フィールドはlegacy互換として残す | 既存projectの読み取り互換を維持しながら、参照切れ・片方向記録をblockingにし、human briefとgraphを同じ正本から生成するため |
+| 2026-08-25 | feedback exportはimport済みresultとauditをread-onlyで再検証し、`manifest.json`と`signals.jsonl`を明示outputへatomic生成する | import処理にexportを混ぜる、既存bundleを上書きする、外部配送まで自動化する | project-local監査、再利用artifact、外部送信の境界を分離し、失敗時の非破壊性を保証するため |
+| 2026-08-25 | KNOWLEDGE-001はknowledgeの4 JSONL schemaとprofile signal schemaを共通定義へ接続し、config語彙はschema fixtureとnamed semantic validatorの双方で照合する。実profileは外部rootだけを読み、graphは既存dependency graphへ統合する | schema、validator、profile出力、graphの正本を分散させず、実案件・個人データ・不要な別graphをcanonical repositoryへ持ち込まないため |
 
 ## Outcomes & Retrospective
 
@@ -139,6 +157,16 @@ I0/I1では、入力schemaとreceipt schema、schema-aware validator接続、dry
 v1.0.1候補では、symlink・path traversal・unsafe archive検査、停止・破損・中断・重複のchaos検査、運用文書契約を追加し、release check 11項目と67テストをmain基点で再確認した。
 
 Issue #44対応では、`config/stopping-policy.yaml`をcompletion-qualityの正本として、`tools/completion_quality.py`、`research-plan.schema.json`、`prior-art.schema.json`、`self-repetition-review.schema.json`を追加した。`tools/complete.py`は不足時に非0終了の`INCOMPLETE` reportを生成し、`tools/build_handoff.py`は既存handoffを変更せず拒否する。123件のunittest、validator、docs、security、chaos、graph、offline evaluation、release gate、handoff release gateが合格した。
+
+`RUNTIME-005`では、publicな`task_runtime.peek_next()`がruntime state/logのdeep copyだけをreconcileし、`tools/next_action.py --dry-run`が`TASK_PREVIEWED`、`TASK_RESUME_PREVIEW`、`BUDGET_EXCEEDED`、`NO_TASK_READY`を返す契約を追加した。queue/state validatorは未知dependency、循環、依存未完了READY/IN_PROGRESS、複数IN_PROGRESS、誤ったnext task、早すぎるterminal、非DONE last completed、RUNTIME-005欠落をnamed findingで拒否する。171 unittest、validator、security、chaos、docs、graph、offline evaluation、release gateが合格し、stateの次の開始点は`BOUNDARY-001`である。
+
+`BOUNDARY-001`では、canonicalの`projects/harmony-proof`と`projects/probe-unattended`を復元可能な一時quarantineへ隔離し、`data/dependency-graph.json`を`nodes`、`edges`、`projects`がすべて空の状態へ再生成した。`tools/security_check.py`と`tools/validate.py`はcanonical rootの許可外project/dataと非空graphを`PROTOCOL-OUTPUT-BOUNDARY`として拒否し、一時作業rootは引き続きfixtureをmaterializeできる。`new_project.py`、`run_project.py`、`accept_research_request.py`のCLIは明示`--root`を要求する。173 unittestとvalidator、security、graph、docs、release関連gateが合格し、次の開始点は`DECISION-001`である。
+
+`DECISION-001`では、`RO###`と`U###`のregistry schema、判断との双方向参照検証、`rejects`/`rejected_by`/`has_uncertainty`/`uncertainty_of` graph edge、`04_decisions/executive-brief.md`の決定的生成を追加した。legacyの文字列フィールドは後方互換のため保持し、typed recordの片方向参照だけを`DECISION-REGISTRY-REVERSE`として拒否する。briefはproject生成・fixture実行・request受理後に再生成され、human bundleへ含まれる。177 unittest、validator、security、docs、graph、offline evaluation、release関連gateが合格し、次の開始点は`FEEDBACK-EXPORT-001`である。
+
+`FEEDBACK-EXPORT-001`では、`research-signal-export/v1` schema、accepted test・requirement・observationのtyped変換、production-result schema再検証、import audit/hash照合、PII/private/unknown-field fail-closed検査、deterministic JSON/JSONL、atomic output、idempotent/conflict handlingを追加した。外部配送やcanonical `projects/`／`data/`への出力は実装していない。次の開始点は`KNOWLEDGE-001`である。
+
+`KNOWLEDGE-001`では、`observation`、`relationship`、`contradiction`、`external-reference`、`aesthetic-signal`の5 schema、語彙、外部profile root検証、cross-project graph edge、CT/AS impact回帰、正常・失敗テストを追加した。canonical treeに実profile/project/graphを追加せず、次の開始点は`VISUAL-LANGUAGE-001`である。
 
 ## Context and Orientation
 
@@ -183,7 +211,7 @@ Issue #44対応では、`config/stopping-policy.yaml`をcompletion-qualityの正
 ### Acceptance
 
 ```bash
-python3 tools/new_project.py smoke-project --title Smoke
+python3 tools/new_project.py smoke-project --title Smoke --root <temporary-work-root>
 python3 tools/validate.py --check
 python3 -m unittest discover -s tests -v
 ```

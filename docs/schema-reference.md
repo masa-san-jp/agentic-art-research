@@ -10,11 +10,19 @@ JSON Schemaを構造の正本、本文を意味と運用規律の正本とする
 | question | `Q001` |
 | evidence | `EV001` |
 | claim | `CL001` |
+| observation | `OB001` |
+| relationship | `RL001` |
+| contradiction | `CT001` |
 | insight | `IN001` |
 | decision | `DC001` |
+| rejected option | `RO001` |
+| decision uncertainty | `U001` (`UN001` is accepted only for legacy records) |
 | requirement | `RQ001` |
 | acceptance test | `AT001` |
 | external reference | `XR001` |
+| aesthetic signal | `AS001` |
+| visual technique | `VT001` |
+| visual prohibition | `VP001` |
 | production hypothesis | `PH001` |
 | hypothesis comparison | `HC001` |
 | hypothesis uncertainty | `U001` |
@@ -35,7 +43,54 @@ question → evidence → claim → insight → decision → requirement → acc
 production hypothesis + prototype plan + requirement + acceptance test → production handoff
 ```
 
+Knowledge artifacts are project-local JSONL records validated by
+`observation.schema.json`, `relationship.schema.json`, `contradiction.schema.json`, and
+`external-reference.schema.json`. Their evidence, endpoint, and claim references are
+blocking: missing IDs, self-relationships, unknown configured vocabulary, and a resolved
+contradiction without a non-empty resolution fail repository validation.
+
+Profile aesthetic signals use `aesthetic-signal.schema.json`, but real profile instances
+are not stored in this protocol repository. Validate an external profile root explicitly:
+
+```bash
+python3 tools/validate.py --root <temporary-work-root> --profiles-root <profile-root> --check
+python3 tools/build_graph.py --root <temporary-work-root> --profiles-root <profile-root>
+```
+
+Signals use project-qualified evidence references such as
+`project/example-project::EV001`; their observation period must satisfy
+`from <= to <= review_after`. The generated dependency graph contains the five knowledge
+node kinds and profile-to-project edges. `entities.jsonl`, separate claim/aesthetic graphs,
+embeddings, vector stores, and automatic causal inference are out of scope.
+
+## Visual language
+
+`05_production/visual-language.yaml` is the typed handoff of research-side medium
+reasoning. It must cite one explicit `ADOPTED` medium-selection decision whose
+`selected_option` is in `config/vocabularies.yaml#medium_types`; the validator never
+chooses a medium from prose. The DRAFT template is an empty skeleton, while
+`READY_FOR_PRODUCTION` and later statuses require a medium, at least one technique,
+valid palette/composition applicability, and at least one prohibited expression.
+
+The artifact contains research intent and constraints only. It does not define materials,
+procurement, construction, production parameters, or final rights/safety assurance.
+
 下流オブジェクトが上流IDを持つ。逆参照は `build_graph.py` が生成する。生成された逆参照を正本へ書き戻さない。
+
+意思決定の棄却案と不確実性は、`04_decisions/rejected-options.yaml` と
+`04_decisions/uncertainty-register.yaml` のtyped registryを正本にする。typed recordは
+`decision_ids`で判断を参照し、`decision-log.yaml`の対応する判断はそれぞれ
+`rejected_option_ids`または`uncertainty_ids`で同じIDを参照する。この2方向が一致しない場合は
+`DECISION-REGISTRY-REVERSE`で検証を停止する。既存の文字列`rejected_options`と
+`uncertainty`はlegacy入力として互換保持するが、新規の正本記録ではtyped IDを使う。
+
+人間向けの判断要約は、次でtyped registry、判断、制作要件、creative intentから決定的に再生成する。
+
+```bash
+python3 tools/executive_brief.py project/<slug> --root <temporary-work-root>
+```
+
+`04_decisions/executive-brief.md`は生成物であり、手編集せず、判断やregistryを変更した後に再生成する。
 
 生成グラフのノードには、表示用のプロジェクト内 `id` と、衝突を避ける `key` を持たせる。`key` は `project/<slug>::<local-id>` であり、辺の `from` / `to` はこの値を使う。影響分析で裸のIDを渡せるのはリポジトリ内で一意な場合だけで、複数プロジェクトに存在するIDは完全な `key` を指定する。
 
@@ -70,6 +125,20 @@ handoff-bundle/
 ```
 
 `manifest.yaml` はbundle内の全ファイルのraw-byte hashとfile-set hashを持つ。`source-ref-index.yaml` は `references` 配列にdecision、insight、evidenceのID、project-relative source path、`record_hash`、安全な短いsummaryを持ち、原証拠本文を複製しない。`record_hash`は元record全体のcanonical SHA-256で、ゼロ値や欠落は出力しない。
+
+## Research signal export
+
+`schemas/research-signal-export.schema.json`（`research-signal-export/v1`）は、import済みのproduction resultを次の2ファイルへ変換する契約である。
+
+```text
+<output-directory>/
+├── manifest.json
+└── signals.jsonl
+```
+
+`manifest.json`は`RSE-<research-project-slug>-<result-id>`、source result hash、signal件数、`signals.jsonl`のhash、source result由来の`generated_at`を持つ。`signals.jsonl`は受入試験ごとに1件のrecordを持ち、projectのacceptance testから`method`・`pass_condition`・対象要件、production resultから実行条件・結果・要件に関連する観察だけを取り出す。現行production-result v1に提示条件のfieldがないため、`presentation_conditions`は`null`固定であり、自由文から推測しない。
+
+生成CLIは`tools/export_feedback_signals.py`で、resultのimport logと`PRODUCTION_FEEDBACK_IMPORTED`監査eventが一意に揃わない場合は失敗する。schema、hash、ID参照、未知field、PII、secret、private URL、`PRIVATE_RAW`／`RESTRICTED`、pathをfail closedで検証し、出力先の既存異内容を上書きしない。
 
 ## 空、不明、未解決
 

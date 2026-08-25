@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/uncertainty.schema.json",
+  "title": "Decision uncertainty",
+  "type": "object",
+  "required": ["id", "statement"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {"type": "string", "pattern": "^(?:U|UN)[0-9]{3,}$"},
+    "statement": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "status": {"$ref": "common.schema.json#/$defs/uncertaintyStatus"},
+    "severity": {"$ref": "common.schema.json#/$defs/uncertaintySeverity"},
+    "decision_ids": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^DC[0-9]{3,}$"},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "review_trigger": {"type": ["string", "null"], "minLength": 1}
+  }
+}

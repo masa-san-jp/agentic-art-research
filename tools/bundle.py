@@ -7,14 +7,15 @@ from _common import ROOT, atomic_write_text, load_yaml
 
 
 AUDIENCE_PATHS = {
-    "human": ["00_intake/creative-intent.md", "05_production/creative-direction.md", "04_decisions/decision-log.yaml", "04_decisions/uncertainty-register.yaml"],
+    "human": ["00_intake/creative-intent.md", "04_decisions/executive-brief.md", "05_production/creative-direction.md", "04_decisions/decision-log.yaml", "04_decisions/uncertainty-register.yaml"],
     "research-agent": ["01_planning/research-plan.yaml", "01_planning/question-register.yaml", "04_decisions/uncertainty-register.yaml", "07_runtime/research-state.json"],
-    "production-agent": ["05_production/creative-direction.md", "05_production/production-requirements.yaml", "05_production/acceptance-tests.yaml", "05_production/prototype-backlog.yaml"],
+    "production-agent": ["05_production/creative-direction.md", "05_production/visual-language.yaml", "05_production/production-requirements.yaml", "05_production/acceptance-tests.yaml", "05_production/prototype-backlog.yaml"],
     "audit": ["02_evidence/evidence-ledger.jsonl", "03_knowledge/claims.jsonl", "04_decisions/decision-log.yaml", "06_governance/rights-register.yaml", "06_governance/privacy-review.yaml", "07_runtime/completion-report.json"],
 }
 
 PRODUCTION_HANDOFF_PATHS = [
     "05_production/creative-direction.md",
+    "05_production/visual-language.yaml",
     "05_production/production-requirements.yaml",
     "05_production/acceptance-tests.yaml",
     "04_decisions/production-hypotheses.yaml",

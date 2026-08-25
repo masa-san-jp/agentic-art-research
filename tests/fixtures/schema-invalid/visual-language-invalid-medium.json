@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0.0",
+  "medium": {
+    "primary": "unregistered-medium",
+    "statement": "Invalid medium.",
+    "source_decision_id": "DC002"
+  },
+  "techniques": [],
+  "palette": {"applicability": "NOT_APPLICABLE", "preferred": [], "prohibited": [], "rationale": null, "source_decision_ids": []},
+  "composition": {"applicability": "NOT_APPLICABLE", "preferred": [], "prohibited": [], "rationale": null, "source_decision_ids": []},
+  "prohibited_expressions": [],
+  "unresolved_uncertainty_ids": []
+}

@@ -7,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from _common import EMPTY_JSONL_FILES, ROOT, atomic_write_text, stable_json
+from _common import EMPTY_JSONL_FILES, atomic_write_text, stable_json
 
 
 SLUG = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
@@ -53,6 +53,9 @@ def create_project(
             if not path.exists():
                 atomic_write_text(path, "")
         atomic_write_text(target / "07_runtime" / "dependency-index.json", stable_json({"nodes": [], "edges": []}))
+        from executive_brief import write_executive_brief
+
+        write_executive_brief(root, f"project/{slug}")
     except Exception:
         if target.exists():
             shutil.rmtree(target)
@@ -65,7 +68,7 @@ def main() -> int:
     parser.add_argument("slug")
     parser.add_argument("--title", required=True)
     parser.add_argument("--creator-id")
-    parser.add_argument("--root", type=Path, default=ROOT)
+    parser.add_argument("--root", type=Path, required=True, help="temporary work root or external output staging root")
     args = parser.parse_args()
     try:
         target = create_project(args.root.resolve(), args.slug, args.title, args.creator_id)

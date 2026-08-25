@@ -1,6 +1,5 @@
 # Projects
 
-作品単位のリサーチパッケージを置く。`python3 tools/new_project.py <slug> --title <title>` で作る。
+canonical repositoryにはREADMEだけを置く。作品単位のリサーチパッケージは一時作業rootで、`python3 tools/new_project.py <slug> --title <title> --root <temporary-root>` で作る。
 
-このREADME以外は生成されたプロジェクトだけをcommitする。
-
+生成したプロジェクトは検証後に外部出力先へコピーし、このディレクトリへcommitしない。

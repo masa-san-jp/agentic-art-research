@@ -4,6 +4,7 @@ import argparse
 import fnmatch
 import re
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -28,11 +29,17 @@ from security_check import scan_advanced_security
 SCHEMA_FOR_JSONL = {
     "02_evidence/evidence-ledger.jsonl": "evidence",
     "03_knowledge/claims.jsonl": "claim",
+    "03_knowledge/observations.jsonl": "observation",
     "03_knowledge/prior-art.jsonl": "prior-art",
+    "03_knowledge/relationships.jsonl": "relationship",
+    "03_knowledge/contradictions.jsonl": "contradiction",
+    "03_knowledge/external-references.jsonl": "external-reference",
 }
 SCHEMA_FOR_YAML_COLLECTION = {
     "04_decisions/insight-register.yaml": ("insights", "insight"),
     "04_decisions/decision-log.yaml": ("decisions", "decision"),
+    "04_decisions/rejected-options.yaml": ("rejected_options", "rejected-option"),
+    "04_decisions/uncertainty-register.yaml": ("uncertainties", "uncertainty"),
     "05_production/production-requirements.yaml": ("requirements", "requirement"),
     "04_decisions/self-repetition-review.yaml": ("reviews", "self-repetition-review"),
     "04_decisions/production-hypotheses.yaml": ("hypotheses", "production-hypothesis"),
@@ -41,6 +48,7 @@ SCHEMA_FOR_YAML_COLLECTION = {
 }
 SCHEMA_FOR_YAML_OBJECT = {
     "01_planning/research-plan.yaml": "research-plan",
+    "05_production/visual-language.yaml": "visual-language",
     "05_production/production-handoff.yaml": "production-handoff",
     "00_intake/research-request.yaml": "research-request",
     "00_intake/research-request-receipt.yaml": "research-request-receipt",
@@ -53,15 +61,23 @@ DOMAIN_SCHEMAS = (
     "project-manifest",
     "evidence",
     "claim",
+    "observation",
+    "relationship",
+    "contradiction",
+    "external-reference",
     "insight",
     "decision",
+    "rejected-option",
+    "uncertainty",
     "requirement",
     "production-hypothesis",
     "hypothesis-comparison",
     "prototype-plan",
+    "visual-language",
     "production-handoff",
     "research-request",
     "research-request-receipt",
+    "research-signal-export",
     "research-state",
     "completion-report",
     "research-plan",
@@ -73,8 +89,19 @@ RecordEntry = tuple[str, Path, int | None, dict[str, Any]]
 REFERENCE_FIELDS = {
     "evidence": [("related_questions", "question"), ("related_projects", "project")],
     "claim": [("evidence_ids", "evidence"), ("supporting_claims", "claim"), ("opposing_claims", "claim")],
+    "observation": [("evidence_ids", "evidence")],
+    "relationship": [("evidence_ids", "evidence")],
+    "contradiction": [("claim_ids", "claim")],
+    "external-reference": [("evidence_ids", "evidence")],
     "insight": [("claim_ids", "claim"), ("opposing_claim_ids", "claim")],
-    "decision": [("insight_ids", "insight"), ("evidence_ids", "evidence")],
+    "decision": [
+        ("insight_ids", "insight"),
+        ("evidence_ids", "evidence"),
+        ("rejected_option_ids", "rejected-option"),
+        ("uncertainty_ids", "uncertainty"),
+    ],
+    "rejected-option": [("decision_ids", "decision")],
+    "uncertainty": [("decision_ids", "decision")],
     "requirement": [("source_decisions", "decision"), ("acceptance_test_ids", "acceptance_test")],
     "acceptance_test": [("target_requirement", "requirement")],
     "production-hypothesis": [("source_decision_ids", "decision"), ("source_insight_ids", "insight")],
@@ -110,6 +137,293 @@ class Finding:
         if self.field:
             location += f"#{self.field}"
         return f"{location}: [{self.rule}] {self.message}; remediation: {self.remediation}"
+
+
+def _check_execution_queue_state(root: Path, findings: list[Finding]) -> None:
+    """Validate the repository-level execution queue/state SSOT.
+
+    Project validation roots used by unit tests may intentionally omit the
+    repository execution files. Once either file exists, however, both files
+    are required and their scheduling contract is blocking.
+    """
+    queue_path = root / "execution" / "task-queue.yaml"
+    state_path = root / "execution" / "state.yaml"
+    if not queue_path.exists() and not state_path.exists():
+        return
+    if not queue_path.exists() or not state_path.exists():
+        missing = queue_path if not queue_path.exists() else state_path
+        findings.append(
+            Finding(
+                _relative_path(root, missing),
+                "EXECUTION-SSOT",
+                "execution/task-queue.yaml and execution/state.yaml must exist together",
+                remediation="Restore both repository execution SSOT files, then rerun validation.",
+            )
+        )
+        return
+
+    try:
+        queue = load_yaml(queue_path)
+    except Exception as exc:
+        findings.append(_exception_finding(root, queue_path, "EXECUTION-QUEUE-YAML", exc))
+        return
+    try:
+        state = load_yaml(state_path)
+    except Exception as exc:
+        findings.append(_exception_finding(root, state_path, "EXECUTION-STATE-YAML", exc))
+        return
+    if not isinstance(queue, dict):
+        findings.append(
+            Finding(
+                _relative_path(root, queue_path),
+                "EXECUTION-QUEUE-SHAPE",
+                "task queue must be a mapping",
+                remediation="Make execution/task-queue.yaml a mapping with an allowed_statuses list and tasks list.",
+            )
+        )
+        return
+    if not isinstance(state, dict):
+        findings.append(
+            Finding(
+                _relative_path(root, state_path),
+                "EXECUTION-STATE-SHAPE",
+                "execution state must be a mapping",
+                remediation="Make execution/state.yaml a mapping with next_task, last_completed_task, and terminal.",
+            )
+        )
+        return
+
+    allowed_statuses = queue.get("allowed_statuses")
+    allowed = set(allowed_statuses) if isinstance(allowed_statuses, list) and all(isinstance(item, str) for item in allowed_statuses) else set()
+    tasks_value = queue.get("tasks")
+    if not allowed:
+        findings.append(
+            Finding(
+                _relative_path(root, queue_path),
+                "EXECUTION-QUEUE-SHAPE",
+                "allowed_statuses must be a non-empty list of strings",
+                field="allowed_statuses",
+                remediation="Declare the canonical queue statuses, including BACKLOG, READY, IN_PROGRESS, BLOCKED, and DONE.",
+            )
+        )
+    if not isinstance(tasks_value, list):
+        findings.append(
+            Finding(
+                _relative_path(root, queue_path),
+                "EXECUTION-QUEUE-SHAPE",
+                "tasks must be a list",
+                field="tasks",
+                remediation="Declare each execution task as one mapping in tasks.",
+            )
+        )
+        return
+
+    tasks: dict[str, dict[str, Any]] = {}
+    for index, raw in enumerate(tasks_value):
+        if not isinstance(raw, dict):
+            findings.append(
+                Finding(
+                    _relative_path(root, queue_path),
+                    "EXECUTION-TASK-SHAPE",
+                    f"tasks[{index}] must be a mapping",
+                    field=f"tasks[{index}]",
+                    remediation="Replace the task with a mapping containing id, status, and depends_on.",
+                )
+            )
+            continue
+        task_id = raw.get("id")
+        if not isinstance(task_id, str) or not task_id:
+            findings.append(
+                Finding(
+                    _relative_path(root, queue_path),
+                    "EXECUTION-TASK-ID",
+                    f"tasks[{index}].id must be a non-empty string",
+                    field=f"tasks[{index}].id",
+                    remediation="Assign a unique stable execution task ID.",
+                )
+            )
+            continue
+        if task_id in tasks:
+            findings.append(
+                Finding(
+                    _relative_path(root, queue_path),
+                    "EXECUTION-TASK-ID-DUPLICATE",
+                    f"task ID {task_id!r} is duplicated",
+                    field=f"tasks[{index}].id",
+                    remediation="Keep exactly one queue entry for each task ID.",
+                )
+            )
+            continue
+        status = raw.get("status")
+        if status not in allowed:
+            findings.append(
+                Finding(
+                    _relative_path(root, queue_path),
+                    "EXECUTION-TASK-STATUS",
+                    f"task {task_id} has invalid status {status!r}",
+                    field=f"tasks[{index}].status",
+                    remediation="Use a status from execution/task-queue.yaml#allowed_statuses.",
+                )
+            )
+        dependencies = raw.get("depends_on", [])
+        if not isinstance(dependencies, list) or any(not isinstance(item, str) for item in dependencies):
+            findings.append(
+                Finding(
+                    _relative_path(root, queue_path),
+                    "EXECUTION-DEPENDENCY-SHAPE",
+                    f"task {task_id} depends_on must be a list of task IDs",
+                    field=f"tasks[{index}].depends_on",
+                    remediation="Use a list of existing task IDs without nested values.",
+                )
+            )
+            dependencies = []
+        if len(set(dependencies)) != len(dependencies):
+            findings.append(
+                Finding(
+                    _relative_path(root, queue_path),
+                    "EXECUTION-DEPENDENCY-DUPLICATE",
+                    f"task {task_id} depends_on contains duplicates",
+                    field=f"tasks[{index}].depends_on",
+                    remediation="List each dependency once.",
+                )
+            )
+        tasks[task_id] = {"status": status, "depends_on": dependencies}
+
+    for task_id, task in tasks.items():
+        for dependency in task["depends_on"]:
+            if dependency not in tasks:
+                findings.append(
+                    Finding(
+                        _relative_path(root, queue_path),
+                        "EXECUTION-DEPENDENCY-MISSING",
+                        f"task {task_id} depends on unknown task {dependency}",
+                        field=f"tasks[{task_id}].depends_on",
+                        remediation="Add the dependency task or remove the stale dependency.",
+                    )
+                )
+
+    visiting: set[str] = set()
+    visited: set[str] = set()
+
+    def visit(task_id: str) -> None:
+        if task_id in visiting:
+            findings.append(
+                Finding(
+                    _relative_path(root, queue_path),
+                    "EXECUTION-DEPENDENCY-CYCLE",
+                    f"task dependency cycle includes {task_id}",
+                    remediation="Break the cycle so execution tasks form a DAG.",
+                )
+            )
+            return
+        if task_id in visited or task_id not in tasks:
+            return
+        visiting.add(task_id)
+        for dependency in tasks[task_id]["depends_on"]:
+            visit(dependency)
+        visiting.remove(task_id)
+        visited.add(task_id)
+
+    for task_id in sorted(tasks):
+        visit(task_id)
+
+    in_progress = sorted(task_id for task_id, task in tasks.items() if task.get("status") == "IN_PROGRESS")
+    if len(in_progress) > 1:
+        findings.append(
+            Finding(
+                _relative_path(root, queue_path),
+                "EXECUTION-IN-PROGRESS-MULTIPLE",
+                f"more than one task is IN_PROGRESS: {', '.join(in_progress)}",
+                remediation="Leave at most one execution task IN_PROGRESS before handing off the repository.",
+            )
+        )
+    for task_id, task in tasks.items():
+        if task.get("status") not in {"READY", "IN_PROGRESS"}:
+            continue
+        unresolved = [dependency for dependency in task["depends_on"] if dependency not in tasks or tasks[dependency].get("status") != "DONE"]
+        if unresolved:
+            findings.append(
+                Finding(
+                    _relative_path(root, queue_path),
+                    "EXECUTION-DEPENDENCY-NOT-DONE",
+                    f"task {task_id} is {task['status']} but dependencies are not DONE: {', '.join(unresolved)}",
+                    field=f"tasks[{task_id}].depends_on",
+                    remediation="Set the task BACKLOG/BLOCKED until every dependency is DONE.",
+                )
+            )
+    ready = sorted(
+        task_id
+        for task_id, task in tasks.items()
+        if task.get("status") == "READY"
+        and all(dependency in tasks and tasks[dependency].get("status") == "DONE" for dependency in task["depends_on"])
+    )
+
+    required_runtime = {f"RUNTIME-{number:03d}" for number in range(1, 6)}
+    for required_id in sorted(required_runtime - tasks.keys()):
+        findings.append(
+            Finding(
+                _relative_path(root, queue_path),
+                "EXECUTION-RUNTIME-TASK-MISSING",
+                f"required runtime task {required_id} is missing",
+                remediation="Restore the execution-plan runtime task before selecting a next action.",
+            )
+        )
+
+    for field in ("next_task", "last_completed_task", "terminal"):
+        if field not in state:
+            findings.append(
+                Finding(
+                    _relative_path(root, state_path),
+                    "EXECUTION-STATE-SHAPE",
+                    f"state is missing {field}",
+                    field=field,
+                    remediation="Record the execution state field explicitly, using null where no task applies.",
+                )
+            )
+    next_task = state.get("next_task")
+    if next_task is not None and next_task not in tasks:
+        findings.append(
+            Finding(
+                _relative_path(root, state_path),
+                "EXECUTION-NEXT-TASK-UNKNOWN",
+                f"next_task {next_task!r} is not present in the queue",
+                field="next_task",
+                remediation="Set next_task to a queue task ID or null when no task is ready.",
+            )
+        )
+    expected_next = in_progress[0] if len(in_progress) == 1 else (ready[0] if ready else None)
+    if next_task != expected_next:
+        findings.append(
+            Finding(
+                _relative_path(root, state_path),
+                "EXECUTION-NEXT-TASK",
+                f"next_task is {next_task!r}, expected {expected_next!r}",
+                field="next_task",
+                remediation="Set next_task to the IN_PROGRESS task, or the lowest-ID READY task whose dependencies are DONE.",
+            )
+        )
+    terminal = state.get("terminal")
+    if terminal is True and any(task.get("status") != "DONE" for task in tasks.values()):
+        findings.append(
+            Finding(
+                _relative_path(root, state_path),
+                "EXECUTION-TERMINAL-EARLY",
+                "terminal is true while one or more queue tasks are not DONE",
+                field="terminal",
+                remediation="Set terminal false until every queue task is DONE.",
+            )
+        )
+    last_completed = state.get("last_completed_task")
+    if last_completed is not None and (last_completed not in tasks or tasks[last_completed].get("status") != "DONE"):
+        findings.append(
+            Finding(
+                _relative_path(root, state_path),
+                "EXECUTION-LAST-COMPLETED",
+                f"last_completed_task {last_completed!r} is not DONE in the queue",
+                field="last_completed_task",
+                remediation="Record the latest queue task whose status is DONE.",
+            )
+        )
 
 
 def _relative_path(root: Path, path: Path) -> str:
@@ -247,6 +561,63 @@ def _check_references(
                 )
 
 
+def _check_bidirectional_decision_registries(
+    root: Path,
+    entries: dict[str, RecordEntry],
+    findings: list[Finding],
+) -> None:
+    """Require typed rejected-option/uncertainty records to point both ways."""
+    registry_fields = {
+        "rejected-option": ("rejected_option_ids", "title"),
+        "uncertainty": ("uncertainty_ids", "statement"),
+    }
+    for record_id, (kind, path, line, record) in entries.items():
+        if kind in registry_fields:
+            decision_ids = record.get("decision_ids")
+            if not isinstance(decision_ids, list) or not decision_ids:
+                continue
+            decision_field = registry_fields[kind][0]
+            for decision_id in decision_ids:
+                decision_entry = entries.get(decision_id)
+                if not decision_entry or decision_entry[0] != "decision":
+                    continue
+                reverse_ids = decision_entry[3].get(decision_field, [])
+                if isinstance(reverse_ids, list) and record_id in reverse_ids:
+                    continue
+                findings.append(
+                    Finding(
+                        _record_path(root, path),
+                        "DECISION-REGISTRY-REVERSE",
+                        f"{record_id}.decision_ids references {decision_id!r} but the decision does not reference {record_id!r}",
+                        line=line,
+                        field=f"{record_id}.decision_ids",
+                        remediation=f"Add {record_id} to {decision_id}.{decision_field} or remove the forward reference.",
+                    )
+                )
+        elif kind == "decision":
+            for decision_field, registry_kind in (("rejected_option_ids", "rejected-option"), ("uncertainty_ids", "uncertainty")):
+                registry_ids = record.get(decision_field)
+                if not isinstance(registry_ids, list):
+                    continue
+                for registry_id in registry_ids:
+                    registry_entry = entries.get(registry_id)
+                    if not registry_entry or registry_entry[0] != registry_kind:
+                        continue
+                    reverse_ids = registry_entry[3].get("decision_ids", [])
+                    if isinstance(reverse_ids, list) and record_id in reverse_ids:
+                        continue
+                    findings.append(
+                        Finding(
+                            _record_path(root, path),
+                            "DECISION-REGISTRY-REVERSE",
+                            f"{record_id}.{decision_field} references {registry_id!r} but the registry record does not reference {record_id!r}",
+                            line=line,
+                            field=f"{record_id}.{decision_field}",
+                            remediation=f"Add {record_id} to {registry_id}.decision_ids or remove the reverse reference.",
+                        )
+                    )
+
+
 def _check_question_terminality(
     root: Path,
     entries: dict[str, RecordEntry],
@@ -377,6 +748,7 @@ HANDOFF_REQUIRED_FILES = (
     "04_decisions/hypothesis-comparison.yaml",
     "05_production/prototype-plans.yaml",
     "05_production/production-handoff.yaml",
+    "05_production/visual-language.yaml",
     "06_governance/production-change-requests.yaml",
     "07_runtime/production-feedback-imports.jsonl",
 )
@@ -717,8 +1089,261 @@ def _check_handoff_security(
                         f"handoff value matches secret pattern {pattern_id}",
                         field=field,
                         remediation="Remove the secret and rotate it in its source system before regenerating the handoff.",
-                    )
                 )
+            )
+
+
+def _visual_finding(
+    root: Path,
+    project: Path,
+    rule: str,
+    message: str,
+    *,
+    field: str | None = None,
+    remediation: str,
+) -> Finding:
+    return Finding(
+        _relative_path(root, project / "05_production" / "visual-language.yaml"),
+        rule,
+        message,
+        field=field,
+        remediation=remediation,
+    )
+
+
+def _check_visual_language(
+    root: Path,
+    project: Path,
+    manifest: Any,
+    entries: dict[str, RecordEntry],
+    visual_language: Any,
+    vocab: dict[str, Any],
+    findings: list[Finding],
+) -> None:
+    """Validate visual-language semantics without inferring a medium."""
+    if not isinstance(visual_language, dict):
+        return
+    project_data = manifest.get("project") if isinstance(manifest, dict) else {}
+    status = project_data.get("status") if isinstance(project_data, dict) else None
+    statuses = vocab.get("project_statuses", [])
+    medium_types = set(vocab.get("medium_types", []))
+    ready_index = statuses.index("READY_FOR_PRODUCTION") if "READY_FOR_PRODUCTION" in statuses else None
+    status_index = statuses.index(status) if status in statuses else None
+    ready_or_later = ready_index is not None and status_index is not None and status_index >= ready_index
+    medium = visual_language.get("medium")
+    needs_decision = ready_or_later or medium is not None
+
+    def finding(rule: str, message: str, *, field: str | None = None, remediation: str) -> None:
+        findings.append(_visual_finding(root, project, rule, message, field=field, remediation=remediation))
+
+    def unique(values: Any, field: str) -> list[str]:
+        if not isinstance(values, list):
+            return []
+        strings = [item for item in values if isinstance(item, str)]
+        if len(strings) != len(set(strings)):
+            finding(
+                "VISUAL-LANGUAGE-DUPLICATE",
+                f"{field} contains duplicate values",
+                field=field,
+                remediation="Keep each visual-language ID or expression only once.",
+            )
+        return strings
+
+    def decision_reference(record_id: Any, field: str) -> None:
+        if not isinstance(record_id, str):
+            return
+        entry = entries.get(record_id)
+        if not entry or entry[0] != "decision":
+            finding(
+                "VISUAL-LANGUAGE-REFERENCE",
+                f"{field} references missing decision {record_id!r}",
+                field=field,
+                remediation="Reference an existing DC### decision from this project.",
+            )
+        elif entry[3].get("status") != "ADOPTED":
+            finding(
+                "VISUAL-LANGUAGE-REFERENCE",
+                f"{field} references decision {record_id!r}, which is not ADOPTED",
+                field=field,
+                remediation="Use an ADOPTED decision as visual-language provenance.",
+            )
+
+    def requirement_reference(record_id: Any, field: str) -> None:
+        if not isinstance(record_id, str):
+            return
+        entry = entries.get(record_id)
+        if not entry or entry[0] != "requirement":
+            finding(
+                "VISUAL-LANGUAGE-REFERENCE",
+                f"{field} references missing requirement {record_id!r}",
+                field=field,
+                remediation="Reference an existing RQ### production requirement from this project.",
+            )
+
+    def decision_candidates() -> list[tuple[str, dict[str, Any]]]:
+        result: list[tuple[str, dict[str, Any]]] = []
+        for record_id, (kind, _, _, record) in entries.items():
+            if kind != "decision":
+                continue
+            question = record.get("question")
+            if isinstance(question, str) and re.search(r"medium|媒介|媒体", question, re.IGNORECASE):
+                result.append((record_id, record))
+        return result
+
+    if needs_decision:
+        candidates = decision_candidates()
+        valid_candidate = len(candidates) == 1 and candidates[0][1].get("selected_option") in medium_types
+        if len(candidates) != 1 or not valid_candidate or candidates[0][1].get("status") != "ADOPTED":
+            finding(
+                "VISUAL-LANGUAGE-MEDIUM-DECISION",
+                "visual language requires exactly one ADOPTED decision with a configured medium selected_option",
+                field="medium/source_decision_id",
+                remediation="Record one explicit medium-selection question, select one medium_types value, and mark that DC decision ADOPTED.",
+            )
+        elif isinstance(medium, dict):
+            candidate_id, candidate = candidates[0]
+            if medium.get("source_decision_id") != candidate_id or medium.get("primary") != candidate.get("selected_option"):
+                finding(
+                    "VISUAL-LANGUAGE-MEDIUM-DECISION",
+                    "visual language medium does not match the unique adopted medium decision",
+                    field="medium",
+                    remediation="Copy selected_option and the decision ID from the adopted medium decision.",
+                )
+
+    if isinstance(medium, dict):
+        decision_reference(medium.get("source_decision_id"), "medium.source_decision_id")
+
+    techniques = visual_language.get("techniques")
+    technique_ids: list[str] = []
+    if isinstance(techniques, list):
+        for index, technique in enumerate(techniques):
+            if not isinstance(technique, dict):
+                continue
+            technique_id = technique.get("id")
+            if isinstance(technique_id, str):
+                technique_ids.append(technique_id)
+            for decision_index, decision_id in enumerate(technique.get("source_decision_ids", [])):
+                decision_reference(decision_id, f"techniques[{index}].source_decision_ids[{decision_index}]")
+            for requirement_index, requirement_id in enumerate(technique.get("requirement_ids", [])):
+                requirement_reference(requirement_id, f"techniques[{index}].requirement_ids[{requirement_index}]")
+    unique(technique_ids, "techniques.id")
+
+    def check_condition(name: str) -> None:
+        condition = visual_language.get(name)
+        if not isinstance(condition, dict):
+            return
+        preferred = unique(condition.get("preferred"), f"{name}.preferred")
+        prohibited = unique(condition.get("prohibited"), f"{name}.prohibited")
+        source_decisions = unique(condition.get("source_decision_ids"), f"{name}.source_decision_ids")
+        overlap = sorted(set(preferred).intersection(prohibited))
+        if overlap:
+            finding(
+                "VISUAL-LANGUAGE-DUPLICATE",
+                f"{name} places the same expression in preferred and prohibited: {', '.join(overlap)}",
+                field=name,
+                remediation="Keep preferred and prohibited expressions disjoint.",
+            )
+        for index, decision_id in enumerate(source_decisions):
+            decision_reference(decision_id, f"{name}.source_decision_ids[{index}]")
+        applicability = condition.get("applicability")
+        rationale = condition.get("rationale")
+        complete_condition = ready_or_later or medium is not None
+        if applicability == "APPLICABLE":
+            if complete_condition and not preferred:
+                finding(
+                    "VISUAL-LANGUAGE-COMPLETENESS",
+                    f"{name} marked APPLICABLE must declare at least one preferred expression",
+                    field=f"{name}.preferred",
+                    remediation="Add a concrete preferred expression or mark the section NOT_APPLICABLE.",
+                )
+            if complete_condition and (not isinstance(rationale, str) or not rationale.strip()):
+                finding(
+                    "VISUAL-LANGUAGE-COMPLETENESS",
+                    f"{name} marked APPLICABLE must include a rationale",
+                    field=f"{name}.rationale",
+                    remediation="Explain the research reason for the applicable visual condition.",
+                )
+            if complete_condition and not source_decisions:
+                finding(
+                    "VISUAL-LANGUAGE-COMPLETENESS",
+                    f"{name} marked APPLICABLE must cite at least one source decision",
+                    field=f"{name}.source_decision_ids",
+                    remediation="Reference the ADOPTED decision that establishes this condition.",
+                )
+        elif applicability == "NOT_APPLICABLE":
+            if preferred or prohibited or source_decisions:
+                finding(
+                    "VISUAL-LANGUAGE-APPLICABILITY",
+                    f"{name} marked NOT_APPLICABLE must have empty preferred, prohibited, and source_decision_ids",
+                    field=name,
+                    remediation="Clear the condition arrays or mark the section APPLICABLE.",
+                )
+            if complete_condition and (not isinstance(rationale, str) or not rationale.strip()):
+                finding(
+                    "VISUAL-LANGUAGE-COMPLETENESS",
+                    f"{name} marked NOT_APPLICABLE must include a rationale",
+                    field=f"{name}.rationale",
+                    remediation="Record why this visual condition does not apply.",
+                )
+
+    check_condition("palette")
+    check_condition("composition")
+
+    prohibited = visual_language.get("prohibited_expressions")
+    prohibited_ids: list[str] = []
+    if isinstance(prohibited, list):
+        for index, expression in enumerate(prohibited):
+            if not isinstance(expression, dict):
+                continue
+            expression_id = expression.get("id")
+            if isinstance(expression_id, str):
+                prohibited_ids.append(expression_id)
+            for decision_index, decision_id in enumerate(expression.get("source_decision_ids", [])):
+                decision_reference(decision_id, f"prohibited_expressions[{index}].source_decision_ids[{decision_index}]")
+            for requirement_index, requirement_id in enumerate(expression.get("requirement_ids", [])):
+                requirement_reference(requirement_id, f"prohibited_expressions[{index}].requirement_ids[{requirement_index}]")
+    unique(prohibited_ids, "prohibited_expressions.id")
+    if ready_or_later and not prohibited_ids:
+        finding(
+            "VISUAL-LANGUAGE-COMPLETENESS",
+            "READY_FOR_PRODUCTION visual language requires at least one prohibited expression",
+            field="prohibited_expressions",
+            remediation="Record at least one evidence-backed prohibited expression.",
+        )
+
+    uncertainty_ids = unique(visual_language.get("unresolved_uncertainty_ids"), "unresolved_uncertainty_ids")
+    for index, uncertainty_id in enumerate(uncertainty_ids):
+        entry = entries.get(uncertainty_id)
+        if not entry or entry[0] != "uncertainty":
+            finding(
+                "VISUAL-LANGUAGE-REFERENCE",
+                f"unresolved_uncertainty_ids references missing uncertainty {uncertainty_id!r}",
+                field=f"unresolved_uncertainty_ids[{index}]",
+                remediation="Reference an existing U### uncertainty record.",
+            )
+        elif entry[3].get("status") not in set(vocab.get("uncertainty_statuses", [])):
+            finding(
+                "VISUAL-LANGUAGE-REFERENCE",
+                f"uncertainty {uncertainty_id!r} must have OPEN or ACCEPTED_RISK status",
+                field=f"unresolved_uncertainty_ids[{index}]",
+                remediation="Set the referenced uncertainty status to OPEN or ACCEPTED_RISK.",
+            )
+
+    if ready_or_later:
+        if not isinstance(medium, dict):
+            finding(
+                "VISUAL-LANGUAGE-COMPLETENESS",
+                "READY_FOR_PRODUCTION visual language requires a medium record",
+                field="medium",
+                remediation="Populate medium from the unique ADOPTED medium decision.",
+            )
+        if not isinstance(techniques, list) or not techniques:
+            finding(
+                "VISUAL-LANGUAGE-COMPLETENESS",
+                "READY_FOR_PRODUCTION visual language requires at least one technique",
+                field="techniques",
+                remediation="Record at least one technique with decision provenance.",
+            )
 
 
 def _check_handoff_contract(
@@ -1560,7 +2185,290 @@ def _secret_findings(root: Path, path: Path, patterns: list[dict[str, Any]]) -> 
     return findings
 
 
-def validate_repository(root: Path, project_target: str | None = None) -> list[Finding]:
+def _knowledge_finding(
+    root: Path,
+    path: Path,
+    rule: str,
+    message: str,
+    *,
+    line: int | None = None,
+    field: str | None = None,
+    remediation: str,
+) -> Finding:
+    return Finding(
+        _relative_path(root, path),
+        rule,
+        message,
+        line=line,
+        field=field,
+        remediation=remediation,
+    )
+
+
+def _check_knowledge_semantics(
+    root: Path,
+    entries: dict[str, RecordEntry],
+    vocab: dict[str, Any],
+    findings: list[Finding],
+) -> None:
+    """Apply the cross-record rules that JSON Schema cannot express."""
+    relationship_types = set(vocab.get("relationship_types", []))
+    contradiction_statuses = set(vocab.get("contradiction_statuses", []))
+    knowledge_kinds = {"evidence", "observation", "claim", "external-reference"}
+
+    for record_id, (kind, path, line, record) in entries.items():
+        if kind == "relationship":
+            relationship_type = record.get("type")
+            if relationship_type not in relationship_types:
+                findings.append(
+                    _knowledge_finding(
+                        root,
+                        path,
+                        "KNOWLEDGE-VOCABULARY",
+                        f"relationship type {relationship_type!r} is not declared in config/vocabularies.yaml",
+                        line=line,
+                        field="type",
+                        remediation="Use a value from config/vocabularies.yaml#relationship_types.",
+                    )
+                )
+            from_id = record.get("from_id")
+            to_id = record.get("to_id")
+            if isinstance(from_id, str) and isinstance(to_id, str) and from_id == to_id:
+                findings.append(
+                    _knowledge_finding(
+                        root,
+                        path,
+                        "RELATIONSHIP-SELF",
+                        f"relationship {record_id} cannot reference the same endpoint {from_id!r} twice",
+                        line=line,
+                        field="from_id/to_id",
+                        remediation="Use two distinct EV, OB, CL, or XR endpoint IDs.",
+                    )
+                )
+            for field in ("from_id", "to_id"):
+                reference = record.get(field)
+                if not isinstance(reference, str):
+                    continue
+                target = entries.get(reference)
+                if target and target[0] in knowledge_kinds:
+                    continue
+                actual = target[0] if target else "missing"
+                findings.append(
+                    _knowledge_finding(
+                        root,
+                        path,
+                        "CROSS-REFERENCE",
+                        f"{record_id}.{field} references {reference!r} (knowledge endpoint; {actual})",
+                        line=line,
+                        field=field,
+                        remediation="Create the referenced evidence, observation, claim, or external-reference in this project.",
+                    )
+                )
+        elif kind == "contradiction":
+            status = record.get("status")
+            if status not in contradiction_statuses:
+                findings.append(
+                    _knowledge_finding(
+                        root,
+                        path,
+                        "KNOWLEDGE-VOCABULARY",
+                        f"contradiction status {status!r} is not declared in config/vocabularies.yaml",
+                        line=line,
+                        field="status",
+                        remediation="Use a value from config/vocabularies.yaml#contradiction_statuses.",
+                    )
+                )
+            resolution = record.get("resolution")
+            if status == "RESOLVED" and (not isinstance(resolution, str) or not resolution.strip()):
+                findings.append(
+                    _knowledge_finding(
+                        root,
+                        path,
+                        "CONTRADICTION-RESOLUTION",
+                        f"resolved contradiction {record_id} must include a non-empty resolution",
+                        line=line,
+                        field="resolution",
+                        remediation="Record the resolution text or change status from RESOLVED.",
+                    )
+                )
+
+
+def _profile_signal_paths(profiles_root: Path) -> list[Path]:
+    if profiles_root.is_file():
+        return [profiles_root] if profiles_root.name == "aesthetic-signals.yaml" else []
+    if not profiles_root.is_dir():
+        return []
+    return sorted(profiles_root.rglob("aesthetic-signals.yaml"))
+
+
+def _validate_profiles(
+    root: Path,
+    profiles_root: Path,
+    validator: Draft202012Validator | None,
+    vocab: dict[str, Any],
+    findings: list[Finding],
+) -> None:
+    """Validate profile instances without materializing them in the repository."""
+    paths = _profile_signal_paths(profiles_root)
+    if not paths:
+        return
+
+    evidence_keys: set[str] = set()
+    for project in iter_project_dirs(root):
+        evidence_path = project / "02_evidence" / "evidence-ledger.jsonl"
+        if not evidence_path.exists():
+            continue
+        try:
+            records = read_jsonl_with_lines(evidence_path)
+        except Exception:
+            continue
+        project_id = f"project/{project.name}"
+        for _, record in records:
+            if isinstance(record, dict) and isinstance(record.get("id"), str):
+                evidence_keys.add(f"{project_id}::{record['id']}")
+
+    seen_ids: dict[str, Path] = {}
+    relationship_strengths = set(vocab.get("aesthetic_signal_strengths", []))
+    relationship_contexts = set(vocab.get("aesthetic_signal_contexts", []))
+    epistemic_statuses = set(vocab.get("epistemic_statuses", []))
+    qualified_evidence = re.compile(r"^project/[a-z0-9]+(?:-[a-z0-9]+)*::EV[0-9]{3,}$")
+
+    for path in paths:
+        try:
+            value = load_yaml(path)
+        except Exception as exc:
+            findings.append(_exception_finding(root, path, "PROFILE-YAML", exc))
+            continue
+        if not isinstance(value, dict) or not isinstance(value.get("signals"), list):
+            findings.append(
+                _knowledge_finding(
+                    root,
+                    path,
+                    "PROFILE-STRUCTURE",
+                    "profile document must contain a signals list",
+                    field="signals",
+                    remediation="Use templates/profile/aesthetic-signals.yaml and place signal objects under signals.",
+                )
+            )
+            continue
+        for index, signal in enumerate(value["signals"]):
+            field_prefix = f"signals[{index}]"
+            if not isinstance(signal, dict):
+                continue
+            signal_id = signal.get("id")
+            if isinstance(signal_id, str):
+                previous = seen_ids.get(signal_id)
+                if previous:
+                    findings.append(
+                        _knowledge_finding(
+                            root,
+                            path,
+                            "DUPLICATE-ID",
+                            f"ID {signal_id!r} is already registered in {previous}",
+                            field=f"{field_prefix}.id",
+                            remediation="Assign a unique AS ID across the profile root.",
+                        )
+                    )
+                else:
+                    seen_ids[signal_id] = path
+            if validator:
+                findings.extend(_schema_findings(root, path, validator, signal, field_prefix=field_prefix))
+
+            strength = signal.get("strength")
+            if strength not in relationship_strengths:
+                findings.append(
+                    _knowledge_finding(
+                        root,
+                        path,
+                        "PROFILE-VOCABULARY",
+                        f"aesthetic signal strength {strength!r} is not declared in config/vocabularies.yaml",
+                        field=f"{field_prefix}.strength",
+                        remediation="Use a value from config/vocabularies.yaml#aesthetic_signal_strengths.",
+                    )
+                )
+            context = signal.get("context")
+            if context not in relationship_contexts:
+                findings.append(
+                    _knowledge_finding(
+                        root,
+                        path,
+                        "PROFILE-VOCABULARY",
+                        f"aesthetic signal context {context!r} is not declared in config/vocabularies.yaml",
+                        field=f"{field_prefix}.context",
+                        remediation="Use a value from config/vocabularies.yaml#aesthetic_signal_contexts.",
+                    )
+                )
+            confidence_status = signal.get("confidence_status")
+            if confidence_status not in epistemic_statuses:
+                findings.append(
+                    _knowledge_finding(
+                        root,
+                        path,
+                        "PROFILE-VOCABULARY",
+                        f"confidence status {confidence_status!r} is not declared in config/vocabularies.yaml",
+                        field=f"{field_prefix}.confidence_status",
+                        remediation="Use a value from config/vocabularies.yaml#epistemic_statuses.",
+                    )
+                )
+
+            for ref_field in ("evidence_refs", "counterexample_refs"):
+                refs = signal.get(ref_field)
+                if not isinstance(refs, list):
+                    continue
+                for ref_index, reference in enumerate(refs):
+                    ref_field_path = f"{field_prefix}.{ref_field}[{ref_index}]"
+                    if not isinstance(reference, str) or not qualified_evidence.fullmatch(reference):
+                        findings.append(
+                            _knowledge_finding(
+                                root,
+                                path,
+                                "PROFILE-REFERENCE",
+                                f"{ref_field} must contain project-qualified evidence IDs, got {reference!r}",
+                                field=ref_field_path,
+                                remediation="Use project/<slug>::EV### references that resolve to project evidence.",
+                            )
+                        )
+                    elif reference not in evidence_keys:
+                        findings.append(
+                            _knowledge_finding(
+                                root,
+                                path,
+                                "PROFILE-REFERENCE",
+                                f"{ref_field} references missing evidence {reference!r}",
+                                field=ref_field_path,
+                                remediation="Create the referenced project evidence or correct the qualified ID.",
+                            )
+                        )
+
+            period = signal.get("observed_period")
+            review_after = signal.get("review_after")
+            if isinstance(period, dict) and isinstance(review_after, str):
+                from_date = period.get("from")
+                to_date = period.get("to")
+                try:
+                    parsed_from = date.fromisoformat(from_date)
+                    parsed_to = date.fromisoformat(to_date)
+                    parsed_review = date.fromisoformat(review_after)
+                except (TypeError, ValueError):
+                    continue
+                if not (parsed_from <= parsed_to <= parsed_review):
+                    findings.append(
+                        _knowledge_finding(
+                            root,
+                            path,
+                            "PROFILE-PERIOD",
+                            "observed_period.from must be <= observed_period.to <= review_after",
+                            field=f"{field_prefix}.observed_period/review_after",
+                            remediation="Use chronological ISO dates for the observation period and review date.",
+                        )
+                    )
+
+
+def validate_repository(
+    root: Path,
+    project_target: str | None = None,
+    profiles_root: Path | None = None,
+) -> list[Finding]:
     findings: list[Finding] = []
     vocab_path = root / "config" / "vocabularies.yaml"
     access_path = root / "config" / "access-policy.yaml"
@@ -1637,6 +2545,8 @@ def validate_repository(root: Path, project_target: str | None = None) -> list[F
             )
         )
 
+    _check_execution_queue_state(root, findings)
+
     statuses = set(vocab.get("project_statuses", [])) if isinstance(vocab, dict) else set()
     projects = list(iter_project_dirs(root))
     project_ids = {f"project/{project.name}" for project in projects}
@@ -1658,6 +2568,7 @@ def validate_repository(root: Path, project_target: str | None = None) -> list[F
         entries: dict[str, RecordEntry] = {}
         extension_values: dict[str, Any] = {}
         handoff_value: Any = None
+        visual_language_value: Any = None
         feedback_records: list[tuple[int, dict[str, Any]]] = []
         completion_report_value: Any = None
         run_events: list[tuple[int, dict[str, Any]]] = []
@@ -1766,7 +2677,10 @@ def validate_repository(root: Path, project_target: str | None = None) -> list[F
                                 remediation="Use canonical completion minimum keys and provide minimums.reason when lowering a default.",
                             )
                         )
-                handoff_value = value
+                if relative == "05_production/visual-language.yaml":
+                    visual_language_value = value
+                if relative == HANDOFF_PATH:
+                    handoff_value = value
             elif relative == "01_planning/question-register.yaml":
                 if isinstance(value, dict) and isinstance(value.get("questions"), list):
                     _register_records(root, value["questions"], "question", path, entries, findings)
@@ -1830,6 +2744,17 @@ def validate_repository(root: Path, project_target: str | None = None) -> list[F
                     )
 
         _check_references(root, entries, project_ids, findings)
+        _check_knowledge_semantics(root, entries, vocab if isinstance(vocab, dict) else {}, findings)
+        _check_visual_language(
+            root,
+            project,
+            manifest,
+            entries,
+            visual_language_value,
+            vocab if isinstance(vocab, dict) else {},
+            findings,
+        )
+        _check_bidirectional_decision_registries(root, entries, findings)
         _check_question_terminality(root, entries, vocab if isinstance(vocab, dict) else {}, findings,
                                     state_value.get("status") if isinstance(state_value, dict) else None)
         _check_requirement_tests(root, entries, findings)
@@ -1872,6 +2797,14 @@ def validate_repository(root: Path, project_target: str | None = None) -> list[F
                     )
                 )
 
+    _validate_profiles(
+        root,
+        (profiles_root or (root / "profiles")).resolve(),
+        schema_validators.get("aesthetic-signal"),
+        vocab if isinstance(vocab, dict) else {},
+        findings,
+    )
+
     return sorted(findings, key=lambda item: (item.path, item.line or 0, item.field or "", item.rule, item.message))
 
 
@@ -1879,9 +2812,10 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Validate repository contracts and safety boundaries.")
     parser.add_argument("--check", action="store_true", help="Validate without generating or modifying files.")
     parser.add_argument("--project", help="Validate one project slug or project/<slug> while retaining repository-wide safety checks.")
+    parser.add_argument("--profiles-root", type=Path, help="Read external profile instances from this root (defaults to <root>/profiles).")
     parser.add_argument("--root", type=Path, default=ROOT)
     args = parser.parse_args()
-    findings = validate_repository(args.root.resolve(), args.project)
+    findings = validate_repository(args.root.resolve(), args.project, args.profiles_root.resolve() if args.profiles_root else None)
     if findings:
         for finding in findings:
             print(finding.render())

@@ -1,5 +1,5 @@
-version: 5
-updated_at: "2026-08-16T09:53:21+09:00"
+version: 6
+updated_at: "2026-08-25T00:00:00+09:00"
 selection_policy: lowest_id_ready_with_dependencies_done
 allowed_statuses: [BACKLOG, READY, IN_PROGRESS, BLOCKED, DONE]
 tasks:
@@ -235,3 +235,70 @@ tasks:
       - python3 -m unittest tests.test_complete.CompletionContractTest.test_under_researched_project_is_incomplete_and_nonzero
       - python3 -m unittest tests.test_handoff_build.HandoffBuildContractTest.test_incomplete_project_rejects_handoff_without_mutation
       - python3 tools/validate.py --check
+  - id: RUNTIME-005
+    milestone: M4
+    title: Complete dry-run offline-fixture live contracts and execution SSOT
+    status: DONE
+    depends_on: [RUNTIME-004]
+    acceptance: --dry-run is read-only, preview and live choose the same task context, and queue/state validation rejects inconsistent execution order.
+    issue_refs: ["agentic-art-research#65"]
+    checks:
+      - python3 -m unittest tests.test_next_action tests.test_task_runtime tests.test_validation
+      - python3 tools/validate.py --check
+  - id: BOUNDARY-001
+    milestone: G0
+    title: Remove real projects and enforce the protocol output boundary
+    status: DONE
+    depends_on: [RUNTIME-005]
+    acceptance: Canonical tracked projects/data contain protocol-only files, generated graph is empty, and CI rejects tracked project output with PROTOCOL-OUTPUT-BOUNDARY.
+    issue_refs: ["agentic-art-research#66"]
+    checks:
+      - python3 -m unittest tests.test_security_check tests.test_release_check
+      - python3 tools/security_check.py --check
+      - python3 tools/validate.py --check
+  - id: DECISION-001
+    milestone: G1
+    title: Connect rejected options and uncertainties and generate executive brief
+    status: DONE
+    depends_on: [BOUNDARY-001]
+    acceptance: Typed registries resolve bidirectionally to decisions and the human brief is deterministic and generated from canonical sources.
+    issue_refs: ["agentic-art-research#48"]
+    checks:
+      - python3 -m unittest tests.test_validation tests.test_bundle
+      - python3 tools/validate.py --check
+  - id: FEEDBACK-EXPORT-001
+    milestone: G1
+    title: Export anonymized production feedback research signals
+    status: DONE
+    depends_on: [BOUNDARY-001]
+    acceptance: A validated production result produces a deterministic, idempotent, privacy-safe research-signal bundle without external writes.
+    issue_refs: ["agentic-art-research#45"]
+    checks:
+      - python3 -m unittest tests.test_export_feedback_signals
+      - python3 tools/validate.py --check
+  - id: KNOWLEDGE-001
+    milestone: G1
+    title: Complete typed knowledge records and profile signal contract
+    status: DONE
+    depends_on: [BOUNDARY-001]
+    acceptance: Observation, relationship, contradiction, external-reference, and aesthetic-signal records validate, resolve, and enter the deterministic graph.
+    issue_refs: ["agentic-art-research#47"]
+    checks:
+      - python3 -m unittest tests.test_knowledge tests.test_schemas tests.test_graph tests.test_validation
+      - python3 tools/validate.py --check
+      - python3 tools/security_check.py --check
+      - python3 tools/docs_check.py --check
+      - python3 tools/build_graph.py --check
+  - id: VISUAL-LANGUAGE-001
+    milestone: G2
+    title: Add typed visual language and production handoff artifact
+    status: DONE
+    depends_on: [BOUNDARY-001, DECISION-001]
+    acceptance: An adopted medium decision yields a validated visual-language artifact included in deterministic production context and handoff bundles.
+    issue_refs: ["agentic-art-research#49"]
+    checks:
+      - python3 -m unittest discover -s tests -v
+      - python3 tools/validate.py --check
+      - python3 tools/security_check.py --check
+      - python3 tools/docs_check.py --check
+      - python3 tools/build_graph.py --check

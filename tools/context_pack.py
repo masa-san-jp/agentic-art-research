@@ -18,7 +18,7 @@ ROLE_SOURCE_PATHS: dict[str, tuple[str, ...]] = {
     "curator": ("02_evidence/source-ledger.jsonl", "02_evidence/evidence-ledger.jsonl", "06_governance/rights-register.yaml"),
     "analyst": ("02_evidence/evidence-ledger.jsonl", "03_knowledge/observations.jsonl", "03_knowledge/claims.jsonl", "03_knowledge/relationships.jsonl", "03_knowledge/contradictions.jsonl"),
     "critic": ("03_knowledge/claims.jsonl", "03_knowledge/contradictions.jsonl", "04_decisions/insight-register.yaml", "04_decisions/uncertainty-register.yaml"),
-    "production-translator": ("04_decisions/decision-log.yaml", "05_production/creative-direction.md", "05_production/production-requirements.yaml"),
+    "production-translator": ("04_decisions/decision-log.yaml", "04_decisions/rejected-options.yaml", "04_decisions/uncertainty-register.yaml", "05_production/creative-direction.md", "05_production/production-brief.yaml", "05_production/production-requirements.yaml", "05_production/visual-language.yaml"),
     "validator": ("06_governance/rights-register.yaml", "06_governance/privacy-review.yaml", "06_governance/safety-risk-register.yaml", "07_runtime/research-state.json"),
     "auditor": ("02_evidence/evidence-ledger.jsonl", "03_knowledge/claims.jsonl", "04_decisions/decision-log.yaml", "06_governance/rights-register.yaml", "06_governance/privacy-review.yaml", "07_runtime/completion-report.json"),
 }

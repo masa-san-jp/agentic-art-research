@@ -1,0 +1,17 @@
+schema_version: 1.0.0
+medium: null
+techniques: []
+palette:
+  applicability: NOT_APPLICABLE
+  preferred: []
+  prohibited: []
+  rationale: null
+  source_decision_ids: []
+composition:
+  applicability: NOT_APPLICABLE
+  preferred: []
+  prohibited: []
+  rationale: null
+  source_decision_ids: []
+prohibited_expressions: []
+unresolved_uncertainty_ids: []

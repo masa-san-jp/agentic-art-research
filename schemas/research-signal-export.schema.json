@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/research-signal-export/v1",
+  "title": "Research signal export manifest",
+  "type": "object",
+  "required": [
+    "schema_id",
+    "export_id",
+    "research_project_id",
+    "production_project_id",
+    "result_id",
+    "source_result_sha256",
+    "signal_count",
+    "signals_sha256",
+    "generated_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_id": {"const": "research-signal-export/v1"},
+    "export_id": {
+      "type": "string",
+      "pattern": "^RSE-[a-z0-9](?:[a-z0-9]|-(?=[a-z0-9])){1,62}[a-z0-9]-PR[0-9]{3,}$"
+    },
+    "research_project_id": {
+      "type": "string",
+      "pattern": "^project/[a-z0-9](?:[a-z0-9]|-(?=[a-z0-9])){1,62}[a-z0-9]$"
+    },
+    "production_project_id": {
+      "type": "string",
+      "pattern": "^production/[a-z0-9](?:[a-z0-9]|-(?=[a-z0-9])){1,62}[a-z0-9]$"
+    },
+    "result_id": {"type": "string", "pattern": "^PR[0-9]{3,}$"},
+    "source_result_sha256": {"$ref": "#/$defs/sha256"},
+    "signal_count": {"type": "integer", "minimum": 0},
+    "signals_sha256": {"$ref": "#/$defs/sha256"},
+    "generated_at": {"type": "string", "format": "date-time"}
+  },
+  "$defs": {
+    "nonEmptyString": {"type": "string", "minLength": 1},
+    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "acceptanceResult": {
+      "enum": ["PASS", "FAIL", "BLOCKED", "NOT_RUN", "EXTERNAL_VALIDATION_REQUIRED", "SKIPPED"]
+    },
+    "presentationConditions": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["explanation_present", "duration_seconds", "medium"],
+      "properties": {
+        "explanation_present": {"type": "boolean"},
+        "duration_seconds": {"type": ["number", "null"], "minimum": 0},
+        "medium": {"type": ["string", "null"], "minLength": 1}
+      }
+    },
+    "observation": {
+      "type": "object",
+      "required": ["id", "statement", "method", "limitations", "related_requirement_ids"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "pattern": "^OB[0-9]{3,}$"},
+        "statement": {"$ref": "#/$defs/nonEmptyString"},
+        "method": {"$ref": "#/$defs/nonEmptyString"},
+        "limitations": {"$ref": "#/$defs/nonEmptyString"},
+        "related_requirement_ids": {
+          "type": "array",
+          "items": {"type": "string", "pattern": "^RQ[0-9]{3,}$"},
+          "uniqueItems": true
+        }
+      }
+    },
+    "signal": {
+      "type": "object",
+      "required": [
+        "signal_id",
+        "acceptance_test_id",
+        "requirement_ids",
+        "method",
+        "pass_condition",
+        "result",
+        "execution_conditions",
+        "presentation_conditions",
+        "observations",
+        "source_result_id",
+        "source_result_sha256"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "signal_id": {"type": "string", "pattern": "^RSE-.+-PR[0-9]{3,}-AT[0-9]{3,}$"},
+        "acceptance_test_id": {"type": "string", "pattern": "^AT[0-9]{3,}$"},
+        "requirement_ids": {
+          "type": "array",
+          "items": {"type": "string", "pattern": "^RQ[0-9]{3,}$"},
+          "minItems": 1,
+          "maxItems": 1,
+          "uniqueItems": true
+        },
+        "method": {"$ref": "#/$defs/nonEmptyString"},
+        "pass_condition": {"$ref": "#/$defs/nonEmptyString"},
+        "result": {"$ref": "#/$defs/acceptanceResult"},
+        "execution_conditions": {"$ref": "#/$defs/nonEmptyString"},
+        "presentation_conditions": {"$ref": "#/$defs/presentationConditions"},
+        "observations": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/observation"}
+        },
+        "source_result_id": {"type": "string", "pattern": "^PR[0-9]{3,}$"},
+        "source_result_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

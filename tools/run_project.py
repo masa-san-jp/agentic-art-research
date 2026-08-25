@@ -4,7 +4,7 @@ import argparse
 import shutil
 from pathlib import Path
 
-from _common import ROOT, atomic_write_text, load_yaml, stable_json
+from _common import atomic_write_text, load_yaml, stable_json
 from build_graph import build_graph
 from new_project import create_project
 from validate import validate_repository
@@ -47,6 +47,9 @@ def run_offline_fixture(root: Path, slug: str, fixture: Path) -> Path:
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(source, destination)
 
+        from executive_brief import write_executive_brief
+
+        write_executive_brief(root, f"project/{slug}")
         findings = validate_repository(root)
         if findings:
             rendered = "\n".join(finding.render() for finding in findings)
@@ -64,7 +67,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Materialize and validate a deterministic offline project fixture.")
     parser.add_argument("slug")
     parser.add_argument("--offline-fixture", type=Path, required=True)
-    parser.add_argument("--root", type=Path, default=ROOT)
+    parser.add_argument("--root", type=Path, required=True, help="temporary work root or external output staging root")
     args = parser.parse_args()
     try:
         target = run_offline_fixture(args.root.resolve(), args.slug, args.offline_fixture.resolve())

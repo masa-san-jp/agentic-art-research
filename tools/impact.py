@@ -110,13 +110,15 @@ def main() -> int:
     parser.add_argument("--format", choices=("json", "markdown"), default="json")
     parser.add_argument("-o", "--output", type=Path)
     parser.add_argument("--root", type=Path, default=ROOT)
+    parser.add_argument("--profiles-root", type=Path, help="Read external profile instances when building the graph.")
     args = parser.parse_args()
     node = args.node or args.handoff_node or args.result_node
     if not node:
         parser.error("provide --evidence, --handoff, --production-result, or --node")
     root = args.root.resolve()
     graph_path = root / "data" / "dependency-graph.json"
-    graph = load_json(graph_path) if graph_path.exists() else build_graph(root)
+    profiles_root = args.profiles_root.resolve() if args.profiles_root else None
+    graph = load_json(graph_path) if graph_path.exists() and profiles_root is None else build_graph(root, profiles_root)
     report = impact_report(graph, node)
     content = stable_json(report) if args.format == "json" else render_markdown(report)
     if args.output:

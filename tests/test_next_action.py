@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import shutil
 import subprocess
 import sys
@@ -27,6 +28,19 @@ def _new_project(root: Path, slug: str) -> None:
         [sys.executable, "tools/new_project.py", slug, "--title", slug, "--creator-id", "test", "--root", str(root)],
         cwd=ROOT, capture_output=True, text=True, check=True,
     )
+
+
+def _snapshot(root: Path) -> tuple[tuple[str, str, int], ...]:
+    records = []
+    for path in sorted(item for item in root.rglob("*") if item.is_file()):
+        records.append(
+            (
+                path.relative_to(root).as_posix(),
+                hashlib.sha256(path.read_bytes()).hexdigest(),
+                path.stat().st_mtime_ns,
+            )
+        )
+    return tuple(records)
 
 
 class RoleResolutionTests(unittest.TestCase):
@@ -158,6 +172,42 @@ class EntryPointTests(unittest.TestCase):
         other = next_action.build_next_action(self.root, "project/probe", "someone-else", LATER)
 
         self.assertNotEqual("TASK_RESUMED", other["status"])
+
+    def test_dry_run_previews_without_changing_any_project_file(self):
+        before = _snapshot(self.root)
+
+        first = next_action.build_next_action(self.root, "project/probe", "tester", NOW, dry_run=True)
+        second = next_action.build_next_action(self.root, "project/probe", "tester", NOW, dry_run=True)
+
+        self.assertEqual("TASK_PREVIEWED", first["status"])
+        self.assertIsNone(first["lease"])
+        self.assertEqual(first, second)
+        self.assertEqual(before, _snapshot(self.root))
+
+    def test_dry_run_and_live_share_the_same_task_context(self):
+        live_root = Path(tempfile.mkdtemp())
+        shutil.copytree(self.root, live_root, dirs_exist_ok=True)
+        self.addCleanup(shutil.rmtree, live_root, True)
+
+        preview = next_action.build_next_action(self.root, "project/probe", "tester", NOW, dry_run=True)
+        live = next_action.build_next_action(live_root, "project/probe", "tester", NOW)
+
+        self.assertEqual("TASK_PREVIEWED", preview["status"])
+        self.assertEqual("TASK_CLAIMED", live["status"])
+        for key in ("task_id", "role", "context", "write_targets", "acceptance"):
+            self.assertEqual(preview[key], live[key], key)
+        self.assertIsNone(preview["lease"])
+        self.assertIsNotNone(live["lease"])
+
+    def test_dry_run_previews_an_existing_lease_without_extending_it(self):
+        claimed = next_action.build_next_action(self.root, "project/probe", "tester", NOW)
+        before = _snapshot(self.root)
+
+        preview = next_action.build_next_action(self.root, "project/probe", "tester", LATER, dry_run=True)
+
+        self.assertEqual("TASK_RESUME_PREVIEW", preview["status"])
+        self.assertEqual(claimed["lease"], preview["lease"])
+        self.assertEqual(before, _snapshot(self.root))
 
 
 class TaskTemplateTests(unittest.TestCase):

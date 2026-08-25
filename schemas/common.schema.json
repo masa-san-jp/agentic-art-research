@@ -42,6 +42,27 @@
     "epistemicStatus": {
       "enum": ["VERIFIED", "SUPPORTED", "CONTESTED", "WEAK", "HYPOTHESIS", "REJECTED", "UNRESOLVED"]
     },
+    "mediumType": {
+      "enum": ["installation", "sculpture", "moving-image", "still-image", "sound", "performance", "text", "software", "mixed-media", "other"]
+    },
+    "visualLanguageApplicability": {
+      "enum": ["APPLICABLE", "NOT_APPLICABLE"]
+    },
+    "uncertaintyStatus": {
+      "enum": ["OPEN", "ACCEPTED_RISK"]
+    },
+    "relationshipType": {
+      "enum": ["similar_to", "contrasts_with", "part_of", "refers_to", "influenced_by"]
+    },
+    "contradictionStatus": {
+      "enum": ["OPEN", "RESOLVED", "UNRESOLVED"]
+    },
+    "aestheticSignalStrength": {
+      "enum": ["WEAK", "MODERATE", "STRONG"]
+    },
+    "aestheticSignalContext": {
+      "enum": ["LONG_TERM", "CURRENT_PROJECT", "RECENT_INTEREST"]
+    },
     "decisionStatus": {
       "enum": ["PROPOSED", "ADOPTED", "REJECTED", "ON_HOLD", "INVALIDATED"]
     },

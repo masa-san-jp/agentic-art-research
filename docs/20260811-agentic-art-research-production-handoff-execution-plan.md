@@ -28,6 +28,7 @@ python3 tools/validate.py --check
 - [x] (2026-08-12 07:24 JST) `HANDOFF-E2E-001`: `tests/fixtures/harmony-handoff/scenario.yaml`を正本メタデータとして固定し、handoff bundleの自己完結性・改変検出、PASS/FAIL/DEVIATION/CRITICAL result、重複、hash/schema mismatch、破損JSONL、graph/impact還流、RESEARCH_ONLY後方互換性をresearch側で検証した。Production clean commit `fb15f32bf1eef0155c853c4b7c4b94df6b1bd78b`からresult schema snapshotを取得し、release gateのschema boundary probeを修正した。snapshot provenance、schema/hash compatibility、fail-closed、実schemaを使うconsumerのdry-run/apply/冪等性round-tripを含む全113 testが合格した。
 - [x] (2026-08-12 07:24 JST) `HANDOFF-RELEASE-001`: 文書、CI接続済みresearch-side release gate、互換性証拠を確定し、`--require-schema-snapshot`付きgateを3回連続exit 0で確認した。検証済みhandoff拡張はmain commit `fb08b617eded3962826d913a4dd0832639d4c8c2`を対象にv1.1.0として公開済みである。
 - [x] (2026-08-14 JST) `HANDOFF-REFERENCE-CONTRACT-001`: Research Issue #43の決定に従い、source-ref indexの`references`/`record_hash`出力契約を固定。Research全120 testとvalidatorが合格。Production側の受入PRとは別commitで公開する。
+- [x] (2026-08-25 JST) `FEEDBACK-EXPORT-001`: import済みproduction resultから匿名化・決定的・冪等な`manifest.json`／`signals.jsonl`をatomic exportするCLI、schema、privacy/reference gateを追加。次の開始点は`KNOWLEDGE-001`。
 
 ## Surprises & Discoveries
 
@@ -48,6 +49,7 @@ python3 tools/validate.py --check
 - 2026-08-11: H5の固定scenarioはresearch fixtureからhandoffを生成し、production resultはテスト時の一時rootでだけ生成する構成にした。production-owned result schemaがclean commitにまだないため、test-only schemaをrepositoryの正本やfixtureへ保存せず、実運用importのprovenance要求とfail-closed境界を維持した。
 - 2026-08-12: Production result schema公開後、旧`feedback_schema_boundary` probeは欠落result入力を`EXTERNAL-SCHEMA`として期待していたため、schema snapshot存在時に`FEEDBACK-INPUT`で誤失敗した。probe内でsnapshotを一時除去してschema欠落を再現するよう修正し、実際のconsumerは変更せずfail-closed契約を維持した。
 - 2026-08-14: Production consumerはsource-ref indexにProduction側で再計算できる原record本文を持たないため、Research exporterをcanonical hashの責任主体とした。Issue #43に従い、参照カテゴリとアクセスURLは別Issueへ分離した。
+- 2026-08-25: feedback exportはimportと同じproject-local正本を更新せず、result recordと`PRODUCTION_FEEDBACK_IMPORTED` audit eventをread-onlyで再検証する専用CLIに分離した。提示条件は現行production-result v1に存在しないため`null`固定とし、自由文から推測しない。
 
 ## Decision Log
 
@@ -74,6 +76,7 @@ python3 tools/validate.py --check
 | 2026-08-12 | research-side handoff gateは通常CIで実行し、production schema snapshotの欠落・改変は`--require-schema-snapshot`でfail closedする | 外部schema待ちを理由に研究側の自動検証を無効化する | 現在確定している安全境界を継続検査し、production-owned contractの版固定を監査可能にするため |
 | 2026-08-12 | result schema公開後もfeedback boundary probeはschema欠落を一時rootで再現する | 欠落result入力をschema未公開の代用にする | `FEEDBACK-INPUT`と`EXTERNAL-SCHEMA`を混同せず、snapshot有無に依存しないrelease gateにするため |
 | 2026-08-14 | source-ref indexのwire keyを`references`/`record_hash`へ固定し、ハッシュ計算はResearch exporterのcanonical source recordに限定する | Production向けに別の`records`/`record_sha256`形式を作る、参照カテゴリやURLをこの変更へ混ぜる | producer/consumerの責任とIssue #43の変更範囲を分離するため |
+| 2026-08-25 | feedback exportは`manifest.json`と`signals.jsonl`だけを明示outputへatomic生成し、同内容再実行だけを`ALREADY_EXPORTED`として許可する | import処理にexportを混ぜる、既存bundleを上書きする、外部配送まで自動化する | project-local監査、再利用artifact、外部送信の境界を分離し、失敗時の非破壊性を保証するため |
 
 ## Outcomes & Retrospective
 
@@ -92,6 +95,8 @@ H5のschema公開前段階では、`harmony-handoff` scenarioを使ってbundle 
 Production result schemaのclean snapshot取得後、`HANDOFF-E2E-001`のrelease gateは`schema_snapshot_ready: true`で合格した。旧boundary probeを修正し、schema snapshotを一時的に除去したprobeが`EXTERNAL-SCHEMA`でfail-closedすること、result consumerのPASS/FAIL/DEVIATION/CRITICAL round-tripがschema 1.0.0で通ることを確認した。`HANDOFF-RELEASE-001`まで完了し、v1.1.0はmain commit `fb08b617eded3962826d913a4dd0832639d4c8c2`へ公開済みである。
 
 `HANDOFF-REFERENCE-CONTRACT-001`では、Productionが要求するsource-ref wire contractをResearch側のexporter・fixtureで固定する。Productionがhashを再計算できないことを理由にゼロ値を許可せず、Research exporterがcanonical source recordから計算した非ゼロ`record_hash`を受け渡す。完了条件はResearch側のvalidator/testとProduction側のconsumer PRを別々に確認し、どちらも人間承認前のmerge待ちとして残すことである。
+
+`FEEDBACK-EXPORT-001`では、`research-signal-export/v1` schema、accepted test・requirement・observationのtyped変換、production-result schema再検証、import audit/hash照合、PII/private/unknown-field fail-closed検査、deterministic JSON/JSONL、atomic output、idempotent/conflict handlingを追加した。外部配送やcanonical `projects/`／`data/`への出力は実装していない。
 
 ## Context and Orientation
 
@@ -218,6 +223,7 @@ PH001 + PP001 + RQ001 + AT001 ─────────→ HO001
 7. result ID/hashをeffect keyとして冪等適用する。
 8. `NONE`、`MINOR`、`MAJOR`、`CRITICAL`の影響を既存state machineへ接続する。
 9. crash後の再実行と同一ID異内容拒否をテストする。
+10. `tools/export_feedback_signals.py`でimport済みresultから匿名化signal bundleをread-only・決定的・atomicに生成する。
 
 #### Acceptance
 
@@ -225,6 +231,8 @@ PH001 + PP001 + RQ001 + AT001 ─────────→ HO001
 - applyは一度だけevidence candidateと監査イベントを追加する。
 - 同じresultの再applyは成功し、内容を増やさない。
 - MAJORは明示的reopen event、CRITICALは人間承認待ちとなる。
+- signal exportはacceptance test・requirement・observationを解決し、unknown field・PII・private URL・hash不一致をnamed ruleで拒否する。
+- 同じexportは`ALREADY_EXPORTED`、異なる既存bundleは`FEEDBACK-EXPORT-CONFLICT`となり、canonical `projects/`／`data/`を変更しない。
 
 ### Milestone H5: Cross-repo E2E and release
 
@@ -300,12 +308,14 @@ git diff --check
 - `projects/<id>/05_production/production-handoff.yaml`
 - `projects/<id>/06_governance/production-change-requests.yaml`
 - `projects/<id>/07_runtime/production-feedback-imports.jsonl`
+- `schemas/research-signal-export.schema.json`
 
 ### Public CLI
 
 - `tools/build_handoff.py`
 - `tools/export_handoff.py`
 - `tools/import_production_result.py`
+- `tools/export_feedback_signals.py`
 - 既存`validate.py`、`build_graph.py`、`bundle.py`、`impact.py`の後方互換拡張
 
 ### Dependencies

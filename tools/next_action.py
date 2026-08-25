@@ -157,27 +157,56 @@ def _over_budget(root: Path, target: str, slug: str, project: Path, events: list
     }
 
 
-def build_next_action(root: Path, target: str, worker_id: str, now: str) -> dict[str, Any]:
+def build_next_action(
+    root: Path,
+    target: str,
+    worker_id: str,
+    now: str,
+    *,
+    dry_run: bool = False,
+) -> dict[str, Any]:
     project = _project(root, target)
     slug = target.split("/", 1)[1]
     events = read_jsonl(project / "07_runtime" / "run-log.jsonl")
     budget = budget_remaining(project, events)
-    claim = _held_by(task_runtime.load_runtime(root, target), worker_id, now)
-    if claim is None and budget["exceeded"]:
-        # 保持中のタスクは終わらせてよい。取っていないタスクを新たに取るのは止める。
-        return _over_budget(root, target, slug, project, events, budget)
-    if claim is None:
-        fresh = task_runtime.claim_next(root, target, worker_id, now=now)
-        if fresh is not None:
-            # claim_next reports the lease flat; the agent needs the token to complete,
-            # so it travels in one place regardless of which path produced the claim.
+    preview = task_runtime.peek_next(root, target, worker_id, now=now)
+    if preview is None:
+        if budget["exceeded"]:
+            return _over_budget(root, target, slug, project, events, budget)
+        return _at_end(root, target, slug, project, events)
+
+    # A worker may finish its already-held task even after the project budget
+    # is exceeded. New work is refused at the budget boundary.
+    if dry_run:
+        if not preview.get("resumed") and budget["exceeded"]:
+            return _over_budget(root, target, slug, project, events, budget)
+        claim = {
+            "task_id": preview["task_id"],
+            "lease": preview.get("lease"),
+            "resumed": bool(preview.get("resumed")),
+        }
+        preview_status = "TASK_RESUME_PREVIEW" if claim["resumed"] else "TASK_PREVIEWED"
+    else:
+        if preview.get("resumed"):
+            claim = {
+                "task_id": preview["task_id"],
+                "lease": preview.get("lease"),
+                "resumed": True,
+            }
+        elif budget["exceeded"]:
+            return _over_budget(root, target, slug, project, events, budget)
+        else:
+            fresh = task_runtime.claim_next(root, target, worker_id, now=now)
+            if fresh is None:
+                # Another worker may have claimed the preview between the
+                # read-only peek and the live claim. Recompute the handoff.
+                return _at_end(root, target, slug, project, events)
             claim = {
                 "task_id": fresh["task_id"],
                 "lease": {"owner": worker_id, "token": fresh["lease_token"], "expires_at": fresh["lease_expires_at"]},
                 "resumed": False,
             }
-    if claim is None:
-        return _at_end(root, target, slug, project, events)
+        preview_status = "TASK_RESUMED" if claim["resumed"] else "TASK_CLAIMED"
 
     task_id = str(claim["task_id"])
     runtime = task_runtime.load_runtime(root, target)
@@ -201,10 +230,12 @@ def build_next_action(root: Path, target: str, worker_id: str, now: str) -> dict
     boundary = load_yaml(root / BOUNDARY_PATH) or {}
     constraints = load_yaml(project / "00_intake/constraints.yaml") or {}
     protocol = (root / PROTOCOL_PATH).read_text(encoding="utf-8")
+    lease = claim.get("lease") or {}
+    lease_token = lease.get("token", "<token>")
 
     return {
         "project_id": target,
-        "status": "TASK_RESUMED" if claim.get("resumed") else "TASK_CLAIMED",
+        "status": preview_status,
         "task_id": task_id,
         "role": role,
         "lease": claim.get("lease"),
@@ -221,22 +252,23 @@ def build_next_action(root: Path, target: str, worker_id: str, now: str) -> dict
         "on_completion": [
             *_acceptance(role_entry, slug),
             f"python3 tools/task_runtime.py project/{slug} complete --task-id {task_id} "
-            f"--worker-id {worker_id} --lease-token {claim.get('lease', {}).get('token', '<token>')} --now <RFC3339>",
+            f"--worker-id {worker_id} --lease-token {lease_token} --now <RFC3339>",
             f"python3 tools/next_action.py project/{slug} --worker {worker_id} --now <RFC3339>",
         ],
     }
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Claim the next ready task and describe how to finish it.")
+    parser = argparse.ArgumentParser(description="Preview or claim the next ready task and describe how to finish it.")
     parser.add_argument("target")
     parser.add_argument("--worker", required=True)
     parser.add_argument("--now", required=True, help="RFC 3339。時刻は呼び出し側が渡す")
+    parser.add_argument("--dry-run", action="store_true", help="Preview without changing project state or run-log")
     parser.add_argument("-o", "--output", type=Path)
     parser.add_argument("--root", type=Path, default=ROOT)
     args = parser.parse_args()
     try:
-        content = stable_json(build_next_action(args.root.resolve(), args.target, args.worker, args.now))
+        content = stable_json(build_next_action(args.root.resolve(), args.target, args.worker, args.now, dry_run=args.dry_run))
     except (NextActionError, InputParseError, task_runtime.TaskRuntimeError,
             stopping_policy.StoppingPolicyError, FileNotFoundError, ValueError) as exc:
         parser.error(str(exc))

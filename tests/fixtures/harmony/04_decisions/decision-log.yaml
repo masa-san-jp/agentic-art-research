@@ -10,3 +10,14 @@ decisions:
     review_trigger: Fail the frame review under the target lighting condition.
     authority: agent-recommended
     status: ADOPTED
+  - id: DC002
+    question: Which medium should carry the repeated interval?
+    selected_option: installation
+    rejected_options: [sculpture, moving-image]
+    insight_ids: [IN001]
+    evidence_ids: [EV001]
+    reason: An installation preserves the perceptual rule while allowing the interruption to be encountered spatially.
+    uncertainty: Venue circulation remains untested.
+    review_trigger: Prototype review changes the intended encounter.
+    authority: agent-recommended
+    status: ADOPTED

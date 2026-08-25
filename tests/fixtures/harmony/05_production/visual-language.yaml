@@ -1,0 +1,30 @@
+schema_version: 1.0.0
+medium:
+  primary: installation
+  statement: An installation makes the repeated interval perceptible.
+  source_decision_id: DC002
+techniques:
+  - id: VT001
+    name: deliberate interruption
+    intent: Make the interruption observable without explanatory text.
+    source_decision_ids: [DC001]
+    requirement_ids: [RQ001]
+palette:
+  applicability: APPLICABLE
+  preferred: [single hue]
+  prohibited: [decorative gradient]
+  rationale: A restrained palette keeps the interval legible.
+  source_decision_ids: [DC001]
+composition:
+  applicability: APPLICABLE
+  preferred: [visible interval]
+  prohibited: [uniform repetition]
+  rationale: The composition must preserve one interruption.
+  source_decision_ids: [DC001]
+prohibited_expressions:
+  - id: VP001
+    statement: Do not add explanatory wall text.
+    reason: The perceptual rule must be experienced rather than explained.
+    source_decision_ids: [DC001]
+    requirement_ids: [RQ001]
+unresolved_uncertainty_ids: []

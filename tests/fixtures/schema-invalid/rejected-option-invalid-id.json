@@ -1,0 +1,6 @@
+{
+  "id": "R001",
+  "title": "Show the subject directly",
+  "reason": "It would make the intended absence too explicit.",
+  "decision_ids": ["DC001"]
+}

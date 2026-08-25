@@ -107,6 +107,60 @@ class GraphContractTest(unittest.TestCase):
         self.assertTrue(first_impact)
         self.assertTrue(all(item["project_id"] == "project/first-project" for item in first_impact))
 
+    def test_typed_decision_registries_are_linked_in_both_directions(self) -> None:
+        root = self.make_root()
+        project = self.add_chain(root, "decision-links")
+        (project / "04_decisions" / "decision-log.yaml").write_text(
+            yaml.safe_dump(
+                {
+                    "decisions": [
+                        {
+                            "id": "DC001",
+                            "insight_ids": ["IN001"],
+                            "evidence_ids": [],
+                            "rejected_option_ids": ["RO001"],
+                            "uncertainty_ids": ["U001"],
+                        }
+                    ]
+                },
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+        (project / "04_decisions" / "rejected-options.yaml").write_text(
+            yaml.safe_dump(
+                {
+                    "rejected_options": [
+                        {"id": "RO001", "title": "Option A", "reason": "Too costly", "decision_ids": ["DC001"]}
+                    ]
+                },
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+        (project / "04_decisions" / "uncertainty-register.yaml").write_text(
+            yaml.safe_dump(
+                {
+                    "uncertainties": [
+                        {"id": "U001", "statement": "Audience response is untested.", "decision_ids": ["DC001"]}
+                    ]
+                },
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+
+        graph = build_graph(root)
+        project_id = "project/decision-links"
+        expected_edges = {
+            (node_key(project_id, "DC001"), node_key(project_id, "RO001"), "rejects"),
+            (node_key(project_id, "RO001"), node_key(project_id, "DC001"), "rejected_by"),
+            (node_key(project_id, "DC001"), node_key(project_id, "U001"), "has_uncertainty"),
+            (node_key(project_id, "U001"), node_key(project_id, "DC001"), "uncertainty_of"),
+        }
+        actual_edges = {(edge["from"], edge["to"], edge["type"]) for edge in graph["edges"]}
+        self.assertTrue(expected_edges.issubset(actual_edges))
+
     def test_impact_report_emits_upstream_and_downstream_json_and_markdown(self) -> None:
         root = self.make_root()
         self.add_chain(root, "impact-test")

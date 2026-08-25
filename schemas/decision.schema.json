@@ -14,6 +14,11 @@
       "items": {"type": "string"},
       "uniqueItems": true
     },
+    "rejected_option_ids": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^RO[0-9]{3,}$"},
+      "uniqueItems": true
+    },
     "insight_ids": {
       "type": "array",
       "items": {"type": "string", "pattern": "^IN[0-9]{3,}$"},
@@ -26,6 +31,11 @@
     },
     "reason": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
     "uncertainty": {"type": ["string", "null"], "minLength": 1},
+    "uncertainty_ids": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^U[0-9]{3,}$"},
+      "uniqueItems": true
+    },
     "review_trigger": {"type": ["string", "null"], "minLength": 1},
     "authority": {"enum": ["agent-recommended", "human-approved", "policy-derived"]},
     "status": {"$ref": "common.schema.json#/$defs/decisionStatus"}

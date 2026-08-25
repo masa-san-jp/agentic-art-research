@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/visual-language.schema.json",
+  "title": "Research visual language",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "medium", "techniques", "palette", "composition", "prohibited_expressions", "unresolved_uncertainty_ids"],
+  "$defs": {
+    "decisionIds": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^DC[0-9]{3,}$"},
+      "uniqueItems": true
+    },
+    "requirementIds": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^RQ[0-9]{3,}$"},
+      "uniqueItems": true
+    },
+    "paletteOrComposition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["applicability", "preferred", "prohibited", "rationale", "source_decision_ids"],
+      "properties": {
+        "applicability": {"$ref": "common.schema.json#/$defs/visualLanguageApplicability"},
+        "preferred": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/nonEmptyString"}, "uniqueItems": true},
+        "prohibited": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/nonEmptyString"}, "uniqueItems": true},
+        "rationale": {"type": ["string", "null"], "minLength": 1},
+        "source_decision_ids": {"$ref": "#/$defs/decisionIds"}
+      }
+    }
+  },
+  "properties": {
+    "schema_version": {"$ref": "common.schema.json#/$defs/semver"},
+    "medium": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["primary", "statement", "source_decision_id"],
+          "properties": {
+            "primary": {"$ref": "common.schema.json#/$defs/mediumType"},
+            "statement": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+            "source_decision_id": {"type": "string", "pattern": "^DC[0-9]{3,}$"}
+          }
+        }
+      ]
+    },
+    "techniques": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "intent", "source_decision_ids", "requirement_ids"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^VT[0-9]{3,}$"},
+          "name": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+          "intent": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+          "source_decision_ids": {"$ref": "#/$defs/decisionIds", "minItems": 1},
+          "requirement_ids": {"$ref": "#/$defs/requirementIds"}
+        }
+      }
+    },
+    "palette": {"$ref": "#/$defs/paletteOrComposition"},
+    "composition": {"$ref": "#/$defs/paletteOrComposition"},
+    "prohibited_expressions": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "statement", "reason", "source_decision_ids", "requirement_ids"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^VP[0-9]{3,}$"},
+          "statement": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+          "reason": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+          "source_decision_ids": {"$ref": "#/$defs/decisionIds", "minItems": 1},
+          "requirement_ids": {"$ref": "#/$defs/requirementIds"}
+        }
+      }
+    },
+    "unresolved_uncertainty_ids": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^U[0-9]{3,}$"},
+      "uniqueItems": true
+    }
+  }
+}

@@ -92,9 +92,11 @@ roles:
       - {path: "04_decisions/production-hypotheses.yaml", record: production-hypothesis, schema: "schemas/production-hypothesis.schema.json"}
       - {path: "04_decisions/hypothesis-comparison.yaml", record: hypothesis-comparison, schema: "schemas/hypothesis-comparison.schema.json"}
       - {path: "04_decisions/decision-log.yaml", record: decision, schema: "schemas/decision.schema.json"}
+      - {path: "05_production/visual-language.yaml", record: visual-language, schema: "schemas/visual-language.schema.json"}
       - {path: "05_production/creative-direction.md", record: prose}
     acceptance:
       - "python3 tools/validate.py --project {slug} --check"
+      - "python3 -c \"import yaml;v=yaml.safe_load(open('projects/{slug}/05_production/visual-language.yaml'));assert v and 'medium' in v,'visual languageが未作成';assert v.get('prohibited_expressions'),'禁止表現が0件';print(v['schema_version'])\""
       - "python3 -c \"import yaml;r=yaml.safe_load(open('projects/{slug}/05_production/production-requirements.yaml'))['requirements'];assert r,'制作要件が0件';print(len(r))\""
       # 比較が COMPLETE で推薦が一意なら、build_handoff は変更なしで AGENT_RECOMMENDED を出す。
       # 人の承認を外すのではなく、選べる状態まで書き切ることで承認待ちにしない。

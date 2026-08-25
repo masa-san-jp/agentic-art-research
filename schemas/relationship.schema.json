@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/relationship.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "from_id", "to_id", "type", "rationale", "evidence_ids"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^RL[0-9]{3,}$"},
+    "from_id": {"type": "string", "pattern": "^(EV|OB|CL|XR)[0-9]{3,}$"},
+    "to_id": {"type": "string", "pattern": "^(EV|OB|CL|XR)[0-9]{3,}$"},
+    "type": {"$ref": "common.schema.json#/$defs/relationshipType"},
+    "rationale": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "evidence_ids": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "pattern": "^EV[0-9]{3,}$"}
+    }
+  }
+}

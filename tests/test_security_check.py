@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 import zipfile
+from unittest.mock import patch
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -62,6 +63,30 @@ class AdvancedSecurityContractTest(unittest.TestCase):
         (root / "data" / "broken.zip").write_bytes(b"not a zip archive")
         findings = scan_advanced_security(root)
         self.assertTrue(any(item.rule == "ARCHIVE-INVALID" for item in findings))
+
+    def test_canonical_project_output_and_nonempty_graph_are_rejected(self) -> None:
+        root = self.make_root()
+        project = root / "projects" / "actual-project"
+        project.mkdir()
+        (project / "manifest.yaml").write_text("project: {}\n", encoding="utf-8")
+        (root / "data" / "dependency-graph.json").write_text(
+            '{"edges": [], "nodes": [{"key": "project/actual-project::EV001"}], "projects": []}\n',
+            encoding="utf-8",
+        )
+
+        with patch("security_check.ROOT", root):
+            findings = scan_advanced_security(root)
+            repository_findings = validate_repository(root)
+
+        self.assertTrue(any(item.rule == "PROTOCOL-OUTPUT-BOUNDARY" for item in findings))
+        self.assertTrue(any(item.rule == "PROTOCOL-OUTPUT-BOUNDARY" for item in repository_findings))
+
+    def test_temporary_work_root_may_materialize_a_project(self) -> None:
+        root = self.make_root()
+        project = root / "projects" / "temporary-project"
+        project.mkdir()
+        (project / "manifest.yaml").write_text("project: {}\n", encoding="utf-8")
+        self.assertEqual([], scan_advanced_security(root))
 
 
 if __name__ == "__main__":

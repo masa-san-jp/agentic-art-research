@@ -36,6 +36,31 @@ SCHEMA_CASES = {
         "invalid": "claim-invalid-type.json",
         "rule": "enum",
     },
+    "observation": {
+        "valid": "observation.json",
+        "invalid": "observation-missing-evidence.json",
+        "rule": "required",
+    },
+    "relationship": {
+        "valid": "relationship.json",
+        "invalid": "relationship-missing-rationale.json",
+        "rule": "required",
+    },
+    "contradiction": {
+        "valid": "contradiction.json",
+        "invalid": "contradiction-resolved-without-resolution.json",
+        "rule": "type",
+    },
+    "external-reference": {
+        "valid": "external-reference.json",
+        "invalid": "external-reference-missing-evidence.json",
+        "rule": "required",
+    },
+    "aesthetic-signal": {
+        "valid": "aesthetic-signal.json",
+        "invalid": "aesthetic-signal-missing-review-after.json",
+        "rule": "required",
+    },
     "insight": {
         "valid": "insight.json",
         "invalid": "insight-empty-claims.json",
@@ -45,6 +70,21 @@ SCHEMA_CASES = {
         "valid": "decision.json",
         "invalid": "decision-without-basis.json",
         "rule": "anyOf",
+    },
+    "rejected-option": {
+        "valid": "rejected-option.json",
+        "invalid": "rejected-option-invalid-id.json",
+        "rule": "pattern",
+    },
+    "uncertainty": {
+        "valid": "uncertainty.json",
+        "invalid": "uncertainty-invalid-severity.json",
+        "rule": "enum",
+    },
+    "research-signal-export": {
+        "valid": "research-signal-export.json",
+        "invalid": "research-signal-export-invalid-id.json",
+        "rule": "pattern",
     },
     "requirement": {
         "valid": "requirement.json",
@@ -65,6 +105,11 @@ SCHEMA_CASES = {
         "valid": "prototype-plan.json",
         "invalid": "prototype-plan-without-tasks.json",
         "rule": "minItems",
+    },
+    "visual-language": {
+        "valid": "visual-language.json",
+        "invalid": "visual-language-invalid-medium.json",
+        "rule": "oneOf",
     },
     "production-handoff": {
         "valid": "production-handoff.json",
@@ -165,6 +210,16 @@ class SchemaContractTest(unittest.TestCase):
             self.assertEqual([], manifest_errors, "\n".join(error.message for error in manifest_errors))
             self.assertEqual([], completion_errors, "\n".join(error.message for error in completion_errors))
 
+    def test_visual_language_required_and_unknown_fields_are_blocking(self) -> None:
+        validator = validator_for("visual-language")
+        instance = load_json(FIXTURE_ROOT / "schema-valid" / "visual-language.json")
+        missing = dict(instance)
+        missing.pop("medium")
+        self.assertTrue(any(error.validator == "required" for error in validator.iter_errors(missing)))
+        unknown = dict(instance)
+        unknown["future_field"] = True
+        self.assertTrue(any(error.validator == "additionalProperties" for error in validator.iter_errors(unknown)))
+
     def test_manifest_modes_preserve_v1_and_require_handoff_entry_points(self) -> None:
         validator = validator_for("project-manifest")
         legacy = load_json(FIXTURE_ROOT / "schema-valid" / "project-manifest.json")
@@ -193,6 +248,13 @@ class SchemaContractTest(unittest.TestCase):
             "handoffSelectionStatus": "handoff_selection_statuses",
             "selectionAuthority": "selection_authorities",
             "handoffStatus": "handoff_statuses",
+            "relationshipType": "relationship_types",
+            "contradictionStatus": "contradiction_statuses",
+            "aestheticSignalStrength": "aesthetic_signal_strengths",
+            "aestheticSignalContext": "aesthetic_signal_contexts",
+            "mediumType": "medium_types",
+            "visualLanguageApplicability": "visual_language_applicabilities",
+            "uncertaintyStatus": "uncertainty_statuses",
         }
         for definition, vocabulary in pairs.items():
             with self.subTest(definition=definition, vocabulary=vocabulary):

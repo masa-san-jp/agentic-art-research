@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/external-reference.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "title", "location", "reference_type", "relevance", "evidence_ids"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^XR[0-9]{3,}$"},
+    "title": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "location": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "reference_type": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "relevance": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "evidence_ids": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "pattern": "^EV[0-9]{3,}$"}
+    }
+  }
+}

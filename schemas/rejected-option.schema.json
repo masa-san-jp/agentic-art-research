@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/rejected-option.schema.json",
+  "title": "Rejected option",
+  "type": "object",
+  "required": ["id", "title", "reason"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {"type": "string", "pattern": "^RO[0-9]{3,}$"},
+    "title": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "reason": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "decision_ids": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^DC[0-9]{3,}$"},
+      "minItems": 1,
+      "uniqueItems": true
+    }
+  }
+}
