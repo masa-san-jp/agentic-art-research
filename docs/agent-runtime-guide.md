@@ -29,6 +29,21 @@ python3 tools/next_action.py project/example \
 
 未claim taskは`TASK_PREVIEWED`（`lease: null`）、同じworkerが保持中のtaskは`TASK_RESUME_PREVIEW`、予算超過は`BUDGET_EXCEEDED`、ready taskなしは`NO_TASK_READY`になる。previewと同じworker・時刻でliveを実行した場合、task ID、role、context、write targets、acceptanceは一致する。
 
+### Worker attempt adapter
+
+taskを実行するproviderはrepositoryへ固定しない。supervisorは、claim済みtaskから`schemas/agent-attempt-request.schema.json`に適合するrequestを作り、次のadapter入口へ渡す。
+
+```bash
+python3 tools/worker_adapter.py run \
+  --request <attempt-request.json> \
+  --adapter fake \
+  --protocol-root <protocol-root>
+```
+
+adapter設定は`config/worker-adapters.yaml`のargv、capability、environment allowlist、timeout、stdout/stderr上限だけを読み取る。commandはshell文字列ではなくargv配列であり、shell interpreterとmetacharacterを拒否する。workerのstdoutは一つのresult JSON、stderrはbounded diagnosticとし、`agent-attempt-result.schema.json`に適合しない出力、timeout、exit/signal、output limit、secret、未許可capabilityは名前付き`WORKER-*` failure resultになる。
+
+このadapterはattempt resultを返すだけで、`07_runtime/research-state.json`、`run-log.jsonl`、task lease、acceptance、output adoptionを変更しない。`HUMAN_REQUIRED`はtyped decision requestとして後続のdecision flowへ渡し、taskのcomplete/promotionは別の原子操作で行う。認証情報はschema、ログ、manifestへ入れず、allowlistされた環境変数の値もdiagnosticからredactする。
+
 queue/stateの実行順序はrepository rootの`execution/task-queue.yaml`と`execution/state.yaml`が正本である。次のtaskを手で推測せず、次で矛盾を検査する。
 
 ```bash

@@ -1,8 +1,8 @@
 version: 1
 updated_at: "2026-08-25T00:00:00+09:00"
 current_milestone: G3
-next_task: HARNESS-002
-last_completed_task: HARNESS-001
+next_task: HARNESS-003
+last_completed_task: HARNESS-002
 terminal: false
 blocked_by: []
 resume_from:
@@ -15,8 +15,12 @@ resume_from:
     - docs/20260811-agentic-art-research-production-handoff-execution-plan.md
     - execution/task-queue.yaml
     - https://github.com/masa-san-jp/agentic-art-research/issues/70
-  action: Implement HARNESS-002 provider-neutral worker adapter and structured attempt protocol.
+    - schemas/agent-attempt-request.schema.json
+    - schemas/agent-attempt-result.schema.json
+    - tools/worker_adapter.py
+    - tests/test_worker_adapter.py
+  action: Implement HARNESS-003 isolated task attempt workspace and write-target enforcement.
 last_verification:
   result: PASS
   command: .venv/bin/python -m unittest discover -s tests -v; .venv/bin/python tools/validate.py --check; .venv/bin/python tools/security_check.py --check; .venv/bin/python tools/docs_check.py --check; .venv/bin/python tools/build_graph.py --check; git diff --check
-  detail: 205 tests and all HARNESS-001 local gates passed. Bootstrap is schema-valid, isolated, atomic, idempotent, protocol-provenanced, and root-aware; output root remains empty after initialization. Next start is HARNESS-002.
+  detail: 213 tests and all HARNESS-002 local gates passed. Attempt request/result schemas, provider-neutral shell-less adapter, bounded/redacted diagnostics, named worker failures, fake worker, idempotent result output, and runtime non-mutation are implemented. Next start is HARNESS-003.

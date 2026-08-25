@@ -65,6 +65,22 @@ python3 tools/next_action.py project/<project-id> \
 
 返るacceptanceとnext stepは、protocol toolの絶対パスとwork/output rootの明示引数を持つ。`--root`は既存projectの互換shimであり、新しいharness内部のroot契約では使わない。
 
+### Worker attempt
+
+taskのclaim後、実行providerは`config/worker-adapters.yaml`の名前で選択し、provider固有SDKやcredentialをprotocolへ追加せず、typed requestを作ってadapterへ渡す。
+
+```bash
+python3 tools/worker_adapter.py run \
+  --request <work-root>/attempts/AT001/request.json \
+  --adapter fake \
+  --protocol-root <protocol-root> \
+  --output <work-root>/attempts/AT001/result.json
+```
+
+requestは`agent-attempt-request.schema.json`、resultは`agent-attempt-result.schema.json`で検証する。commandはargv配列で、shell interpreter、shell metacharacter、未設定capabilityを拒否する。stdoutは一つのJSON object、stderrは上限付き診断であり、timeout、exit/signal、invalid/unknown JSON、stdout/stderr超過、secret/credential、lease token、absolute pathを検出した場合は名前付き`WORKER-*` failureになる。`HUMAN_REQUIRED`はhuman decision requestとして返る。
+
+adapterはattempt resultだけを生成し、`07_runtime/research-state.json`、`run-log.jsonl`、lease、acceptance、output rootを変更しない。結果の採用、acceptance実行、task completeは後続の原子処理が行う。結果ファイルの同一bytes再実行は冪等で、異なるbytesの既存ファイルは上書きしない。
+
 新規プロジェクトはcanonical repositoryではなく、一時作業rootで雛形から作成し、正本ファイルを編集してから検証する。
 
 ```bash

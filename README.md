@@ -64,6 +64,8 @@ python3 tools/harness.py bootstrap \
 
 返却JSONは`schemas/harness-run.schema.json`に適合し、protocol commit、project/run ID、3つのroot、依存preflightを含む。同じrequest hash・run ID・rootでの再実行は保存済みJSONを返し、異なる入力や非空rootは`HARNESS-BOOTSTRAP-CONFLICT`で拒否する。profile、art-history、production schemaは`--profiles-root`、`--art-history-root`、`--production-schema`で任意にpreflightでき、未指定のoptional dependencyは`MISSING`として非blockingに残る。詳細は[`docs/operations.md`](docs/operations.md)と[`docs/project-output-boundary.md`](docs/project-output-boundary.md)を参照する。
 
+bootstrap後のworker実行は、`schemas/agent-attempt-request.schema.json`／`agent-attempt-result.schema.json`と`config/worker-adapters.yaml`を正本にする。`tools/worker_adapter.py`はprovider-neutralなargvを`shell=False`で起動し、timeout、exit/signal、protocol、output limit、secret、capabilityの失敗を`WORKER-*` resultへ変換する。adapterはtask runtimeやproject正本を変更せず、認証情報、lease token、absolute pathをresult/diagnosticへ残さない。
+
 ## ローカル実行
 
 プロトコル自体の検証は、このリポジトリで実行する。

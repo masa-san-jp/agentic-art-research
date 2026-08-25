@@ -1,4 +1,4 @@
-version: 7
+version: 8
 updated_at: "2026-08-25T00:00:00+09:00"
 selection_policy: lowest_id_ready_with_dependencies_done
 allowed_statuses: [BACKLOG, READY, IN_PROGRESS, BLOCKED, DONE]
@@ -318,7 +318,7 @@ tasks:
   - id: HARNESS-002
     milestone: G3
     title: Add provider-neutral worker adapter and structured attempt protocol
-    status: READY
+    status: DONE
     depends_on: [HARNESS-001]
     acceptance: A worker adapter accepts a provider-neutral attempt contract, records structured start/output/failure evidence, and rejects malformed or forbidden provider responses without changing task state.
     issue_refs: ["agentic-art-research#70"]

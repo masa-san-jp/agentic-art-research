@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/agent-attempt-request.schema.json",
+  "title": "Agent attempt request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "run_id",
+    "attempt_id",
+    "project_id",
+    "task_id",
+    "role",
+    "lease",
+    "context",
+    "instructions",
+    "write_targets",
+    "acceptance_ids",
+    "attempt_workspace",
+    "deadline",
+    "capabilities"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "run_id": {"type": "string", "pattern": "^HR[0-9]{3,}$"},
+    "attempt_id": {"type": "string", "pattern": "^AT[A-Za-z0-9_-]{3,}$"},
+    "project_id": {"$ref": "common.schema.json#/$defs/projectId"},
+    "task_id": {"type": "string", "pattern": "^[A-Z][A-Z0-9_-]{2,}$"},
+    "role": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "lease": {"$ref": "#/$defs/lease"},
+    "context": {"$ref": "#/$defs/context"},
+    "instructions": {
+      "type": "array",
+      "items": {"$ref": "common.schema.json#/$defs/nonEmptyString"}
+    },
+    "write_targets": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/writeTarget"},
+      "uniqueItems": true
+    },
+    "acceptance_ids": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^AT[0-9]{3,}$"},
+      "uniqueItems": true
+    },
+    "attempt_workspace": {"$ref": "#/$defs/path"},
+    "deadline": {"$ref": "common.schema.json#/$defs/timestamp"},
+    "capabilities": {"$ref": "#/$defs/capabilities"},
+    "fixture_mode": {
+      "enum": [
+        "normal",
+        "human_required",
+        "timeout",
+        "exit",
+        "signal",
+        "invalid_json",
+        "unknown_field",
+        "stdout_oversize",
+        "stderr_oversize",
+        "secret_output"
+      ]
+    }
+  },
+  "$defs": {
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!\\x00).+$"
+    },
+    "lease": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["token", "expires_at"],
+      "properties": {
+        "token": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+        "expires_at": {"$ref": "common.schema.json#/$defs/timestamp"}
+      }
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["summary", "source_refs", "constraints"],
+      "properties": {
+        "summary": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+        "source_refs": {
+          "type": "array",
+          "items": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+          "uniqueItems": true
+        },
+        "constraints": {
+          "type": "array",
+          "items": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+          "uniqueItems": true
+        }
+      }
+    },
+    "writeTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "mode"],
+      "properties": {
+        "path": {"$ref": "#/$defs/path"},
+        "mode": {"enum": ["CREATE", "UPDATE", "APPEND"]}
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "declared", "environment_allowlist"],
+      "properties": {
+        "required": {
+          "type": "array",
+          "items": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+          "uniqueItems": true
+        },
+        "declared": {
+          "type": "array",
+          "items": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+          "uniqueItems": true
+        },
+        "environment_allowlist": {
+          "type": "array",
+          "items": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]*$"},
+          "uniqueItems": true
+        }
+      }
+    }
+  }
+}

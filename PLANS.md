@@ -37,6 +37,7 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 - [x] (2026-08-25 JST) `KNOWLEDGE-001`: OB/RL/CT/XRのtyped knowledge schema、config語彙、外部profile aesthetic-signal、validator/reference gate、deterministic graph/impact、正常・失敗fixtureを追加。全unittestとvalidator/security/docs/graph gate合格。次は`VISUAL-LANGUAGE-001`。
 - [x] (2026-08-25 JST) `VISUAL-LANGUAGE-001`: 媒介・技法・palette/composition・prohibited expressionをtyped visual-language artifactへ固定し、production-translator contextとproduction handoff bundle/schema snapshotへ接続。200 unittestとvalidator/security/docs/graph gate合格。queue上の次タスクはない。
 - [x] (2026-08-25 JST) `HARNESS-001`: protocol/work/output rootを分離し、schema-validなatomic/idempotent bootstrap、dependency preflight、protocol provenance、cwd非依存next actionを実装。205 unittestとvalidator/security/docs/graph/diff gate合格。次は`HARNESS-002`。
+- [x] (2026-08-25 JST) `HARNESS-002`: provider-neutralなargv worker adapter、versioned attempt request/result schema、bounded/redacted diagnostics、fake worker contractを実装。runtimeを変更せず、timeout/exit/protocol/output-limit/secret/capabilityをnamed failureへ変換し、213 unittestと全ローカルgateが合格。次は`HARNESS-003`。
 
 チェックボックスとUTCまたはJST日時。未完了、部分完了、完了を正確に表す。
 
@@ -50,6 +51,7 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 - 2026-08-25: profile実体はcanonical output boundaryと衝突するため、`templates/profile`のみをrepositoryへ置き、実profileは`--profiles-root`で外部入力する。graph nodeは`profile/<creator-id>::AS###`としてproject-qualified evidenceへ接続した。
 - 2026-08-25: 既存CLIは単一root内のconfig/schema/templateを暗黙に読むため、#69ではwork rootをprotocol assetの自己完結stagingとしてatomic publishする方式を採用した。protocolのGit provenanceはwork rootへコピーせず、常にprotocol rootから取得する。
 - 2026-08-25: bootstrapの再実行判定はrequest本文のcanonical SHA-256、run ID、3 rootの組で行う。output rootをbootstrap時に書かないことで、後段の成果物出力と初期化の冪等性を分離した。
+- 2026-08-25: worker出力を`communicate()`後に上限判定すると大量stdout/stderrを一時的に全量保持するため、selectorで上限+1 byteまで読み、超過時にprocess groupを停止するbounded readerへ変更した。
 
 実装中に判明した制約、失敗、想定との差を、短い証拠とともに記録する。
 
@@ -67,6 +69,7 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 - 2026-08-25: signal bundleはsource resultのschema再検証、import audit hash、acceptance test・requirement・observationの参照解決をすべて通過してから生成し、未知field・PII・private URLは補正せずfail closedする。
 - 2026-08-25: knowledge schemaのenumはcommon schemaへ集約し、configとの一致テストに加えてvalidatorのnamed semantic ruleで未知語彙をblockingにした。schemaだけでは表現できない自己relationship、qualified profile reference、期間順序はvalidatorで拒否する。
 - 2026-08-25: visual languageの空テンプレートはDRAFT〜DECIDINGでは許容するが、READY_FOR_PRODUCTION以降は媒介決定、技法、適用可能なpalette/composition、禁止表現を必須にした。既存の完了判定fixtureはこの契約に合わせて明示的な媒介決定とartifactを持つよう更新した。
+- 2026-08-25: worker adapterのstdout/stderrは固定上限付きselector readerで読み、超過時はprocess groupをkillする。resultはworker応答の受入だけを担い、task runtimeのclaim/completeやoutput adoptionは後続タスクへ分離する。
 
 決定、理由、代替案、影響、日付を記録する。
 
@@ -81,6 +84,7 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 - 完了 (2026-08-25): `KNOWLEDGE-001`で5 schema、profile外部root、named blocking rules、graph/impact統合、合成正常・失敗fixtureを追加した。canonical treeはprotocol-onlyのままで、次の開始点は`VISUAL-LANGUAGE-001`。
 - 完了 (2026-08-25): `VISUAL-LANGUAGE-001`で`visual-language.schema.json`、媒介語彙、空テンプレート、媒介決定の一意性・採択状態・参照・lifecycle検証を追加した。production-translatorの書込対象と受入条件、production-agent bundle、handoff artifact、schema snapshotへ接続し、正常・失敗fixtureを追加した。200 unittest、validator、security、docs、graph、diff checkが合格した。queueの全タスクがDONEとなったため、次の開始点はない。
 - 完了 (2026-08-25): `HARNESS-001`で`harness.py bootstrap`、`harness-run.schema.json`、root境界、dependency preflight、protocol provenance、root-aware acceptance/next action、正常・失敗・冪等性テストを追加した。205 unittest、validator、security、docs、graph、diff gateが合格し、次の開始点は`HARNESS-002`。
+- 完了 (2026-08-25): `HARNESS-002`でversioned attempt request/result schema、provider-neutral argv adapter、secret/path/lease redaction、bounded output、fake worker、正常・失敗・冪等性・runtime non-mutation testsを追加した。213 unittest、validator、security、docs、graph、diff gateが合格し、次の開始点は`HARNESS-003`。
 
 完了した動作、未完了、教訓、次の計画への影響を記録する。
 
@@ -480,6 +484,63 @@ The work root is built in a sibling staging directory and published only after v
 - schema: `schemas/harness-run.schema.json`
 - optional dependency flags: `--profiles-root`, `--art-history-root`, `--production-schema`
 - issue: `agentic-art-research#69`; next task: `HARNESS-002` / Issue #70
+
+## HARNESS-002 ExecPlan
+
+### Purpose / Big Picture
+
+Issue #70の契約として、provider名やSDKをprotocolへ固定せず、1 task attemptを外部worker subprocessへ安全に渡し、schema-validなstructured resultだけを返す。adapterは`task_runtime`、project正本、output rootを変更しない。`fake` adapterとfixtureで正常系、timeout、exit、signal、protocol、output limit、secret、capability、command拒否をオフライン再現する。
+
+### Context and Orientation
+
+- attempt request/result contracts: `schemas/agent-attempt-request.schema.json`, `schemas/agent-attempt-result.schema.json`
+- provider-neutral command policy: `config/worker-adapters.yaml`
+- adapter implementation: `tools/worker_adapter.py`
+- deterministic worker fixture: `tests/fixtures/workers/fake_worker.py`
+- contract tests: `tests/test_worker_adapter.py`, `tests/test_attempt_protocol.py`
+- runtime boundary: `tools/task_runtime.py`; adapter must not import or call mutating runtime operations
+
+### Plan of Work
+
+1. Request/result JSON Schemaとadapter設定で、lease、context、instructions、write targets、acceptance、workspace、deadline、capabilities、status、failure、human decisionをtyped contractにする。
+2. `shell=False`のargv起動、stdin JSON、stdout single-result JSON、bounded stderr、timeout/process-group termination、exit/signal/protocol/output-limitをdeterministic resultへ変換する。
+3. config-declared environmentだけを渡し、access-policy patternとworker result内のlease/path/credential漏洩をfail closedで検出・redactする。
+4. fake workerと正常・失敗・再実行・runtime non-mutation tests、runtime/schema/security docsを追加する。
+5. 全unittest、validator、security、docs、graph、diff gateを実行し、queue/stateを次のREADY taskへ更新する。
+
+### Concrete Steps
+
+```bash
+.venv/bin/python tools/worker_adapter.py run \
+  --request tests/fixtures/harness/attempt-request.json \
+  --adapter fake --protocol-root .
+.venv/bin/python -m unittest tests.test_worker_adapter tests.test_attempt_protocol -v
+.venv/bin/python -m unittest discover -s tests -v
+.venv/bin/python tools/validate.py --check
+.venv/bin/python tools/security_check.py --check
+.venv/bin/python tools/docs_check.py --check
+.venv/bin/python tools/build_graph.py --check
+git diff --check
+```
+
+### Validation and Acceptance
+
+- normal fake result is valid against `agent-attempt-result.schema.json` and repeated identical requests produce byte-identical results;
+- command is an argv array under `shell=False`; shell interpreters/metacharacter command forms, missing executable, unsupported capability, expired deadline, and non-empty/invalid config fail with named rules;
+- timeout, nonzero exit, signal, invalid JSON, unknown result field, stdout/stderr limits, and secret output each return schema-valid `FAILED` results with bounded diagnostics and no raw secret, lease token, absolute path, or credential value;
+- valid worker `HUMAN_REQUIRED` results pass through as typed results; adapter never mutates task state, project runtime, canonical protocol, or output root;
+- all required release gates pass.
+
+### Idempotence and Recovery
+
+Result bytes are a deterministic function of the request, adapter configuration, and bounded worker response. An optional output file is atomically created only when absent; an identical existing result is reused and a different result is rejected without overwrite. A killed or timed-out worker is terminated with its process group and leaves no runtime mutation; a later supervisor may retry using the same attempt protocol.
+
+### Interfaces and Dependencies
+
+- CLI: `tools/worker_adapter.py run --request <json> --adapter <name> --protocol-root <root> [--command-json <argv-json>]`
+- Python: `worker_adapter.run_attempt(...)`
+- schemas: `agent-attempt-request.schema.json`, `agent-attempt-result.schema.json`
+- issue: `agentic-art-research#70`; dependency: `HARNESS-001`; next task after completion: `HARNESS-003` / Issue #71
 
 ## 実行規則
 

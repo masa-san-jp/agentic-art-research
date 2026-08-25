@@ -1,0 +1,11 @@
+version: 1
+defaults:
+  timeout_seconds: 5.0
+  max_stdout_bytes: 65536
+  max_stderr_bytes: 16384
+  environment_allowlist: []
+adapters:
+  fake:
+    command: [python3, tests/fixtures/workers/fake_worker.py]
+    capabilities: [structured-output]
+    environment_allowlist: []
