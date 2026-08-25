@@ -15,6 +15,7 @@ from referencing import Registry, Resource
 from _common import ROOT, atomic_write_text, iter_project_dirs, load_json, load_yaml, stable_json
 from canonical import canonical_sha256
 from new_project import create_project
+from task_runtime import initialize_runtime
 from validate import validate_repository
 
 
@@ -243,6 +244,16 @@ def _materialize(root: Path, request: dict[str, Any], digest: str, accepted_at: 
         plan = load_yaml(plan_path)
         plan["objective"] = request["intent"]["purpose"]
         atomic_write_text(plan_path, _yaml_text(plan))
+
+        # The next step the orchestration names is claiming a task, and the runtime
+        # has to exist before anything can be claimed. Accepting without it hands
+        # back a project whose own instructions fail on the first command.
+        if not plan.get("tasks"):
+            raise RequestAcceptanceError(
+                "PLAN-WITHOUT-TASKS: 01_planning/research-plan.yaml carries no tasks, "
+                "so the accepted project would have nothing to claim"
+            )
+        initialize_runtime(root, f"project/{slug}", initialized_at=accepted_at)
 
         findings = validate_repository(root, f"project/{slug}")
         if findings:

@@ -109,3 +109,40 @@ class ResearchRequestAcceptanceTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AcceptedProjectIsReadyToWorkTest(ResearchRequestAcceptanceTest):
+    """The next step the orchestration names must run on a freshly accepted project."""
+
+    def test_accepted_project_can_claim_its_first_task(self) -> None:
+        root = self.make_root()
+        request = self.copy_fixture(root)
+
+        accept_research_request(root, request, apply=True, accepted_at="2026-08-12T09:05:00+09:00")
+
+        import json
+
+        from task_runtime import claim_next
+
+        state = json.loads((root / "projects" / "harmony-study" / "07_runtime" / "research-state.json").read_text(encoding="utf-8"))
+        self.assertIn("task_runtime", state, "acceptance must leave the runtime initialized")
+        self.assertTrue(state["task_runtime"]["tasks"], "the runtime must carry the plan's tasks")
+
+        claimed = claim_next(
+            root,
+            "project/harmony-study",
+            "tester",
+            now="2026-08-12T09:10:00+09:00",
+        )
+        self.assertTrue(claimed["task_id"], "a freshly accepted project must have a claimable task")
+
+    def test_reaccepting_does_not_disturb_the_runtime(self) -> None:
+        root = self.make_root()
+        request = self.copy_fixture(root)
+        accept_research_request(root, request, apply=True, accepted_at="2026-08-12T09:05:00+09:00")
+        state_path = root / "projects" / "harmony-study" / "07_runtime" / "research-state.json"
+        before = state_path.read_bytes()
+
+        accept_research_request(root, request, apply=True, accepted_at="2026-08-12T10:05:00+09:00")
+
+        self.assertEqual(before, state_path.read_bytes())
