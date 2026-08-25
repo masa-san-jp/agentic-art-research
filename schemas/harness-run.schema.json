@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/harness-run.schema.json",
+  "title": "Agent harness bootstrap run",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "run_id",
+    "request_kind",
+    "request_sha256",
+    "project_id",
+    "project_path",
+    "protocol_root",
+    "protocol_commit",
+    "protocol_tree_clean",
+    "work_root",
+    "output_root",
+    "initialized_at",
+    "dependency_preflight"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "status": {"enum": ["BOOTSTRAPPED"]},
+    "run_id": {"type": "string", "pattern": "^HR[0-9]{3,}$"},
+    "request_kind": {"enum": ["RESEARCH_REQUEST", "SLUG_TITLE"]},
+    "request_sha256": {"$ref": "common.schema.json#/$defs/sha256"},
+    "project_id": {"$ref": "common.schema.json#/$defs/projectId"},
+    "project_path": {"type": "string", "minLength": 1},
+    "protocol_root": {"type": "string", "minLength": 1},
+    "protocol_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "protocol_tree_clean": {"type": "boolean"},
+    "work_root": {"type": "string", "minLength": 1},
+    "output_root": {"type": "string", "minLength": 1},
+    "initialized_at": {"$ref": "common.schema.json#/$defs/timestamp"},
+    "dependency_preflight": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "checks"],
+      "properties": {
+        "status": {"enum": ["READY", "BLOCKED"]},
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "status", "required", "source", "message"],
+            "properties": {
+              "id": {"type": "string", "minLength": 1},
+              "status": {"enum": ["AVAILABLE", "MISSING", "INVALID"]},
+              "required": {"type": "boolean"},
+              "source": {"type": ["string", "null"]},
+              "message": {"type": "string", "minLength": 1}
+            }
+          }
+        }
+      }
+    }
+  }
+}

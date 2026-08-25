@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import re
+import shlex
 from pathlib import Path
 from typing import Any
 
@@ -94,21 +95,97 @@ def _write_targets(role_entry: dict[str, Any]) -> list[dict[str, Any]]:
     return [dict(target) for target in role_entry.get("write_targets") or []]
 
 
-def _acceptance(role_entry: dict[str, Any], slug: str) -> list[str]:
-    return [str(command).replace("{slug}", slug) for command in role_entry.get("acceptance") or []]
+def _rooted_command(
+    command: str,
+    slug: str,
+    protocol_root: Path,
+    work_root: Path,
+    output_root: Path,
+) -> str:
+    """Make a role acceptance command executable independently of cwd."""
+
+    rendered = command.replace("{slug}", slug)
+    rendered = re.sub(
+        r"python3 tools/([A-Za-z0-9_.-]+)",
+        lambda match: f"python3 {shlex.quote(str(protocol_root / 'tools' / match.group(1)))}",
+        rendered,
+    )
+    project_path = work_root / "projects" / slug
+    # Python -c snippets already quote their paths; replacing with an absolute
+    # path inside those quotes keeps the snippet valid.  Shell commands get a
+    # shell-quoted path instead.
+    project_value = str(project_path) if "python3 -c" in rendered else shlex.quote(str(project_path))
+    rendered = rendered.replace(f"projects/{slug}", project_value)
+    rendered = rendered.replace("--root .", f"--root {shlex.quote(str(work_root))}")
+    if "<bundle>" in rendered:
+        rendered = rendered.replace("<bundle>", shlex.quote(str(output_root / slug)))
+    script_names = (
+        "validate.py",
+        "stopping_policy.py",
+        "build_graph.py",
+        "complete.py",
+        "build_handoff.py",
+        "export_handoff.py",
+        "task_runtime.py",
+        "next_action.py",
+    )
+    if any(name in rendered for name in script_names) and "--root " not in rendered:
+        rendered += f" --root {shlex.quote(str(work_root))}"
+    return rendered
 
 
-def _at_end(root: Path, target: str, slug: str, project: Path, events: list[dict[str, Any]]) -> dict[str, Any]:
+def _acceptance(
+    role_entry: dict[str, Any],
+    slug: str,
+    *,
+    protocol_root: Path | None = None,
+    work_root: Path | None = None,
+    output_root: Path | None = None,
+) -> list[str]:
+    if protocol_root is None and work_root is None and output_root is None:
+        return [str(command).replace("{slug}", slug) for command in role_entry.get("acceptance") or []]
+    protocol = (protocol_root or work_root).resolve()
+    work = (work_root or protocol).resolve()
+    output = (output_root or work / "data" / "handoffs").resolve()
+    return [_rooted_command(str(command), slug, protocol, work, output) for command in role_entry.get("acceptance") or []]
+
+
+def _at_end(
+    root: Path,
+    target: str,
+    slug: str,
+    project: Path,
+    events: list[dict[str, Any]],
+    *,
+    protocol_root: Path | None = None,
+    work_root: Path | None = None,
+    output_root: Path | None = None,
+) -> dict[str, Any]:
     """No task is ready. Say which tool carries the project forward instead of stopping in silence."""
-    return {
-        "project_id": target,
-        "status": "NO_TASK_READY",
-        "next_steps": [
+    if protocol_root is None and work_root is None and output_root is None:
+        next_steps = [
             f"python3 tools/stopping_policy.py project/{slug} apply --evaluated-at <RFC3339>",
             f"python3 tools/complete.py project/{slug}",
             f"python3 tools/build_handoff.py projects/{slug} --root .",
             f"python3 tools/export_handoff.py projects/{slug} --root . --output <bundle>",
-        ],
+        ]
+    else:
+        protocol = (protocol_root or work_root).resolve()
+        work = (work_root or protocol).resolve()
+        output = (output_root or work / "data" / "handoffs").resolve()
+        next_steps = [
+            _rooted_command(
+                f"python3 tools/stopping_policy.py project/{slug} apply --evaluated-at <RFC3339>",
+                slug, protocol, work, output,
+            ),
+            _rooted_command(f"python3 tools/complete.py project/{slug}", slug, protocol, work, output),
+            _rooted_command(f"python3 tools/build_handoff.py project/{slug}", slug, protocol, work, output),
+            _rooted_command(f"python3 tools/export_handoff.py project/{slug} --output <bundle>", slug, protocol, work, output),
+        ]
+    return {
+        "project_id": target,
+        "status": "NO_TASK_READY",
+        "next_steps": next_steps,
         "stopping": stopping_policy.evaluate_project(root, target),
         "budget": budget_remaining(project, events),
     }
@@ -137,8 +214,24 @@ def _held_by(runtime: dict[str, Any], worker_id: str, now: str) -> dict[str, Any
 
 
 def _over_budget(root: Path, target: str, slug: str, project: Path, events: list[dict[str, Any]],
-                 budget: dict[str, Any]) -> dict[str, Any]:
+                 budget: dict[str, Any], *, protocol_root: Path | None = None,
+                 work_root: Path | None = None, output_root: Path | None = None) -> dict[str, Any]:
     """The plan states a budget. Claiming another task past it spends what the project said it would not."""
+    if protocol_root is None and work_root is None and output_root is None:
+        next_steps = [
+            f"# 01_planning/question-register.yaml の OPEN な質問を終端させる（推測で埋めない）",
+            f"python3 tools/stopping_policy.py project/{slug} apply --evaluated-at <RFC3339>",
+            f"python3 tools/complete.py project/{slug}",
+        ]
+    else:
+        protocol = (protocol_root or work_root).resolve()
+        work = (work_root or protocol).resolve()
+        output = (output_root or work / "data" / "handoffs").resolve()
+        next_steps = [
+            "# 01_planning/question-register.yaml の OPEN な質問を終端させる（推測で埋めない）",
+            _rooted_command(f"python3 tools/stopping_policy.py project/{slug} apply --evaluated-at <RFC3339>", slug, protocol, work, output),
+            _rooted_command(f"python3 tools/complete.py project/{slug}", slug, protocol, work, output),
+        ]
     return {
         "project_id": target,
         "status": "BUDGET_EXCEEDED",
@@ -149,11 +242,7 @@ def _over_budget(root: Path, target: str, slug: str, project: Path, events: list
             "ANSWERED か UNRESOLVED で終端させ、理由を question-register に書いてから、"
             "停止判定を適用して完了工程へ進む。"
         ),
-        "next_steps": [
-            f"# 01_planning/question-register.yaml の OPEN な質問を終端させる（推測で埋めない）",
-            f"python3 tools/stopping_policy.py project/{slug} apply --evaluated-at <RFC3339>",
-            f"python3 tools/complete.py project/{slug}",
-        ],
+        "next_steps": next_steps,
     }
 
 
@@ -164,22 +253,38 @@ def build_next_action(
     now: str,
     *,
     dry_run: bool = False,
+    protocol_root: Path | None = None,
+    work_root: Path | None = None,
+    output_root: Path | None = None,
 ) -> dict[str, Any]:
-    project = _project(root, target)
+    root_aware = protocol_root is not None or work_root is not None or output_root is not None
+    protocol = (protocol_root or root).resolve()
+    work = (work_root or root).resolve()
+    output = (output_root or work / "data" / "handoffs").resolve()
+    project = _project(work, target)
     slug = target.split("/", 1)[1]
     events = read_jsonl(project / "07_runtime" / "run-log.jsonl")
     budget = budget_remaining(project, events)
-    preview = task_runtime.peek_next(root, target, worker_id, now=now)
+    preview = task_runtime.peek_next(work, target, worker_id, now=now)
     if preview is None:
         if budget["exceeded"]:
-            return _over_budget(root, target, slug, project, events, budget)
-        return _at_end(root, target, slug, project, events)
+            return _over_budget(work, target, slug, project, events, budget,
+                                protocol_root=protocol if root_aware else None,
+                                work_root=work if root_aware else None,
+                                output_root=output if root_aware else None)
+        return _at_end(work, target, slug, project, events,
+                       protocol_root=protocol if root_aware else None,
+                       work_root=work if root_aware else None,
+                       output_root=output if root_aware else None)
 
     # A worker may finish its already-held task even after the project budget
     # is exceeded. New work is refused at the budget boundary.
     if dry_run:
         if not preview.get("resumed") and budget["exceeded"]:
-            return _over_budget(root, target, slug, project, events, budget)
+            return _over_budget(work, target, slug, project, events, budget,
+                                protocol_root=protocol if root_aware else None,
+                                work_root=work if root_aware else None,
+                                output_root=output if root_aware else None)
         claim = {
             "task_id": preview["task_id"],
             "lease": preview.get("lease"),
@@ -194,13 +299,26 @@ def build_next_action(
                 "resumed": True,
             }
         elif budget["exceeded"]:
-            return _over_budget(root, target, slug, project, events, budget)
+            return _over_budget(
+                work,
+                target,
+                slug,
+                project,
+                events,
+                budget,
+                protocol_root=protocol if root_aware else None,
+                work_root=work if root_aware else None,
+                output_root=output if root_aware else None,
+            )
         else:
-            fresh = task_runtime.claim_next(root, target, worker_id, now=now)
+            fresh = task_runtime.claim_next(work, target, worker_id, now=now)
             if fresh is None:
                 # Another worker may have claimed the preview between the
                 # read-only peek and the live claim. Recompute the handoff.
-                return _at_end(root, target, slug, project, events)
+                return _at_end(work, target, slug, project, events,
+                               protocol_root=protocol if root_aware else None,
+                               work_root=work if root_aware else None,
+                               output_root=output if root_aware else None)
             claim = {
                 "task_id": fresh["task_id"],
                 "lease": {"owner": worker_id, "token": fresh["lease_token"], "expires_at": fresh["lease_expires_at"]},
@@ -209,7 +327,7 @@ def build_next_action(
         preview_status = "TASK_RESUMED" if claim["resumed"] else "TASK_CLAIMED"
 
     task_id = str(claim["task_id"])
-    runtime = task_runtime.load_runtime(root, target)
+    runtime = task_runtime.load_runtime(work, target)
     task = dict(runtime["tasks"][task_id])
     # The runtime keeps only what it needs to schedule, so the role the plan
     # declared is not in it. Reading the role from the runtime silently fell
@@ -221,41 +339,75 @@ def build_next_action(
     )
     if declared.get("role"):
         task["role"] = declared["role"]
-    table = load_yaml(root / ROLE_TABLE_PATH) or {}
+    table = load_yaml(protocol / ROLE_TABLE_PATH) or {}
     role = resolve_role(table, task, task_id)
     role_entry = (table.get("roles") or {}).get(role)
     if not isinstance(role_entry, dict):
         raise NextActionError(f"role {role!r} is not described in {ROLE_TABLE_PATH}")
 
-    boundary = load_yaml(root / BOUNDARY_PATH) or {}
+    boundary = load_yaml(protocol / BOUNDARY_PATH) or {}
     constraints = load_yaml(project / "00_intake/constraints.yaml") or {}
-    protocol = (root / PROTOCOL_PATH).read_text(encoding="utf-8")
+    protocol_text = (protocol / PROTOCOL_PATH).read_text(encoding="utf-8")
     lease = claim.get("lease") or {}
     lease_token = lease.get("token", "<token>")
 
-    return {
+    result = {
         "project_id": target,
         "status": preview_status,
         "task_id": task_id,
         "role": role,
         "lease": claim.get("lease"),
-        "context": build_context_pack(root, target, task_id, role),
-        "instructions": protocol_sections(protocol, list(role_entry.get("protocol_sections") or [])),
+        "context": build_context_pack(work, target, task_id, role),
+        "instructions": protocol_sections(protocol_text, list(role_entry.get("protocol_sections") or [])),
         "write_targets": _write_targets(role_entry),
-        "acceptance": _acceptance(role_entry, slug),
+        "acceptance": _acceptance(
+            role_entry,
+            slug,
+            protocol_root=protocol if root_aware else None,
+            work_root=work if root_aware else None,
+            output_root=output if root_aware else None,
+        ),
         "budget_remaining": budget,
-        "stopping": stopping_policy.evaluate_project(root, target),
+        "stopping": stopping_policy.evaluate_project(work, target),
         "forbidden": {
             "operations": (boundary.get("worker_policy") or {}).get("forbidden_operations") or [],
             "project_prohibited_actions": constraints.get("prohibited_actions") or [],
         },
         "on_completion": [
-            *_acceptance(role_entry, slug),
+            *_acceptance(
+                role_entry,
+                slug,
+                protocol_root=protocol if root_aware else None,
+                work_root=work if root_aware else None,
+                output_root=output if root_aware else None,
+            ),
             f"python3 tools/task_runtime.py project/{slug} complete --task-id {task_id} "
             f"--worker-id {worker_id} --lease-token {lease_token} --now <RFC3339>",
             f"python3 tools/next_action.py project/{slug} --worker {worker_id} --now <RFC3339>",
         ],
     }
+    if root_aware:
+        result["roots"] = {
+            "protocol_root": str(protocol),
+            "work_root": str(work),
+            "output_root": str(output),
+        }
+        result["on_completion"][-2] = _rooted_command(
+            f"python3 tools/task_runtime.py project/{slug} complete --task-id {task_id} "
+            f"--worker-id {worker_id} --lease-token {lease_token} --now <RFC3339>",
+            slug,
+            protocol,
+            work,
+            output,
+        )
+        result["on_completion"][-1] = _rooted_command(
+            f"python3 tools/next_action.py project/{slug} --worker {worker_id} --now <RFC3339>",
+            slug,
+            protocol,
+            work,
+            output,
+        )
+    return result
 
 
 def main() -> int:
@@ -265,10 +417,24 @@ def main() -> int:
     parser.add_argument("--now", required=True, help="RFC 3339。時刻は呼び出し側が渡す")
     parser.add_argument("--dry-run", action="store_true", help="Preview without changing project state or run-log")
     parser.add_argument("-o", "--output", type=Path)
-    parser.add_argument("--root", type=Path, default=ROOT)
+    parser.add_argument("--root", type=Path, default=ROOT, help="compatibility alias for --work-root")
+    parser.add_argument("--work-root", type=Path, help="project work root")
+    parser.add_argument("--protocol-root", type=Path, help="read-only protocol root")
+    parser.add_argument("--output-root", type=Path, help="external successful-output root")
     args = parser.parse_args()
     try:
-        content = stable_json(build_next_action(args.root.resolve(), args.target, args.worker, args.now, dry_run=args.dry_run))
+        content = stable_json(
+            build_next_action(
+                args.root.resolve(),
+                args.target,
+                args.worker,
+                args.now,
+                dry_run=args.dry_run,
+                protocol_root=args.protocol_root.resolve() if args.protocol_root else None,
+                work_root=args.work_root.resolve() if args.work_root else None,
+                output_root=args.output_root.resolve() if args.output_root else None,
+            )
+        )
     except (NextActionError, InputParseError, task_runtime.TaskRuntimeError,
             stopping_policy.StoppingPolicyError, FileNotFoundError, ValueError) as exc:
         parser.error(str(exc))

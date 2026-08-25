@@ -22,6 +22,7 @@ class HandoffInputError(ValueError):
 @dataclass(frozen=True)
 class HandoffSources:
     root: Path
+    protocol_root: Path
     project: Path
     project_id: str
     manifest: dict[str, Any]
@@ -119,8 +120,9 @@ def collection_yaml(document: dict[str, Any], key: str) -> str:
     return yaml_text(normalized)
 
 
-def load_handoff_sources(root: Path, target: str) -> HandoffSources:
+def load_handoff_sources(root: Path, target: str, *, protocol_root: Path | None = None) -> HandoffSources:
     root = root.resolve()
+    protocol = (protocol_root or root).resolve()
     project = resolve_project(root, target)
     manifest_path = project / "manifest.yaml"
     manifest = _mapping(manifest_path, load_yaml(manifest_path), label="manifest")
@@ -190,6 +192,7 @@ def load_handoff_sources(root: Path, target: str) -> HandoffSources:
 
     return HandoffSources(
         root=root,
+        protocol_root=protocol,
         project=project,
         project_id=project_id,
         manifest=manifest,

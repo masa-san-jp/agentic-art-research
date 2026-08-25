@@ -2468,11 +2468,19 @@ def validate_repository(
     root: Path,
     project_target: str | None = None,
     profiles_root: Path | None = None,
+    *,
+    protocol_root: Path | None = None,
+    work_root: Path | None = None,
 ) -> list[Finding]:
+    # ``root`` remains the compatibility spelling.  New callers can keep the
+    # protocol checkout read-only while validating project/data materialized
+    # in a separate work root.
+    root = (work_root or root).resolve()
+    protocol = (protocol_root or root).resolve()
     findings: list[Finding] = []
-    vocab_path = root / "config" / "vocabularies.yaml"
-    access_path = root / "config" / "access-policy.yaml"
-    handoff_policy_path = root / "config" / "handoff-policy.yaml"
+    vocab_path = protocol / "config" / "vocabularies.yaml"
+    access_path = protocol / "config" / "access-policy.yaml"
+    handoff_policy_path = protocol / "config" / "handoff-policy.yaml"
     try:
         vocab = load_yaml(vocab_path) or {}
     except Exception as exc:
@@ -2489,7 +2497,7 @@ def validate_repository(
         findings.append(_exception_finding(root, handoff_policy_path, "YAML", exc))
         handoff_policy = {}
 
-    for path in sorted((root / "config").glob("*.yaml")):
+    for path in sorted((protocol / "config").glob("*.yaml")):
         if path in {vocab_path, access_path, handoff_policy_path}:
             continue
         try:
@@ -2497,7 +2505,7 @@ def validate_repository(
         except Exception as exc:
             findings.append(_exception_finding(root, path, "YAML", exc))
 
-    schema_validators = _load_schema_validators(root, findings)
+    schema_validators = _load_schema_validators(protocol, findings)
 
     forbidden = set(access.get("forbidden_extensions", [])) if isinstance(access, dict) else set()
     forbidden_filenames = access.get("forbidden_filenames", []) if isinstance(access, dict) else []
@@ -2813,9 +2821,17 @@ def main() -> int:
     parser.add_argument("--check", action="store_true", help="Validate without generating or modifying files.")
     parser.add_argument("--project", help="Validate one project slug or project/<slug> while retaining repository-wide safety checks.")
     parser.add_argument("--profiles-root", type=Path, help="Read external profile instances from this root (defaults to <root>/profiles).")
-    parser.add_argument("--root", type=Path, default=ROOT)
+    parser.add_argument("--root", type=Path, default=ROOT, help="compatibility alias for --work-root")
+    parser.add_argument("--work-root", type=Path, help="project/data work root")
+    parser.add_argument("--protocol-root", type=Path, help="read-only protocol root for config and schemas")
     args = parser.parse_args()
-    findings = validate_repository(args.root.resolve(), args.project, args.profiles_root.resolve() if args.profiles_root else None)
+    findings = validate_repository(
+        args.root.resolve(),
+        args.project,
+        args.profiles_root.resolve() if args.profiles_root else None,
+        protocol_root=args.protocol_root.resolve() if args.protocol_root else None,
+        work_root=args.work_root.resolve() if args.work_root else None,
+    )
     if findings:
         for finding in findings:
             print(finding.render())

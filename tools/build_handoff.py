@@ -271,7 +271,7 @@ def _git_head(root: Path) -> str:
 
 
 def _policy(sources: HandoffSources) -> dict[str, Any]:
-    path = sources.root / "config" / "handoff-policy.yaml"
+    path = sources.protocol_root / "config" / "handoff-policy.yaml"
     value = load_yaml(path)
     if not isinstance(value, dict):
         raise HandoffBuildError(f"{path}: handoff policy must be a mapping")
@@ -318,7 +318,7 @@ def build_handoff_payload(
     if final_supersedes == final_id:
         raise HandoffBuildError("supersedes cannot be the new handoff ID")
 
-    commit = research_commit or _git_head(sources.root)
+    commit = research_commit or _git_head(sources.protocol_root)
     if not isinstance(commit, str) or not SHA_PATTERN.fullmatch(commit):
         raise HandoffBuildError("research_commit must be a 40-character lowercase Git SHA")
     timestamp = generated_at or previous.get("generated_at") or sources.project_data.get("updated_at") or sources.project_data.get("created_at")
@@ -390,8 +390,11 @@ def build_handoff(
     handoff_id: str | None = None,
     revision: int | None = None,
     supersedes: str | None = None,
+    protocol_root: Path | None = None,
+    work_root: Path | None = None,
 ) -> Path:
-    sources = load_handoff_sources(root, target)
+    work = (work_root or root).resolve()
+    sources = load_handoff_sources(work, target, protocol_root=protocol_root)
     if sources.project_data.get("status") == "INCOMPLETE" or sources.completion_report.get("status") == "INCOMPLETE":
         raise HandoffBuildError(
             "cannot build a production handoff from an INCOMPLETE project; satisfy completion quality requirements and rerun completion"
@@ -408,7 +411,11 @@ def build_handoff(
     existed = path.exists()
     previous_text = path.read_text(encoding="utf-8") if existed else None
     atomic_write_text(path, yaml_text(payload))
-    findings = validate_repository(sources.root, f"project/{sources.project.name}")
+    findings = validate_repository(
+        sources.root,
+        f"project/{sources.project.name}",
+        protocol_root=sources.protocol_root,
+    )
     if findings:
         if previous_text is None:
             path.unlink(missing_ok=True)
@@ -422,22 +429,26 @@ def build_handoff(
 def main() -> int:
     parser = argparse.ArgumentParser(description="Generate a deterministic production handoff from canonical project sources.")
     parser.add_argument("target", help="project/<slug>")
-    parser.add_argument("--root", type=Path, default=ROOT)
+    parser.add_argument("--root", type=Path, default=ROOT, help="compatibility alias for --work-root")
+    parser.add_argument("--work-root", type=Path, help="project work root")
+    parser.add_argument("--protocol-root", type=Path, help="read-only protocol root")
     parser.add_argument("--generated-at", help="RFC 3339 timestamp; defaults to existing handoff or manifest metadata")
     parser.add_argument("--research-commit", help="40-character source Git SHA; defaults to HEAD")
     parser.add_argument("--handoff-id")
     parser.add_argument("--revision", type=int)
     parser.add_argument("--supersedes")
     args = parser.parse_args()
+    work_root = args.work_root or args.root
     try:
         path = build_handoff(
-            args.root.resolve(),
+            work_root.resolve(),
             args.target,
             generated_at=args.generated_at,
             research_commit=args.research_commit,
             handoff_id=args.handoff_id,
             revision=args.revision,
             supersedes=args.supersedes,
+            protocol_root=args.protocol_root.resolve() if args.protocol_root else None,
         )
     except (HandoffInputError, HandoffBuildError, OSError) as exc:
         parser.error(str(exc))

@@ -1,4 +1,4 @@
-version: 6
+version: 7
 updated_at: "2026-08-25T00:00:00+09:00"
 selection_policy: lowest_id_ready_with_dependencies_done
 allowed_statuses: [BACKLOG, READY, IN_PROGRESS, BLOCKED, DONE]
@@ -302,3 +302,86 @@ tasks:
       - python3 tools/security_check.py --check
       - python3 tools/docs_check.py --check
       - python3 tools/build_graph.py --check
+  - id: HARNESS-001
+    milestone: G3
+    title: Separate protocol work output roots and bootstrap isolated runs
+    status: DONE
+    depends_on: [VISUAL-LANGUAGE-001]
+    acceptance: harness.py bootstrap creates a schema-valid isolated run with initialized task runtime, protocol provenance, dependency preflight, atomic/idempotent conflict handling, and cwd-independent root-aware next actions.
+    issue_refs: ["agentic-art-research#69"]
+    checks:
+      - python3 -m unittest tests.test_harness tests.test_research_request tests.test_next_action
+      - python3 tools/validate.py --check
+      - python3 tools/security_check.py --check
+      - python3 tools/docs_check.py --check
+      - python3 tools/build_graph.py --check
+  - id: HARNESS-002
+    milestone: G3
+    title: Add provider-neutral worker adapter and structured attempt protocol
+    status: READY
+    depends_on: [HARNESS-001]
+    acceptance: A worker adapter accepts a provider-neutral attempt contract, records structured start/output/failure evidence, and rejects malformed or forbidden provider responses without changing task state.
+    issue_refs: ["agentic-art-research#70"]
+    checks:
+      - python3 -m unittest tests.test_worker_adapter tests.test_attempt_protocol
+      - python3 tools/validate.py --check
+  - id: HARNESS-003
+    milestone: G3
+    title: Isolate task attempt workspace and enforce write targets
+    status: READY
+    depends_on: [HARNESS-001]
+    acceptance: Each task attempt gets an isolated workspace and writes outside declared targets fail closed with a named audit event.
+    issue_refs: ["agentic-art-research#71"]
+    checks:
+      - python3 -m unittest tests.test_attempt_workspace
+      - python3 tools/security_check.py --check
+  - id: HARNESS-004
+    milestone: G3
+    title: Execute typed acceptance atomically with task completion
+    status: BACKLOG
+    depends_on: [HARNESS-001, HARNESS-003]
+    acceptance: Typed acceptance commands execute from explicit roots and task promotion plus complete are atomic, idempotent, and fail closed.
+    issue_refs: ["agentic-art-research#72"]
+    checks:
+      - python3 -m unittest tests.test_acceptance_executor
+      - python3 tools/validate.py --check
+  - id: HARNESS-005
+    milestone: G3
+    title: Implement human decision request resolve and resume
+    status: BACKLOG
+    depends_on: [HARNESS-001, HARNESS-002]
+    acceptance: Policy-required human decisions are typed, resumable, idempotent, and block only the affected task or run.
+    issue_refs: ["agentic-art-research#73"]
+    checks:
+      - python3 -m unittest tests.test_decision_requests
+      - python3 tools/validate.py --check
+  - id: HARNESS-006
+    milestone: G4
+    title: Add supervisor heartbeat retry and crash resume loop
+    status: BACKLOG
+    depends_on: [HARNESS-002, HARNESS-003, HARNESS-004, HARNESS-005]
+    acceptance: The supervisor renews leases, classifies retryable failures, resumes crashed attempts without duplicate effects, and terminates within configured bounds.
+    issue_refs: ["agentic-art-research#74"]
+    checks:
+      - python3 -m unittest tests.test_supervisor
+      - python3 tools/validate.py --check
+  - id: HARNESS-007
+    milestone: G4
+    title: Complete one-command request to verified handoff flow
+    status: BACKLOG
+    depends_on: [HARNESS-001, HARNESS-006]
+    acceptance: One explicit command runs request acceptance through validation and verified handoff without hidden cwd or root assumptions.
+    issue_refs: ["agentic-art-research#75"]
+    checks:
+      - python3 -m unittest tests.test_harness_e2e
+      - python3 tools/validate.py --check
+  - id: HARNESS-008
+    milestone: G4
+    title: Add harness E2E fault matrix observability and release gate
+    status: BACKLOG
+    depends_on: [HARNESS-007]
+    acceptance: Harness E2E, fault, privacy, recovery, and run observability checks are deterministic and included in the release gate.
+    issue_refs: ["agentic-art-research#76"]
+    checks:
+      - python3 -m unittest tests.test_harness_release
+      - python3 tools/release_check.py --help

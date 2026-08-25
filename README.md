@@ -46,6 +46,24 @@ python3 tools/validate.py --project project/<slug> --check --root "$WORK_ROOT"
 
 受理されたprojectは必ず `RESEARCH_ONLY` で開始する。同じ依頼の再実行はreceiptのcanonical SHA-256で `ALREADY_APPLIED` になり、既存projectを変更しない。productionへの引き渡しは、研究・判断・試作計画を完了した後に「制作引き渡し（PRODUCTION_HANDOFF）」の手順へ進む。入力契約と拒否境界の詳細は `docs/20260812-agentic-art-research-inbound-request-extension-specification.md` を参照する。
 
+## Isolated agent harness bootstrap
+
+新しい実行は、protocol repository、作業root、成果物output rootを明示的に分けて開始する。`harness.py`はprotocolの設定・schema・template・toolを一時work rootへatomicに展開し、research requestまたはslug/titleからprojectと`task_runtime`を初期化する。bootstrap後にoutput rootへは書き込まない。
+
+```bash
+WORK_ROOT="$(mktemp -d)"
+OUTPUT_ROOT="$(mktemp -d)"
+python3 tools/harness.py bootstrap \
+  --request tests/fixtures/harness/request.yaml \
+  --protocol-root . \
+  --work-root "$WORK_ROOT" \
+  --output-root "$OUTPUT_ROOT" \
+  --run-id HR001 \
+  --now 2026-08-25T00:00:00+09:00
+```
+
+返却JSONは`schemas/harness-run.schema.json`に適合し、protocol commit、project/run ID、3つのroot、依存preflightを含む。同じrequest hash・run ID・rootでの再実行は保存済みJSONを返し、異なる入力や非空rootは`HARNESS-BOOTSTRAP-CONFLICT`で拒否する。profile、art-history、production schemaは`--profiles-root`、`--art-history-root`、`--production-schema`で任意にpreflightでき、未指定のoptional dependencyは`MISSING`として非blockingに残る。詳細は[`docs/operations.md`](docs/operations.md)と[`docs/project-output-boundary.md`](docs/project-output-boundary.md)を参照する。
+
 ## ローカル実行
 
 プロトコル自体の検証は、このリポジトリで実行する。
@@ -76,6 +94,18 @@ python3 tools/next_action.py project/<project-id> \
 ~~~
 
 `TASK_PREVIEWED`は未claim、`TASK_RESUME_PREVIEW`は既存leaseの再開previewであり、どちらもprojectのstate/logを変更しない。queue/stateの整合性は`python3 tools/validate.py --check`で検査する。
+
+bootstrap後のcwd非依存な入口は、protocolとworkを別々に渡す。
+
+```bash
+python3 tools/next_action.py project/<project-id> \
+  --worker <worker-id> \
+  --now 2026-08-25T00:00:00+09:00 \
+  --dry-run \
+  --protocol-root <protocol-root> \
+  --work-root <work-root> \
+  --output-root <output-root>
+```
 
 ## 制作引き渡し（PRODUCTION_HANDOFF）
 

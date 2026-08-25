@@ -1,0 +1,37 @@
+schema_version: 1.0.0
+request_id: RR001
+requested_at: '2026-08-25T00:00:00+09:00'
+source:
+  kind: SESSION
+  system: harness-fixture
+  repository: null
+  commit: null
+  artifact_uri: urn:example:harness:RR001
+  session_id: harness-session-001
+project:
+  slug: harness-study
+  title: Harness Study
+  creator_id: creator/test
+intent:
+  purpose: Verify isolated harness bootstrap behavior.
+  creative_question: How can an isolated run preserve traceability?
+  intended_use: Harness contract tests.
+  audience_experience: The run should be reproducible.
+  medium_materials: [paper]
+constraints:
+  deadline: '2026-10-01'
+  budget:
+    amount: 100000
+    currency: JPY
+  publication_scope: PROJECT_INTERNAL
+  allowed_source_scopes: [public]
+  prohibited_actions: [publish, send, purchase, contract, delete]
+  technical: ["The run must be reproducible offline."]
+  physical: []
+  rights: ["Use only sources with a reviewed rights status."]
+  safety: ["Review safety before making."]
+references: []
+open_questions: ["Which isolated root owns the run?"]
+data_boundary:
+  classification: PROJECT_INTERNAL
+  raw_data_included: false

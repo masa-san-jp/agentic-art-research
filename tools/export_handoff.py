@@ -145,7 +145,7 @@ def _git_state(root: Path) -> bool | None:
 
 
 def _policy(sources: HandoffSources) -> dict[str, Any]:
-    path = sources.root / "config" / "handoff-policy.yaml"
+    path = sources.protocol_root / "config" / "handoff-policy.yaml"
     value = load_yaml(path)
     if not isinstance(value, dict):
         raise HandoffExportError(f"{path}: handoff policy must be a mapping")
@@ -154,7 +154,7 @@ def _policy(sources: HandoffSources) -> dict[str, Any]:
 
 def _security_scan(files: dict[str, bytes], sources: HandoffSources) -> None:
     policy = _policy(sources)
-    access_path = sources.root / "config" / "access-policy.yaml"
+    access_path = sources.protocol_root / "config" / "access-policy.yaml"
     access = load_yaml(access_path) or {}
     patterns = access.get("secret_patterns", []) if isinstance(access, dict) else []
     compiled: list[tuple[str, re.Pattern[str]]] = []
@@ -240,7 +240,7 @@ def _bundle_files(sources: HandoffSources, handoff: dict[str, Any]) -> dict[str,
         raise HandoffExportError("05_production/production-brief.yaml is required for the handoff bundle")
     files["artifacts/production-brief.yaml"] = brief_path.read_bytes()
     for schema_name in schema_names:
-        schema_path = sources.root / "schemas" / schema_name
+        schema_path = sources.protocol_root / "schemas" / schema_name
         if not schema_path.is_file():
             raise HandoffExportError(f"schema snapshot is missing: {schema_path}")
         files[f"schemas/{schema_name}"] = schema_path.read_bytes()
@@ -338,16 +338,30 @@ def load_yaml_bytes(raw: bytes) -> Any:
     return value
 
 
-def export_handoff(root: Path, target: str, output: Path, *, force: bool = False, allow_dirty: bool = False) -> Path:
-    sources = load_handoff_sources(root, target)
-    findings = validate_repository(sources.root, f"project/{sources.project.name}")
+def export_handoff(
+    root: Path,
+    target: str,
+    output: Path,
+    *,
+    force: bool = False,
+    allow_dirty: bool = False,
+    protocol_root: Path | None = None,
+    work_root: Path | None = None,
+) -> Path:
+    work = (work_root or root).resolve()
+    sources = load_handoff_sources(work, target, protocol_root=protocol_root)
+    findings = validate_repository(
+        sources.root,
+        f"project/{sources.project.name}",
+        protocol_root=sources.protocol_root,
+    )
     if findings:
         rendered = "\n".join(finding.render() for finding in findings)
         raise HandoffExportError(f"handoff export requires a cleanly validated project:\n{rendered}")
     output = output.resolve()
     if sources.project.resolve() == output or sources.project.resolve() in output.parents:
         raise HandoffExportError("export destination must not be inside the canonical project")
-    clean = _git_state(sources.root)
+    clean = _git_state(sources.protocol_root)
     if clean is not True and not allow_dirty:
         raise HandoffExportError("source Git tree is not provably clean; commit the generator and sources or pass --allow-dirty for a fixture")
     clean_value = clean is True
@@ -395,17 +409,21 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Export a self-contained, deterministic production handoff bundle.")
     parser.add_argument("target", help="project/<slug>")
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--root", type=Path, default=ROOT)
+    parser.add_argument("--root", type=Path, default=ROOT, help="compatibility alias for --work-root")
+    parser.add_argument("--work-root", type=Path, help="project work root")
+    parser.add_argument("--protocol-root", type=Path, help="read-only protocol root for provenance")
     parser.add_argument("--force", action="store_true", help="replace a different generated destination after review")
     parser.add_argument("--allow-dirty", action="store_true", help="allow an uncommitted or fixture root; provenance records source_tree_clean=false")
     args = parser.parse_args()
+    work_root = args.work_root or args.root
     try:
         path = export_handoff(
-            args.root.resolve(),
+            work_root.resolve(),
             args.target,
             args.output,
             force=args.force,
             allow_dirty=args.allow_dirty,
+            protocol_root=args.protocol_root.resolve() if args.protocol_root else None,
         )
     except (HandoffInputError, HandoffExportError, OSError) as exc:
         parser.error(str(exc))

@@ -36,6 +36,7 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 - [x] (2026-08-25 JST) `FEEDBACK-EXPORT-001`: import済みproduction resultから匿名化・決定的・冪等なsignal bundleをatomicに出力するCLI、schema、privacy/reference gateを追加。184 unittestと全ローカルgate合格。次は`KNOWLEDGE-001`。
 - [x] (2026-08-25 JST) `KNOWLEDGE-001`: OB/RL/CT/XRのtyped knowledge schema、config語彙、外部profile aesthetic-signal、validator/reference gate、deterministic graph/impact、正常・失敗fixtureを追加。全unittestとvalidator/security/docs/graph gate合格。次は`VISUAL-LANGUAGE-001`。
 - [x] (2026-08-25 JST) `VISUAL-LANGUAGE-001`: 媒介・技法・palette/composition・prohibited expressionをtyped visual-language artifactへ固定し、production-translator contextとproduction handoff bundle/schema snapshotへ接続。200 unittestとvalidator/security/docs/graph gate合格。queue上の次タスクはない。
+- [x] (2026-08-25 JST) `HARNESS-001`: protocol/work/output rootを分離し、schema-validなatomic/idempotent bootstrap、dependency preflight、protocol provenance、cwd非依存next actionを実装。205 unittestとvalidator/security/docs/graph/diff gate合格。次は`HARNESS-002`。
 
 チェックボックスとUTCまたはJST日時。未完了、部分完了、完了を正確に表す。
 
@@ -47,6 +48,8 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 - 2026-08-25: `.git` indexがsandboxで書けずtracked directoryを`git rm`できなかったため、対象プロジェクトは復元可能な`/private/tmp` quarantineへ移動し、作業ツリー上の削除として検証した。
 - 2026-08-25: feedback exportはproduction resultの再importやproject更新を行わず、import済みresultと監査eventのhashを照合して別directoryへ出力する必要がある。提示条件はproduction-result v1にないため、自由文から推測せず`null`固定にした。
 - 2026-08-25: profile実体はcanonical output boundaryと衝突するため、`templates/profile`のみをrepositoryへ置き、実profileは`--profiles-root`で外部入力する。graph nodeは`profile/<creator-id>::AS###`としてproject-qualified evidenceへ接続した。
+- 2026-08-25: 既存CLIは単一root内のconfig/schema/templateを暗黙に読むため、#69ではwork rootをprotocol assetの自己完結stagingとしてatomic publishする方式を採用した。protocolのGit provenanceはwork rootへコピーせず、常にprotocol rootから取得する。
+- 2026-08-25: bootstrapの再実行判定はrequest本文のcanonical SHA-256、run ID、3 rootの組で行う。output rootをbootstrap時に書かないことで、後段の成果物出力と初期化の冪等性を分離した。
 
 実装中に判明した制約、失敗、想定との差を、短い証拠とともに記録する。
 
@@ -77,6 +80,7 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 - 完了 (2026-08-25): `FEEDBACK-EXPORT-001`で`research-signal-export/v1`、`export_feedback_signals.py`、正常・失敗系テスト、operations/schema/extension docsを追加した。exportは`manifest.json`と`signals.jsonl`だけをatomicに作り、同一bytes以外の既存bundleを上書きしない。次の開始点は`KNOWLEDGE-001`。
 - 完了 (2026-08-25): `KNOWLEDGE-001`で5 schema、profile外部root、named blocking rules、graph/impact統合、合成正常・失敗fixtureを追加した。canonical treeはprotocol-onlyのままで、次の開始点は`VISUAL-LANGUAGE-001`。
 - 完了 (2026-08-25): `VISUAL-LANGUAGE-001`で`visual-language.schema.json`、媒介語彙、空テンプレート、媒介決定の一意性・採択状態・参照・lifecycle検証を追加した。production-translatorの書込対象と受入条件、production-agent bundle、handoff artifact、schema snapshotへ接続し、正常・失敗fixtureを追加した。200 unittest、validator、security、docs、graph、diff checkが合格した。queueの全タスクがDONEとなったため、次の開始点はない。
+- 完了 (2026-08-25): `HARNESS-001`で`harness.py bootstrap`、`harness-run.schema.json`、root境界、dependency preflight、protocol provenance、root-aware acceptance/next action、正常・失敗・冪等性テストを追加した。205 unittest、validator、security、docs、graph、diff gateが合格し、次の開始点は`HARNESS-002`。
 
 完了した動作、未完了、教訓、次の計画への影響を記録する。
 
@@ -414,6 +418,68 @@ schema、validator、context、bundle、handoff exportはcanonical sourceを読�
 - bundle/export: `tools/bundle.py`, `tools/export_handoff.py`
 - dependency: `DECISION-001`（typed decision/registry）
 - issue: `agentic-art-research#49`
+
+## HARNESS-001 ExecPlan
+
+### Purpose / Big Picture
+
+Issue #69のfoundationとして、protocol repository、temporary work root、external output rootを明示的に分離する。`tools/harness.py bootstrap`をrequestまたはslug/titleから実行すると、protocolのGit provenance付きrun manifest、project、`07_runtime.task_runtime`をwork rootへ作成し、output rootは空のままにする。既存の単一`--root` CLIは互換shimとして残すが、harness内部の入口はroot-aware APIを使う。
+
+### Context and Orientation
+
+- root contract: `tools/harness_paths.py`
+- bootstrap CLI and run manifest: `tools/harness.py`, `schemas/harness-run.schema.json`
+- request/project materialization: `tools/accept_research_request.py`, `tools/new_project.py`
+- root-aware validation/graph/context/entrypoint: `tools/validate.py`, `tools/build_graph.py`, `tools/context_pack.py`, `tools/next_action.py`
+- protocol provenance for handoff: `tools/handoff_common.py`, `tools/build_handoff.py`, `tools/export_handoff.py`
+- normal and failure contract: `tests/test_harness.py`, `tests/fixtures/harness/request.yaml`
+
+### Plan of Work
+
+1. 共通root境界、run schema、optional dependency preflightを追加する。
+2. requestまたはslug/titleを一時stagingへmaterializeし、runtime初期化・validation後にwork rootへatomic publishするbootstrapを追加する。
+3. request hash/run ID/rootの再実行をbyte-identical resumeとし、非空・別入力・symlink・親子rootをnamed conflictで拒否する。
+4. protocol/work/outputのroot-aware CLI/APIと、cwd非依存のacceptance/next stepを既存互換を保って接続する。
+5. docs、queue/state、正常・失敗・冪等性テストを更新し、全release gateを通す。
+
+### Concrete Steps
+
+```bash
+.venv/bin/python tools/harness.py bootstrap \
+  --request tests/fixtures/harness/request.yaml \
+  --protocol-root . \
+  --work-root "$(mktemp -d)" \
+  --output-root "$(mktemp -d)" \
+  --run-id HR001 \
+  --now 2026-08-25T00:00:00+09:00
+.venv/bin/python -m unittest tests.test_harness tests.test_research_request tests.test_next_action -v
+.venv/bin/python -m unittest discover -s tests -v
+.venv/bin/python tools/validate.py --check
+.venv/bin/python tools/security_check.py --check
+.venv/bin/python tools/docs_check.py --check
+.venv/bin/python tools/build_graph.py --check
+git diff --check
+```
+
+### Validation and Acceptance
+
+- bootstrap output and `.harness/run.json` are valid `harness-run.schema.json` documents, contain the protocol commit, project/run IDs, all roots, and AVAILABLE/MISSING/INVALID dependency preflight.
+- a successful request run creates `projects/<slug>/07_runtime/research-state.json` with `task_runtime`; protocol bytes/mtimes and output root remain unchanged/empty.
+- same request hash, run ID, and roots return the exact existing JSON; different content, non-empty target, same work/output, symlink, nested, or broad roots fail with `HARNESS-BOOTSTRAP-CONFLICT` or `HARNESS-ROOT-BOUNDARY` without partial mutation.
+- root-aware next action emits explicit protocol/work/output context and acceptance commands executable independent of cwd; handoff provenance reads Git state from protocol root only.
+- all unittest, validator, security, docs, graph, and diff gates pass.
+
+### Idempotence and Recovery
+
+The work root is built in a sibling staging directory and published only after validation. A failure removes only that staging directory and leaves the supplied empty work/output directories unchanged. Existing run manifests are never overwritten. If a later worker has populated output, rerunning bootstrap reads the existing work manifest before checking output emptiness and returns the same run JSON.
+
+### Interfaces and Dependencies
+
+- CLI: `tools/harness.py bootstrap --request|--slug --protocol-root --work-root --output-root --run-id`
+- Python: `harness_paths.HarnessPaths`, `harness.bootstrap(...)`
+- schema: `schemas/harness-run.schema.json`
+- optional dependency flags: `--profiles-root`, `--art-history-root`, `--production-schema`
+- issue: `agentic-art-research#69`; next task: `HARNESS-002` / Issue #70
 
 ## 実行規則
 

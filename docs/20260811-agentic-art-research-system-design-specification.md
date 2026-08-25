@@ -137,6 +137,14 @@ external_reference:
 
 Gitへ保存しない証拠も、`evidence-ledger` には存在を記録する。ただし `source_location` は許可されたエージェントだけが解決できるURIとし、認証情報を含めない。
 
+### 4.3 Agent harness のroot境界
+
+実行時のrootは次の3つに分離する。`protocol_root`は本リポジトリの設定、schema、template、toolを読む読み取り専用source、`work_root`は実プロジェクトとruntimeを一時materializeする作業領域、`output_root`は検証済みのプロジェクト単位成果物を蓄積する外部出力先である。harnessは暗黙のcwdや単一rootを正本とみなさない。
+
+`tools/harness.py bootstrap`はrequestまたはslug/titleを受け、`schemas/harness-run.schema.json`に適合するrun manifestへprotocol commit、project/run ID、root、依存preflightを記録する。protocolとwork/outputの親子関係、同一root、symlink、広すぎるrootは拒否する。bootstrapの初期化はstagingからatomicにpublishし、成功後もoutput rootを空に保つ。同じrequest hash・run ID・rootの再実行は同一manifestを返し、異なる入力や非空targetを上書きしない。
+
+profile、art-history、production schemaの外部依存はpreflightで`AVAILABLE`、`MISSING`、`INVALID`を記録する。未指定のoptional dependencyはblockingにせず、明示された依存または必須protocol契約の不在・不正だけを停止条件とする。handoff provenanceのGit commitとclean判定は常にprotocol rootから取得し、work rootの変更をsource repositoryの変更として扱わない。
+
 ## 5. 利用者と機能ロール
 
 ロールは固定人格ではなく機能である。小規模運用では1体のエージェントが複数ロールを順番に実行してよい。

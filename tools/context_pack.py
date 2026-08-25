@@ -65,7 +65,20 @@ def _load_task(project: Path, task_id: str) -> dict[str, Any]:
     raise ValueError(f"task not found in research plan: {task_id}")
 
 
-def build_context_pack(root: Path, target: str, task_id: str, role: str) -> dict[str, Any]:
+def build_context_pack(
+    root: Path,
+    target: str,
+    task_id: str,
+    role: str,
+    *,
+    protocol_root: Path | None = None,
+    work_root: Path | None = None,
+) -> dict[str, Any]:
+    # Context files are project-owned and therefore always read from the work
+    # root.  protocol_root is part of the shared API even though this pack has
+    # no protocol-owned source files to read.
+    del protocol_root
+    root = (work_root or root).resolve()
     if role not in ROLE_SOURCE_PATHS:
         raise ValueError(f"unknown role: {role}")
     project = _project_path(root, target)
@@ -88,10 +101,21 @@ def main() -> int:
     parser.add_argument("task_id")
     parser.add_argument("--role", choices=sorted(ROLE_SOURCE_PATHS), required=True)
     parser.add_argument("-o", "--output", type=Path)
-    parser.add_argument("--root", type=Path, default=ROOT)
+    parser.add_argument("--root", type=Path, default=ROOT, help="compatibility alias for --work-root")
+    parser.add_argument("--work-root", type=Path, help="project work root")
+    parser.add_argument("--protocol-root", type=Path, help="read-only protocol root (reserved for shared context)")
     args = parser.parse_args()
     try:
-        content = stable_json(build_context_pack(args.root.resolve(), args.target, args.task_id, args.role))
+        content = stable_json(
+            build_context_pack(
+                args.root.resolve(),
+                args.target,
+                args.task_id,
+                args.role,
+                protocol_root=args.protocol_root.resolve() if args.protocol_root else None,
+                work_root=args.work_root.resolve() if args.work_root else None,
+            )
+        )
     except (FileNotFoundError, InputParseError, ValueError) as exc:
         parser.error(str(exc))
     if args.output:

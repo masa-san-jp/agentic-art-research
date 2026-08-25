@@ -1,9 +1,9 @@
 version: 1
 updated_at: "2026-08-25T00:00:00+09:00"
-current_milestone: G2
-next_task: null
-last_completed_task: VISUAL-LANGUAGE-001
-terminal: true
+current_milestone: G3
+next_task: HARNESS-002
+last_completed_task: HARNESS-001
+terminal: false
 blocked_by: []
 resume_from:
   read:
@@ -14,9 +14,9 @@ resume_from:
     - docs/20260811-agentic-art-research-production-handoff-extension-specification.md
     - docs/20260811-agentic-art-research-production-handoff-execution-plan.md
     - execution/task-queue.yaml
-    - https://github.com/masa-san-jp/agentic-art-research/issues/49
-  action: All queued execution tasks are DONE; no next task is ready.
+    - https://github.com/masa-san-jp/agentic-art-research/issues/70
+  action: Implement HARNESS-002 provider-neutral worker adapter and structured attempt protocol.
 last_verification:
   result: PASS
-  command: .venv/bin/python -m unittest discover -s tests -v; .venv/bin/python tools/validate.py --check; .venv/bin/python tools/security_check.py --check; .venv/bin/python tools/docs_check.py --check; .venv/bin/python tools/build_graph.py --check
-  detail: 200 tests and all VISUAL-LANGUAGE-001 gates passed locally. Typed visual language validates explicit adopted medium decisions, lifecycle completeness, references, and duplicate/applicability rules; production-translator context, production-agent bundles, handoff artifacts, and schema snapshots include the visual-language contract. Canonical projects, real profiles, and project-derived graph output remain absent. All queue tasks are DONE.
+  command: .venv/bin/python -m unittest discover -s tests -v; .venv/bin/python tools/validate.py --check; .venv/bin/python tools/security_check.py --check; .venv/bin/python tools/docs_check.py --check; .venv/bin/python tools/build_graph.py --check; git diff --check
+  detail: 205 tests and all HARNESS-001 local gates passed. Bootstrap is schema-valid, isolated, atomic, idempotent, protocol-provenanced, and root-aware; output root remains empty after initialization. Next start is HARNESS-002.

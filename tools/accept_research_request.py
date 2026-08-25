@@ -36,9 +36,9 @@ def _field_path(parts: Any) -> str:
     return field
 
 
-def _validator(root: Path) -> Draft202012Validator:
-    schema_path = root / "schemas" / "research-request.schema.json"
-    common_path = root / "schemas" / "common.schema.json"
+def _validator(protocol_root: Path) -> Draft202012Validator:
+    schema_path = protocol_root / "schemas" / "research-request.schema.json"
+    common_path = protocol_root / "schemas" / "common.schema.json"
     try:
         schema = load_json(schema_path)
         common = load_json(common_path)
@@ -77,9 +77,9 @@ def _iter_strings(value: Any, path: str = "$") -> list[tuple[str, str]]:
     return [(path, value)] if isinstance(value, str) else []
 
 
-def _security_check(root: Path, request: dict[str, Any]) -> None:
-    access = load_yaml(root / "config" / "access-policy.yaml") or {}
-    handoff_policy = load_yaml(root / "config" / "handoff-policy.yaml") or {}
+def _security_check(protocol_root: Path, request: dict[str, Any]) -> None:
+    access = load_yaml(protocol_root / "config" / "access-policy.yaml") or {}
+    handoff_policy = load_yaml(protocol_root / "config" / "handoff-policy.yaml") or {}
     secret_patterns: list[tuple[str, re.Pattern[str]]] = []
     for item in access.get("secret_patterns", []) if isinstance(access, dict) else []:
         if not isinstance(item, dict) or not isinstance(item.get("id"), str) or not isinstance(item.get("pattern"), str):
@@ -102,15 +102,15 @@ def _security_check(root: Path, request: dict[str, Any]) -> None:
                 raise RequestAcceptanceError(f"REQUEST-SECURITY {field}: secret pattern {pattern_id}")
 
 
-def _validate_request(root: Path, path: Path) -> tuple[dict[str, Any], str]:
+def _validate_request(protocol_root: Path, path: Path) -> tuple[dict[str, Any], str]:
     value = _load_input(path)
-    validator = _validator(root)
+    validator = _validator(protocol_root)
     errors = sorted(validator.iter_errors(value), key=lambda error: (tuple(error.absolute_path), error.validator, error.message))
     if errors:
         error = errors[0]
         raise RequestAcceptanceError(f"{path}#{_field_path(error.absolute_path)} [SCHEMA:{error.validator}] {error.message}")
     try:
-        _security_check(root, value)
+        _security_check(protocol_root, value)
     except RequestAcceptanceError:
         raise
     except Exception as exc:
@@ -118,9 +118,10 @@ def _validate_request(root: Path, path: Path) -> tuple[dict[str, Any], str]:
     return value, canonical_sha256(value)
 
 
-def _existing_requests(root: Path) -> list[tuple[Path, dict[str, Any], str]]:
+def _existing_requests(root: Path, protocol_root: Path | None = None) -> list[tuple[Path, dict[str, Any], str]]:
     records: list[tuple[Path, dict[str, Any], str]] = []
-    validator = _validator(root)
+    protocol_root = protocol_root or root
+    validator = _validator(protocol_root)
     for project in iter_project_dirs(root):
         path = project / REQUEST_RELATIVE
         if not path.is_file():
@@ -132,7 +133,7 @@ def _existing_requests(root: Path) -> list[tuple[Path, dict[str, Any], str]]:
             raise RequestAcceptanceError(
                 f"existing request is invalid: {path}#{_field_path(error.absolute_path)} [SCHEMA:{error.validator}] {error.message}"
             )
-        _security_check(root, value)
+        _security_check(protocol_root, value)
         records.append((project, value, canonical_sha256(value)))
     return records
 
@@ -147,10 +148,10 @@ def _request_summary(request: dict[str, Any], digest: str, status: str) -> dict[
     }
 
 
-def _collision(root: Path, request: dict[str, Any], digest: str) -> tuple[str, Path | None]:
+def _collision(root: Path, request: dict[str, Any], digest: str, *, protocol_root: Path | None = None) -> tuple[str, Path | None]:
     project_id = f"project/{request['project']['slug']}"
     target = root / "projects" / request["project"]["slug"]
-    existing = _existing_requests(root)
+    existing = _existing_requests(root, protocol_root)
     same_request: tuple[Path, dict[str, Any], str] | None = None
     for project, existing_request, existing_digest in existing:
         if existing_request.get("request_id") == request["request_id"]:
@@ -207,7 +208,14 @@ def _creative_intent(request: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _materialize(root: Path, request: dict[str, Any], digest: str, accepted_at: str) -> Path:
+def _materialize(
+    root: Path,
+    request: dict[str, Any],
+    digest: str,
+    accepted_at: str,
+    *,
+    protocol_root: Path | None = None,
+) -> Path:
     slug = request["project"]["slug"]
     project = create_project(
         root,
@@ -215,6 +223,7 @@ def _materialize(root: Path, request: dict[str, Any], digest: str, accepted_at: 
         request["project"]["title"],
         request["project"]["creator_id"],
         created_at=request["requested_at"],
+        protocol_root=protocol_root,
     )
     try:
         manifest_path = project / "manifest.yaml"
@@ -248,7 +257,7 @@ def _materialize(root: Path, request: dict[str, Any], digest: str, accepted_at: 
 
         write_executive_brief(root, f"project/{slug}")
 
-        findings = validate_repository(root, f"project/{slug}")
+        findings = validate_repository(root, f"project/{slug}", protocol_root=protocol_root)
         if findings:
             rendered = "\n".join(finding.render() for finding in findings)
             raise RequestAcceptanceError(f"materialized project failed validation:\n{rendered}")
@@ -265,12 +274,14 @@ def accept_research_request(
     dry_run: bool = False,
     apply: bool = False,
     accepted_at: str | None = None,
+    protocol_root: Path | None = None,
 ) -> dict[str, Any]:
     if dry_run == apply:
         raise RequestAcceptanceError("select exactly one of --dry-run or --apply")
     root = root.resolve()
-    request, digest = _validate_request(root, input_path.resolve())
-    status, existing = _collision(root, request, digest)
+    protocol = (protocol_root or root).resolve()
+    request, digest = _validate_request(protocol, input_path.resolve())
+    status, existing = _collision(root, request, digest, protocol_root=protocol)
     if status == "ALREADY_APPLIED":
         return _request_summary(request, digest, status)
     if dry_run:
@@ -279,7 +290,7 @@ def accept_research_request(
     accepted_at = accepted_at or datetime.now(ZoneInfo("Asia/Tokyo")).isoformat(timespec="seconds")
     if not TIMESTAMP_PATTERN.fullmatch(accepted_at):
         raise RequestAcceptanceError(f"accepted_at must be an RFC 3339 timestamp: {accepted_at!r}")
-    project = _materialize(root, request, digest, accepted_at)
+    project = _materialize(root, request, digest, accepted_at, protocol_root=protocol)
     summary = _request_summary(request, digest, "APPLIED")
     summary["materialized_path"] = str(project.relative_to(root))
     return summary
@@ -291,16 +302,22 @@ def main() -> int:
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--dry-run", action="store_true")
     mode.add_argument("--apply", action="store_true")
-    parser.add_argument("--root", type=Path, required=True, help="temporary work root or external output staging root")
+    parser.add_argument("--root", type=Path, help="compatibility alias for --work-root")
+    parser.add_argument("--work-root", type=Path, help="temporary work root or external output staging root")
+    parser.add_argument("--protocol-root", type=Path, help="read-only protocol checkout containing schemas and policy")
     parser.add_argument("--accepted-at", help="RFC 3339 receipt time; defaults to current Asia/Tokyo time")
     args = parser.parse_args()
+    work_root = args.work_root or args.root
+    if work_root is None:
+        parser.error("one of --work-root or --root is required")
     try:
         summary = accept_research_request(
-            args.root,
+            work_root,
             args.input,
             dry_run=args.dry_run,
             apply=args.apply,
             accepted_at=args.accepted_at,
+            protocol_root=args.protocol_root,
         )
     except (RequestAcceptanceError, OSError) as exc:
         print(f"FAILED: {exc}")

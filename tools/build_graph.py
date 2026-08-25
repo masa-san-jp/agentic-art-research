@@ -69,7 +69,18 @@ def _profile_signal_records(profiles_root: Path | None) -> list[dict[str, Any]]:
     return records
 
 
-def build_graph(root: Path, profiles_root: Path | None = None) -> dict[str, Any]:
+def build_graph(
+    root: Path,
+    profiles_root: Path | None = None,
+    *,
+    protocol_root: Path | None = None,
+    work_root: Path | None = None,
+) -> dict[str, Any]:
+    # Graph inputs and generated output belong to work_root.  protocol_root is
+    # accepted as an explicit context parameter for callers that share one
+    # root contract across tools; this graph currently has no protocol reads.
+    del protocol_root
+    root = (work_root or root).resolve()
     nodes: dict[str, dict[str, Any]] = {}
     edges: set[tuple[str, str, str]] = set()
     project_index: list[dict[str, Any]] = []
@@ -316,12 +327,18 @@ def build_graph(root: Path, profiles_root: Path | None = None) -> dict[str, Any]
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Build deterministic dependency graph from canonical project data.")
-    parser.add_argument("--root", type=Path, default=ROOT)
+    parser.add_argument("--root", type=Path, default=ROOT, help="compatibility alias for --work-root")
+    parser.add_argument("--work-root", type=Path, help="project/data work root")
+    parser.add_argument("--protocol-root", type=Path, help="read-only protocol root (reserved for shared context)")
     parser.add_argument("--profiles-root", type=Path, help="Read external profile instances from this root (defaults to <root>/profiles).")
     parser.add_argument("--check", action="store_true", help="Fail if generated output is stale.")
     args = parser.parse_args()
-    root = args.root.resolve()
-    graph = build_graph(root, args.profiles_root.resolve() if args.profiles_root else None)
+    root = (args.work_root or args.root).resolve()
+    graph = build_graph(
+        root,
+        args.profiles_root.resolve() if args.profiles_root else None,
+        protocol_root=args.protocol_root.resolve() if args.protocol_root else None,
+    )
     output = root / "data" / "dependency-graph.json"
     content = stable_json(graph)
     if args.check:

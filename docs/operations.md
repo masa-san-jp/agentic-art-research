@@ -29,6 +29,42 @@ python3 tools/docs_check.py --check
 
 ## Normal run
 
+### Harness bootstrap
+
+実行rootを一つにまとめず、protocolを読み取り専用のsource、workをproject/runtimeの作業領域、outputを検証済み成果物の出力先として扱う。通常の入口は次の一つである。
+
+```bash
+WORK_ROOT="$(mktemp -d)"
+OUTPUT_ROOT="$(mktemp -d)"
+python3 tools/harness.py bootstrap \
+  --request tests/fixtures/harness/request.yaml \
+  --protocol-root "$(pwd)" \
+  --work-root "$WORK_ROOT" \
+  --output-root "$OUTPUT_ROOT" \
+  --run-id HR001 \
+  --now 2026-08-25T00:00:00+09:00
+```
+
+`protocol_root`、`work_root`、`output_root`は同一root、相互の親子、symlink、filesystem/home直下の広すぎるrootを拒否する。bootstrapは一時stagingへmaterializeしてからwork rootへatomic publishするため、schema・security・runtime初期化の失敗時にwork/outputへ部分成果物を残さない。成功時もoutput rootは空のままである。
+
+返却JSONとwork rootの`.harness/run.json`は`schemas/harness-run.schema.json`の正本である。`protocol_commit`と`protocol_tree_clean`はprotocol rootだけから取得し、work rootのdirty状態をsource provenanceとみなさない。`HARNESS-DEPENDENCY-PREFLIGHT`は、明示されたoptional dependencyのINVALID、またはmandatory dependencyのMISSING/INVALIDだけをblockingにする。
+
+同じrequest hash・run ID・rootで再実行した場合は既存run JSONをそのまま返す。異なるrequest、別run ID、既存の非空work/output、既存projectとの衝突は`HARNESS-BOOTSTRAP-CONFLICT`で停止し、既存ファイルを上書きしない。
+
+実行開始後のtask入口もrootを明示する。
+
+```bash
+python3 tools/next_action.py project/<project-id> \
+  --worker <worker-id> \
+  --now 2026-08-25T00:00:00+09:00 \
+  --dry-run \
+  --protocol-root <protocol-root> \
+  --work-root <work-root> \
+  --output-root <output-root>
+```
+
+返るacceptanceとnext stepは、protocol toolの絶対パスとwork/output rootの明示引数を持つ。`--root`は既存projectの互換shimであり、新しいharness内部のroot契約では使わない。
+
 新規プロジェクトはcanonical repositoryではなく、一時作業rootで雛形から作成し、正本ファイルを編集してから検証する。
 
 ```bash

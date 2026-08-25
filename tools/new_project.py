@@ -19,13 +19,16 @@ def create_project(
     title: str,
     creator_id: str | None = None,
     created_at: str | None = None,
+    *,
+    protocol_root: Path | None = None,
 ) -> Path:
     if not SLUG.fullmatch(slug):
         raise ValueError("slug must be lower-case kebab-case")
     target = root / "projects" / slug
     if target.exists():
         raise FileExistsError(f"project already exists: {target}")
-    template = root / "templates" / "project"
+    template_root = protocol_root.resolve() if protocol_root is not None else root
+    template = template_root / "templates" / "project"
     if not template.exists():
         raise FileNotFoundError(f"project template not found: {template}")
 
@@ -68,10 +71,21 @@ def main() -> int:
     parser.add_argument("slug")
     parser.add_argument("--title", required=True)
     parser.add_argument("--creator-id")
-    parser.add_argument("--root", type=Path, required=True, help="temporary work root or external output staging root")
+    parser.add_argument("--root", type=Path, help="compatibility alias for --work-root")
+    parser.add_argument("--work-root", type=Path, help="temporary work root or external output staging root")
+    parser.add_argument("--protocol-root", type=Path, help="read-only protocol checkout containing templates")
     args = parser.parse_args()
+    work_root = args.work_root or args.root
+    if work_root is None:
+        parser.error("one of --work-root or --root is required")
     try:
-        target = create_project(args.root.resolve(), args.slug, args.title, args.creator_id)
+        target = create_project(
+            work_root.resolve(),
+            args.slug,
+            args.title,
+            args.creator_id,
+            protocol_root=args.protocol_root.resolve() if args.protocol_root else None,
+        )
     except (ValueError, FileExistsError, FileNotFoundError) as exc:
         parser.error(str(exc))
     print(target)
