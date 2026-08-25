@@ -115,16 +115,63 @@
     "humanDecisionRequest": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "question", "options"],
+      "required": [
+        "id", "project_id", "task_id", "human_decision_category", "question", "facts", "options",
+        "recommended_option", "impact", "default_safe_action", "source_refs"
+      ],
       "properties": {
         "id": {"type": "string", "pattern": "^DR[0-9]{3,}$"},
+        "project_id": {"$ref": "common.schema.json#/$defs/projectId"},
+        "task_id": {"type": "string", "pattern": "^[A-Z][A-Z0-9_-]{2,}$"},
+        "human_decision_category": {"$ref": "common.schema.json#/$defs/humanDecisionCategory"},
         "question": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+        "facts": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/humanFact"},
+          "uniqueItems": true
+        },
         "options": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/humanOption"},
+          "uniqueItems": true
+        },
+        "recommended_option": {"type": ["string", "null"]},
+        "impact": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+        "default_safe_action": {
+          "enum": ["DEFER", "REJECT", "CANCEL", "KEEP_CURRENT_SCOPE", "COMPLETE_WITH_GAPS"]
+        },
+        "source_refs": {
           "type": "array",
           "minItems": 1,
           "items": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
           "uniqueItems": true
         }
+      }
+    },
+    "humanFact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "statement"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^F[0-9]{3,}$"},
+        "statement": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+        "source_refs": {
+          "type": "array",
+          "items": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+          "uniqueItems": true
+        }
+      }
+    },
+    "humanOption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "consequence"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^OPT-[A-Za-z0-9_-]+$"},
+        "label": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+        "consequence": {"$ref": "common.schema.json#/$defs/nonEmptyString"}
       }
     },
     "diagnostics": {

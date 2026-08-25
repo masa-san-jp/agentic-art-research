@@ -91,6 +91,20 @@
           "type": "array",
           "items": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
           "uniqueItems": true
+        },
+        "human_decision": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["request_id", "request_sha256", "response_id", "response_sha256", "action", "resolved_at"],
+          "properties": {
+            "request_id": {"type": "string", "pattern": "^DR[0-9]{3,}$"},
+            "request_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+            "response_id": {"type": "string", "pattern": "^DRR[0-9]{3,}$"},
+            "response_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+            "action": {"enum": ["APPROVE", "REJECT", "SELECT", "CANCEL"]},
+            "selected_option": {"type": ["string", "null"]},
+            "resolved_at": {"$ref": "common.schema.json#/$defs/timestamp"}
+          }
         }
       }
     },

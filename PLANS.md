@@ -39,6 +39,8 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 - [x] (2026-08-25 JST) `HARNESS-001`: protocol/work/output rootを分離し、schema-validなatomic/idempotent bootstrap、dependency preflight、protocol provenance、cwd非依存next actionを実装。205 unittestとvalidator/security/docs/graph/diff gate合格。次は`HARNESS-002`。
 - [x] (2026-08-25 JST) `HARNESS-002`: provider-neutralなargv worker adapter、versioned attempt request/result schema、bounded/redacted diagnostics、fake worker contractを実装。runtimeを変更せず、timeout/exit/protocol/output-limit/secret/capabilityをnamed failureへ変換し、213 unittestと全ローカルgateが合格。次は`HARNESS-003`。
 - [x] (2026-08-25 JST) `HARNESS-003`: task attemptをcanonical projectから隔離し、role write target、safe manifest、changeset、protected root、baseline conflict、quarantineを実装。222 unittestと全ローカルgateが合格。次は`HARNESS-004`。
+- [x] (2026-08-25 JST) `HARNESS-004`: role acceptanceをtyped checkへ移行し、attempt validation、changeset promotion、task completeを一つのatomic transactionへ接続。229 unittestと全ローカルgateが合格。次は`HARNESS-005`。
+- [x] (2026-08-25 JST) `HARNESS-005`: HUMAN_REQUIREDをtyped human decision requestへ永続化し、list/resolve、新lease resume、replay、stale/replay/option/stateのnamed ruleを実装。237 unittestと全ローカルgateが合格。次は`HARNESS-006`。
 
 チェックボックスとUTCまたはJST日時。未完了、部分完了、完了を正確に表す。
 
@@ -53,6 +55,10 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 - 2026-08-25: 既存CLIは単一root内のconfig/schema/templateを暗黙に読むため、#69ではwork rootをprotocol assetの自己完結stagingとしてatomic publishする方式を採用した。protocolのGit provenanceはwork rootへコピーせず、常にprotocol rootから取得する。
 - 2026-08-25: bootstrapの再実行判定はrequest本文のcanonical SHA-256、run ID、3 rootの組で行う。output rootをbootstrap時に書かないことで、後段の成果物出力と初期化の冪等性を分離した。
 - 2026-08-25: worker出力を`communicate()`後に上限判定すると大量stdout/stderrを一時的に全量保持するため、selectorで上限+1 byteまで読み、超過時にprocess groupを停止するbounded readerへ変更した。
+- 2026-08-25: role acceptanceは任意shellを正本にせず、gate kind・project-relative target・expected値をschemaで固定した。`next_action`は実行rootをメタデータとして渡し、完了効果はacceptance report hashとchangeset hashの組にした。
+- 2026-08-25: `VALIDATION` gate failureはworkerの修正余地を残すためtask-runtimeではretryableに分類した。workerの直接completeはCLI boundaryで拒否し、Python APIの完了はacceptance executorからだけ呼ぶ契約にした。
+- 2026-08-25: promotion後の障害に備え、attempt内にtransaction journalとproject preimageを保持した。rollbackはcanonical project全体を復元し、runtime state/logも同じpreimageで戻すため、メモリ上のsnapshotだけに依存しない。
+- 2026-08-25: HUMAN_REQUIREDは通知やUIを持たせず、typed journalへの永続化と明示resolve CLIに限定した。同一requestの再送はWAITING_HUMANのno-op、同一responseの再送はPENDINGのno-opとして、leaseとattemptの二重消費を防ぐ。
 
 実装中に判明した制約、失敗、想定との差を、短い証拠とともに記録する。
 
@@ -73,6 +79,8 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 - 2026-08-25: worker adapterのstdout/stderrは固定上限付きselector readerで読み、超過時はprocess groupをkillする。resultはworker応答の受入だけを担い、task runtimeのclaim/completeやoutput adoptionは後続タスクへ分離する。
 - 2026-08-25: worker write setから`07_runtime`のharness-owned state/logを分離するため、role configに`runtime_targets` namespaceを追加し、attempt changesetは`write_targets`だけを検証する。
 - 2026-08-25: canonical checkoutの既存fileがfilesystem由来のhard-link countを持つため、source/protected baselineでは既存linkを読み取り、attempt copy後のworkspaceだけをhard-link拒否対象にした。これによりsnapshot hashは環境依存のinode情報を含まず、worker-created hard-linkはfail closedできる。
+- 2026-08-25: acceptance validationの一部 evaluatorはroot内のconfigを読むため、attempt projectだけでなくprotocol configをephemeral validation rootへコピーした。protocolのschema検証とGit正本は引き続き明示的なprotocol rootを参照する。
+- 2026-08-25: 人間判断のresponseはrequest hash、run/project/task/attempt identity、option IDをすべて照合し、異なるresponseの上書きを拒否する。APPROVE/REJECT/CANCELではselected_optionを許可しない。
 
 決定、理由、代替案、影響、日付を記録する。
 
@@ -89,6 +97,8 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 - 完了 (2026-08-25): `HARNESS-001`で`harness.py bootstrap`、`harness-run.schema.json`、root境界、dependency preflight、protocol provenance、root-aware acceptance/next action、正常・失敗・冪等性テストを追加した。205 unittest、validator、security、docs、graph、diff gateが合格し、次の開始点は`HARNESS-002`。
 - 完了 (2026-08-25): `HARNESS-002`でversioned attempt request/result schema、provider-neutral argv adapter、secret/path/lease redaction、bounded output、fake worker、正常・失敗・冪等性・runtime non-mutation testsを追加した。213 unittest、validator、security、docs、graph、diff gateが合格し、次の開始点は`HARNESS-003`。
 - 完了 (2026-08-25): `HARNESS-003`でattempt workspace manifest/changeset、role worker/runtime namespace、protected root snapshot、safe file checks、atomic candidate promotion、baseline conflict、quarantine/recoveryを追加した。222 unittest、validator、security、chaos、docs、graph、diff gateが合格し、次の開始点は`HARNESS-004`。
+- 完了 (2026-08-25): `HARNESS-004`でtyped acceptance gate/report/transaction schema、全roleのacceptance_checks、explicit-root next action、ephemeral validation、changeset promotionとtask completionのatomic接続、VALIDATION retry、journal/preimage rollback/crash recovery、idempotent effect、直接complete拒否を追加した。229 unittest、validator、security、docs、chaos、graph、diff gateが合格した。次の開始点は`HARNESS-005`。
+- 完了 (2026-08-25): `HARNESS-005`で6分類のtyped human decision request/response schema、journal、WAITING_HUMAN lease解放、attempt非消費、resolve後PENDING、CLI list/resolve、runtime replay、context hash伝播、named stale/replay/option/security/state rulesを追加した。237 unittestとvalidator、security、docs、chaos、graph、diff gateが合格した。次の開始点は`HARNESS-006`。
 
 ## HARNESS-003 ExecPlan
 
@@ -597,6 +607,149 @@ Result bytes are a deterministic function of the request, adapter configuration,
 - Python: `worker_adapter.run_attempt(...)`
 - schemas: `agent-attempt-request.schema.json`, `agent-attempt-result.schema.json`
 - issue: `agentic-art-research#70`; dependency: `HARNESS-001`; next task after completion: `HARNESS-003` / Issue #71
+
+## HARNESS-004 ExecPlan
+
+### Purpose / Big Picture
+
+Issue #72の契約として、roleごとの受入条件を任意shell commandからversioned typed gateへ移行し、
+attempt projectの検証、changeset promotion、task runtimeの`SUCCEEDED`を一つのハーネス境界で実行する。
+失敗時はcanonical projectを変更せず、成功後の障害もtransaction preimageから復元できるため、workerは
+直接完了を宣言できない。
+
+### Context and Orientation
+
+- typed gate/report/transaction contracts: `schemas/acceptance-gate.schema.json`, `schemas/acceptance-report.schema.json`, `schemas/acceptance-transaction.schema.json`
+- role gate source: `config/task-roles.yaml#roles.*.acceptance_checks`
+- executor and transaction boundary: `tools/acceptance_executor.py`
+- typed handoff: `tools/next_action.py`
+- task completion boundary: `tools/task_runtime.py`
+- attempt promotion: `tools/attempt_workspace.py`
+- contract tests: `tests/test_acceptance_executor.py`, `tests/test_next_action.py`, `tests/test_harness.py`
+
+### Progress
+
+- [x] role acceptanceをtyped gateへ移行し、legacy shell acceptanceを拒否する。
+- [x] attempt projectをephemeral validation rootで評価し、reportをdeterministic/idempotentに保存する。
+- [x] changeset promotion、post-promotion validation、task completeをtransaction journalとpreimageで接続する。
+- [x] gate failure、unknown/absolute target、直接CLI complete、completion fault rollbackをテストする。
+- [x] 全release gateを実行し、queue/state/ExecPlanを完了状態へ更新してcommitする。
+
+### Plan of Work
+
+1. gate schemaでkind、relative target、expected値、reportのnamed ruleとsecret-free出力を固定する。
+2. role tableの全acceptanceをtyped checkへ移行し、`next_action`は明示root付きdictだけを返す。
+3. acceptance executorをattempt snapshotへ接続し、全gate成功時だけchangesetをcandidate promotionする。
+4. promotion後のblocking validationとtask runtime completeを実行し、失敗時はpreimage復元、journal更新、named rollbackを行う。
+5. 同一report/changesetの再送、未知kind、絶対path、missing target、baseline conflict、failure retryを検証する。
+6. docs、queue/state、Progress/Discoveries/Decision Log/Outcomesを更新し、全gateを通す。
+
+### Concrete Steps
+
+```bash
+.venv/bin/python -m unittest tests.test_acceptance_executor tests.test_next_action tests.test_harness -v
+.venv/bin/python -m unittest discover -s tests -v
+.venv/bin/python tools/validate.py --check
+.venv/bin/python tools/security_check.py --check
+.venv/bin/python tools/docs_check.py --check
+.venv/bin/python tools/chaos_check.py
+.venv/bin/python tools/build_graph.py --check
+git diff --check
+```
+
+### Validation and Acceptance
+
+- 全roleのacceptanceはtyped gateのみで、legacy shell command、unknown kind、absolute/path traversal targetをnamed ruleで拒否する。
+- `next_action`のacceptanceとon-completionにはshell complete commandがなく、protocol/work/output/project IDが明示される。
+- 受入reportはschema-validで、gate ID/status/rule/remediation/target/expected/actualを持ち、同じ入力と時刻からbyte-identicalになる。
+- 一つでもgateが失敗すればworker変更はcanonicalへ反映されず、taskは`VALIDATION` retryable failureになる。
+- 全gate成功時だけchangesetがpromoteされ、blocking validation後にtaskが`SUCCEEDED`となる。既存成功attemptの同一effectは同じ結果を返す。
+- promotion後のvalidationまたはcomplete faultではcanonical project、research-state、run-logがpreimageへ復元され、`ACCEPTANCE-ROLLBACK`を返す。
+- unittest、validator、security、docs、chaos、graph、diffの全gateが合格する。
+
+### Idempotence and Recovery
+
+attempt内の`transaction.json`は`PREPARED`、`PROMOTED`、`COMMITTED`、`ROLLED_BACK`を記録し、
+`transaction-before/`にpromotion前のproject bytesを保持する。同一attemptの再送は成功済みtaskの
+effect keyとreport/changeset hashを照合し、異なる結果は上書きしない。プロセスがpromotion直後に
+停止した場合は`recover_attempt_transaction`がjournalとmanifestを照合してpreimageへ戻す。
+
+### Interfaces and Dependencies
+
+- Python: `acceptance_executor.execute_acceptance`, `acceptance_executor.complete_attempt`, `acceptance_executor.recover_attempt_transaction`
+- schemas: `acceptance-gate.schema.json`, `acceptance-report.schema.json`, `acceptance-transaction.schema.json`
+- CLI boundary: `task_runtime.py complete` requires `--harness-completion` and is not a worker completion API
+- issue: `agentic-art-research#72`; dependencies: `HARNESS-001`, `HARNESS-003`; next task: `HARNESS-005` / Issue #73
+
+## HARNESS-005 ExecPlan
+
+### Purpose / Big Picture
+
+Issue #73の契約として、設計仕様§6.2の6分類だけを人間判断へ停止させる。workerの
+`HUMAN_REQUIRED` resultからdecision requestを作り、canonical hashとrun/project/task/attemptへ
+束縛して永続化する。人間のresponseは`harness.py decisions resolve`で一度だけ適用し、同じtaskを
+新leaseの取得可能な状態へ戻す。通知配送、UI、外部送信は行わない。
+
+### Context and Orientation
+
+- request/response contracts: `schemas/human-decision-request.schema.json`, `schemas/human-decision-response.schema.json`, `schemas/human-decisions.schema.json`
+- persisted project journal: `templates/project/07_runtime/human-decisions.yaml`
+- persistence and hash binding: `tools/human_decisions.py`
+- state transition/replay: `tools/task_runtime.py`
+- CLI and HUMAN_REQUIRED boundary: `tools/harness.py`, `tools/worker_adapter.py`
+- context handoff/validation: `tools/context_pack.py`, `tools/next_action.py`, `tools/validate.py`
+- tests: `tests/test_human_decisions.py`, `tests/test_worker_adapter.py`
+
+### Progress
+
+- [x] §6.2の6分類、request/response schema、vocabulary、journal templateを固定した。
+- [x] HUMAN_REQUIREDをhash・identity・security付きrequestへ正規化し、WAITING_HUMANでleaseを解放した。
+- [x] list/resolve CLI、PENDING再開、runtime replay、contextへのresponse hash伝播を実装した。
+- [x] 同一request/responseの再送を冪等化し、stale/replay/option/state/securityをnamed ruleで拒否した。
+- [x] 全release gateを実行し、queue/state/ExecPlanを次のREADY taskへ更新した。
+
+### Plan of Work
+
+1. §6.2の6カテゴリ、request/response fields、option/action/default-safe-action、hashをschemaとconfig vocabularyへ固定する。
+2. HUMAN_REQUIRED resultをrequestへ正規化し、security marker、category、identity、canonical hashを検証してjournalへ保存する。
+3. task runtimeへ`WAITING_HUMAN`、lease解放、attempt非消費、resolve後`PENDING`、dependent非terminalを追加する。
+4. list/resolve CLI、stale/replay/option/state checks、runtime event replay、response ID/hashをcontext packへ接続する。
+5. 正常・失敗・CLI・replay・adapter integration testsとdocsを追加し、全gateを通す。
+
+### Concrete Steps
+
+```bash
+.venv/bin/python -m unittest tests.test_human_decisions tests.test_worker_adapter tests.test_task_runtime -v
+.venv/bin/python -m unittest discover -s tests -v
+.venv/bin/python tools/validate.py --check
+.venv/bin/python tools/security_check.py --check
+.venv/bin/python tools/docs_check.py --check
+.venv/bin/python tools/chaos_check.py
+.venv/bin/python tools/build_graph.py --check
+git diff --check
+```
+
+### Validation and Acceptance
+
+- 未承認category、private marker、absolute path、invalid/missing request fieldsはnamed ruleで拒否される。
+- HUMAN_REQUIREDのtaskは`WAITING_HUMAN`、lease null、attempt不変、dependent非terminalとなり、requestが決定的JSON/YAMLへ残る。
+- `decisions list`は未解決requestのみをID順で返し、valid resolveはresponse hashとrequest hashを照合してtaskを`PENDING`へ戻す。
+- stale hash、別run/project/task/attempt、unknown option、reason/schema欠落、二重resolveをそれぞれnamed ruleで拒否する。同一responseの再送だけは同じ結果を返す。
+- run-log replayはWAITING_HUMANとresolve後PENDINGを同じtask runtimeへ再構築し、次のcontextにresponse ID/hashとactionだけを渡す。
+- §6.3の人間不要ケースはrequestを生成せず、既存のstopping/completion/gap contractだけを使う。
+- 全unittest、validator、security、docs、chaos、graph、diff gateが合格する。
+
+### Idempotence and Recovery
+
+request/responseは自己hashを除いたcanonical payloadのSHA-256で固定する。journalとruntime更新は
+失敗時に元のbytesへ戻す。resolve途中の中断はrun-logに残る単一イベントを再利用し、同じresponseの
+再適用はno-op、異なるresponseやstale requestは上書きしない。
+
+### Interfaces and Dependencies
+
+- CLI: `tools/harness.py decisions list|resolve project/<slug> --work-root <root> [--response <json>]`
+- Python: `human_decisions.record_human_required`, `human_decisions.resolve_request`, `task_runtime.replay_runtime`
+- issue: `agentic-art-research#73`; dependencies: `HARNESS-001`, `HARNESS-002`, `HARNESS-004`; next task: `HARNESS-006` / Issue #74
 
 ## 実行規則
 

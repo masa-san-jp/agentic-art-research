@@ -73,6 +73,7 @@ def build_context_pack(
     *,
     protocol_root: Path | None = None,
     work_root: Path | None = None,
+    human_decision: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     # Context files are project-owned and therefore always read from the work
     # root.  protocol_root is part of the shared API even though this pack has
@@ -83,7 +84,7 @@ def build_context_pack(
         raise ValueError(f"unknown role: {role}")
     project = _project_path(root, target)
     task = _load_task(project, task_id)
-    return {
+    pack = {
         "schema": CONTEXT_PACK_SCHEMA,
         "project_id": target,
         "task_id": task_id,
@@ -93,6 +94,9 @@ def build_context_pack(
         "acceptance_tests": _read_source(project, ACCEPTANCE_TESTS_PATH),
         "evidence": [_read_source(project, relative) for relative in ROLE_SOURCE_PATHS[role]],
     }
+    if human_decision is not None:
+        pack["human_decision"] = dict(human_decision)
+    return pack
 
 
 def main() -> int:

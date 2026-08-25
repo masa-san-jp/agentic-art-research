@@ -166,8 +166,10 @@ class HarnessBootstrapContractTest(unittest.TestCase):
             output_root=self.output,
         )
         self.assertTrue(answer["acceptance"])
-        self.assertTrue(all(str(REPO_ROOT / "tools") in command or "python3 -c" in command for command in answer["acceptance"]))
-        self.assertTrue(all(str(self.work) in command for command in answer["acceptance"]))
+        self.assertTrue(all(isinstance(check, dict) for check in answer["acceptance"]))
+        self.assertTrue(all(check["protocol_root"] == str(REPO_ROOT.resolve()) for check in answer["acceptance"]))
+        self.assertTrue(all(check["work_root"] == str(self.work.resolve()) for check in answer["acceptance"]))
+        self.assertTrue(all("command" not in check for check in answer["acceptance"]))
         self.assertEqual(str(self.output.resolve()), answer["roots"]["output_root"])
 
 

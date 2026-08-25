@@ -80,7 +80,17 @@
       "maximum": 2
     },
     "taskStatus": {
-      "enum": ["PENDING", "RUNNING", "SUCCEEDED", "FAILED", "BLOCKED"]
+      "enum": ["PENDING", "RUNNING", "WAITING_HUMAN", "SUCCEEDED", "FAILED", "BLOCKED"]
+    },
+    "humanDecisionCategory": {
+      "enum": [
+        "PERSONAL_DATA_ACCESS",
+        "EXTERNAL_ACTION",
+        "ACCESS_CLASSIFICATION_CHANGE",
+        "RIGHTS_OR_SAFETY_UNCERTAINTY",
+        "CENTRAL_PROPOSITION_CHANGE",
+        "SCOPE_OR_BUDGET_EXPANSION"
+      ]
     },
     "taskFailureClass": {
       "enum": ["TRANSIENT", "TIMEOUT", "RATE_LIMIT", "LEASE_EXPIRED", "PERMANENT", "VALIDATION", "AUTHORIZATION", "DEPENDENCY_FAILED"]

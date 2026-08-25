@@ -25,8 +25,21 @@ def result(request: dict[str, object], *, status: str = "SUCCEEDED") -> dict[str
             "failure": None,
             "human_decision_request": {
                 "id": "DR001",
+                "project_id": str(request.get("project_id", "project/harness-study")),
+                "task_id": str(request.get("task_id", "HARNESS002")),
+                "human_decision_category": "CENTRAL_PROPOSITION_CHANGE",
                 "question": "Which reviewed direction should continue?",
-                "options": ["direction-a", "direction-b"],
+                "facts": [
+                    {"id": "F001", "statement": "Two reviewed directions remain viable.", "source_refs": ["fixture/source-001"]}
+                ],
+                "options": [
+                    {"id": "OPT-direction-a", "label": "Direction A", "consequence": "Keep the current research scope."},
+                    {"id": "OPT-direction-b", "label": "Direction B", "consequence": "Change the central proposition."}
+                ],
+                "recommended_option": "OPT-direction-a",
+                "impact": "The selected direction changes the downstream production translation.",
+                "default_safe_action": "DEFER",
+                "source_refs": ["fixture/source-001"],
             },
             "diagnostics": {
                 "stderr": "",

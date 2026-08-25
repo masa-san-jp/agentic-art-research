@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/acceptance-gate.schema.json",
+  "title": "Typed acceptance gate",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "kind"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^AG-[A-Z0-9-]+$"},
+    "kind": {
+      "enum": [
+        "repository_validate",
+        "project_validate",
+        "collection_minimum",
+        "run_event_minimum",
+        "stopping_evaluate",
+        "hypothesis_selection",
+        "medium_decision",
+        "graph_current",
+        "completion_status"
+      ]
+    },
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+    },
+    "collection_key": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"},
+    "event_type": {"type": "string", "pattern": "^[A-Z][A-Z0-9_-]*$"},
+    "minimum": {"type": "integer", "minimum": 0},
+    "expected": {}
+  }
+}

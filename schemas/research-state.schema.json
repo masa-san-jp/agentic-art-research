@@ -170,6 +170,30 @@
           ],
           "minLength": 1
         },
+        "human_decision_request": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["id", "request_sha256", "category"],
+          "properties": {
+            "id": {"type": "string", "pattern": "^DR[0-9]{3,}$"},
+            "request_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+            "category": {"$ref": "common.schema.json#/$defs/humanDecisionCategory"}
+          }
+        },
+        "human_decision_response": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["id", "request_id", "request_sha256", "response_sha256", "action", "resolved_at"],
+          "properties": {
+            "id": {"type": "string", "pattern": "^DRR[0-9]{3,}$"},
+            "request_id": {"type": "string", "pattern": "^DR[0-9]{3,}$"},
+            "request_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+            "response_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+            "action": {"enum": ["APPROVE", "REJECT", "SELECT", "CANCEL"]},
+            "selected_option": {"type": ["string", "null"]},
+            "resolved_at": {"$ref": "common.schema.json#/$defs/timestamp"}
+          }
+        },
         "lease_expiries": {
           "type": "integer",
           "minimum": 0,

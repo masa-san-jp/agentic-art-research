@@ -50,6 +50,63 @@ worker processのcwdは`<work-root>/.harness/attempts/<run>/<task>/<attempt>/pro
 
 `inspect_attempt`はprotocol root、canonical project以外のwork root、別project、data、output rootの変更も検出する。許可外path、schema/private/secret/size違反、symlink・hard-link・特殊file・path traversal・case/Unicode collisionがある場合、許可内変更を含めて全attemptを拒否する。`promote_attempt`はproject lock下でbaseline hashを再確認し、candidate treeを作ってから交換するため、同時変更は`ATTEMPT-BASELINE-CONFLICT`となり既存projectを上書きしない。
 
+### Typed acceptance and task completion
+
+`next_action.py`が返す`acceptance`は、`id`・`kind`・project-relativeな判定対象と、明示的な
+`protocol_root`・`work_root`・`output_root`を持つtyped gateである。任意shell文字列、cwd、PATH、
+workerが指定する完了コマンドは受け付けない。roleの正本は`config/task-roles.yaml#acceptance_checks`、
+gateの語彙とレポートは`schemas/acceptance-gate.schema.json`と
+`schemas/acceptance-report.schema.json`にある。
+
+workerがattempt projectを編集した後は、次のハーネスAPIだけが受入判定、changeset promotion、
+blocking validation、task runtimeの`SUCCEEDED`を順に実行する。
+
+```python
+from acceptance_executor import complete_attempt
+
+complete_attempt(
+    attempt,
+    protocol_root=protocol_root,
+    work_root=work_root,
+    output_root=output_root,
+    worker_id=worker_id,
+    lease_token=lease_token,
+    evaluated_at="2026-08-25T00:00:00+09:00",
+)
+```
+
+gateが一つでも失敗した場合は`ACCEPTANCE-GATE-FAILED`のレポートを残し、attemptの変更は
+promotionせず、taskは`VALIDATION`として再試行可能になる。promotion後のvalidationまたは
+completeが失敗した場合は、attempt内のtransaction journalとpreimageからcanonical project、
+runtime state、run-logを復元する。成功済みattemptの同じreport/changesetの再送は同じ結果を返し、
+異なるeffectは`ACCEPTANCE-PROMOTION-CONFLICT`で拒否する。
+
+`tools/task_runtime.py ... complete`の直接CLI呼び出しは、typed acceptanceを経ない限り
+`TASK-COMPLETE-WITHOUT-GATE`で拒否される。workerはruntime state/logを直接書かず、roleの
+`runtime_targets`はharness namespaceとして管理する。
+
+### Human decision request / resolve
+
+設計仕様§6.2の6分類に該当する場合だけ、adapterの`HUMAN_REQUIRED` resultを
+`harness.record_attempt_result`へ渡す。requestは`07_runtime/human-decisions.yaml`へ保存され、
+taskは`WAITING_HUMAN`へ移る。leaseは解放され、attempt回数は消費せず、依存taskはBLOCKEDにしない。
+
+```bash
+python3 tools/harness.py decisions list project/example \
+  --protocol-root <protocol-root> --work-root <work-root>
+python3 tools/harness.py decisions resolve project/example \
+  --protocol-root <protocol-root> --work-root <work-root> \
+  --response <human-decision-response.json>
+```
+
+request/responseは`human-decision-request.schema.json`と
+`human-decision-response.schema.json`に適合し、canonical hash、run/project/task/attempt、actor、
+理由、選択肢を固定する。stale hash、別identity、unknown option、二重解決、未承認categoryは
+`HUMAN-DECISION-STALE`、`HUMAN-DECISION-STATE`、`HUMAN-DECISION-OPTION`、
+`HUMAN-DECISION-REPLAY`、`HUMAN-DECISION-CATEGORY`として拒否する。
+resolve後はtaskが新しいleaseを取得できる`PENDING`へ戻り、次のcontext packにresponse ID/hashと
+actionだけを含める。承認に書かれていない制作判断は推測せず、通知や外部送信は行わない。
+
 queue/stateの実行順序はrepository rootの`execution/task-queue.yaml`と`execution/state.yaml`が正本である。次のtaskを手で推測せず、次で矛盾を検査する。
 
 ```bash

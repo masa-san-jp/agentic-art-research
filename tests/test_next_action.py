@@ -152,11 +152,16 @@ class EntryPointTests(unittest.TestCase):
 
         self.assertEqual("critic", answer["role"])
 
-    def test_acceptance_commands_name_the_actual_project(self):
+    def test_acceptance_is_typed_and_names_the_actual_project(self):
         answer = next_action.build_next_action(self.root, "project/probe", "tester", NOW)
 
-        self.assertTrue(all("{slug}" not in command for command in answer["acceptance"]))
-        self.assertTrue(any("probe" in command for command in answer["acceptance"]))
+        self.assertTrue(answer["acceptance"])
+        self.assertTrue(all(isinstance(check, dict) for check in answer["acceptance"]))
+        self.assertTrue(all(check["project_id"] == "project/probe" for check in answer["acceptance"]))
+        self.assertTrue(all("command" not in check for check in answer["acceptance"]))
+        self.assertTrue(all(check["work_root"] == str(self.root.resolve()) for check in answer["acceptance"]))
+        self.assertTrue(answer["on_completion"]["task_runtime_owned"])
+        self.assertEqual("tools.acceptance_executor.complete_attempt", answer["on_completion"]["executor"])
 
     def test_asking_again_returns_the_held_task_instead_of_taking_another_attempt(self):
         first = next_action.build_next_action(self.root, "project/probe", "tester", NOW)
@@ -195,7 +200,15 @@ class EntryPointTests(unittest.TestCase):
         self.assertEqual("TASK_PREVIEWED", preview["status"])
         self.assertEqual("TASK_CLAIMED", live["status"])
         for key in ("task_id", "role", "context", "write_targets", "acceptance"):
-            self.assertEqual(preview[key], live[key], key)
+            if key == "acceptance":
+                strip_roots = lambda checks: [
+                    {field: value for field, value in check.items()
+                     if field not in {"protocol_root", "work_root", "output_root"}}
+                    for check in checks
+                ]
+                self.assertEqual(strip_roots(preview[key]), strip_roots(live[key]), key)
+            else:
+                self.assertEqual(preview[key], live[key], key)
         self.assertIsNone(preview["lease"])
         self.assertIsNotNone(live["lease"])
 

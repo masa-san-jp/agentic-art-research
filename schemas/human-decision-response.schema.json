@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/human-decision-response.schema.json",
+  "title": "Human decision response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "id", "decision_id", "project_id", "run_id", "task_id", "attempt_id",
+    "request_sha256", "action", "selected_option", "actor_id", "reason", "resolved_at", "response_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "id": {"type": "string", "pattern": "^DRR[0-9]{3,}$"},
+    "decision_id": {"type": "string", "pattern": "^DR[0-9]{3,}$"},
+    "project_id": {"$ref": "common.schema.json#/$defs/projectId"},
+    "run_id": {"type": "string", "pattern": "^HR[0-9]{3,}$"},
+    "task_id": {"type": "string", "pattern": "^[A-Z][A-Z0-9_-]{2,}$"},
+    "attempt_id": {"type": "string", "pattern": "^AT[A-Za-z0-9_-]{3,}$"},
+    "request_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "action": {"enum": ["APPROVE", "REJECT", "SELECT", "CANCEL"]},
+    "selected_option": {"type": ["string", "null"]},
+    "actor_id": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "reason": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "resolved_at": {"$ref": "common.schema.json#/$defs/timestamp"},
+    "response_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"action": {"const": "SELECT"}}, "required": ["action"]},
+      "then": {"properties": {"selected_option": {"type": "string", "minLength": 1}}}
+    },
+    {
+      "if": {"properties": {"action": {"enum": ["REJECT", "CANCEL"]}}, "required": ["action"]},
+      "then": {"properties": {"selected_option": {"type": "null"}}}
+    }
+  ]
+}

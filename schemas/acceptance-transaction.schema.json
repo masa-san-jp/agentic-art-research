@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/acceptance-transaction.schema.json",
+  "title": "Acceptance transaction journal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "transaction_id",
+    "project_id",
+    "run_id",
+    "task_id",
+    "attempt_id",
+    "report_id",
+    "report_sha256",
+    "changeset_sha256",
+    "stage",
+    "updated_at"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "transaction_id": {"type": "string", "pattern": "^TX-[0-9a-f]{16}$"},
+    "project_id": {"$ref": "common.schema.json#/$defs/projectId"},
+    "run_id": {"type": "string", "pattern": "^HR[0-9]{3,}$"},
+    "task_id": {"type": "string", "pattern": "^[A-Z][A-Z0-9_-]{2,}$"},
+    "attempt_id": {"type": "string", "pattern": "^AT[A-Za-z0-9_-]{3,}$"},
+    "report_id": {"type": "string", "pattern": "^AR-[0-9a-f]{16}$"},
+    "report_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "changeset_sha256": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "stage": {"enum": ["PREPARED", "PROMOTED", "COMMITTED", "ROLLED_BACK"]},
+    "updated_at": {"$ref": "common.schema.json#/$defs/timestamp"}
+  }
+}

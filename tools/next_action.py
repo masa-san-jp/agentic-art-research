@@ -145,13 +145,42 @@ def _acceptance(
     protocol_root: Path | None = None,
     work_root: Path | None = None,
     output_root: Path | None = None,
-) -> list[str]:
-    if protocol_root is None and work_root is None and output_root is None:
-        return [str(command).replace("{slug}", slug) for command in role_entry.get("acceptance") or []]
-    protocol = (protocol_root or work_root).resolve()
+) -> list[dict[str, Any]]:
+    """Return only typed gates; completion is owned by the harness executor.
+
+    The old role table exposed arbitrary shell commands.  Keeping command
+    rendering here would reintroduce cwd/PATH/injection ambiguity, so the
+    handoff contains the declarative gate plus all roots needed by the
+    provider-neutral executor.
+    """
+
+    if "acceptance" in role_entry:
+        raise NextActionError("legacy shell acceptance is forbidden")
+    raw_checks = role_entry.get("acceptance_checks")
+    if not isinstance(raw_checks, list) or not raw_checks:
+        raise NextActionError("role acceptance_checks must be a non-empty list")
+    protocol = (protocol_root or work_root or ROOT).resolve()
     work = (work_root or protocol).resolve()
     output = (output_root or work / "data" / "handoffs").resolve()
-    return [_rooted_command(str(command), slug, protocol, work, output) for command in role_entry.get("acceptance") or []]
+    acceptance: list[dict[str, Any]] = []
+    for raw in raw_checks:
+        if not isinstance(raw, dict) or not isinstance(raw.get("id"), str) or not isinstance(raw.get("kind"), str):
+            raise NextActionError("acceptance_checks must contain typed id and kind")
+        check = dict(raw)
+        if "path" in check:
+            path = check["path"]
+            if not isinstance(path, str) or Path(path).is_absolute() or ".." in Path(path).parts:
+                raise NextActionError("acceptance check path must stay inside the project")
+        check.update(
+            {
+                "project_id": f"project/{slug}",
+                "protocol_root": str(protocol),
+                "work_root": str(work),
+                "output_root": str(output),
+            }
+        )
+        acceptance.append(check)
+    return acceptance
 
 
 def _at_end(
@@ -354,6 +383,18 @@ def build_next_action(
     protocol_text = (protocol / PROTOCOL_PATH).read_text(encoding="utf-8")
     lease = claim.get("lease") or {}
     lease_token = lease.get("token", "<token>")
+    stored_decision = task.get("human_decision_response")
+    human_decision = None
+    if isinstance(stored_decision, dict):
+        human_decision = {
+            "request_id": stored_decision.get("request_id"),
+            "request_sha256": stored_decision.get("request_sha256"),
+            "response_id": stored_decision.get("id"),
+            "response_sha256": stored_decision.get("response_sha256"),
+            "action": stored_decision.get("action"),
+            "selected_option": stored_decision.get("selected_option"),
+            "resolved_at": stored_decision.get("resolved_at"),
+        }
 
     result = {
         "project_id": target,
@@ -361,16 +402,24 @@ def build_next_action(
         "task_id": task_id,
         "role": role,
         "lease": claim.get("lease"),
-        "context": build_context_pack(work, target, task_id, role),
+        "context": build_context_pack(
+            work,
+            target,
+            task_id,
+            role,
+            protocol_root=protocol,
+            work_root=work,
+            human_decision=human_decision,
+        ),
         "instructions": protocol_sections(protocol_text, list(role_entry.get("protocol_sections") or [])),
         "write_targets": _write_targets(role_entry),
         "runtime_targets": _runtime_targets(role_entry),
         "acceptance": _acceptance(
             role_entry,
             slug,
-            protocol_root=protocol if root_aware else None,
-            work_root=work if root_aware else None,
-            output_root=output if root_aware else None,
+            protocol_root=protocol,
+            work_root=work,
+            output_root=output,
         ),
         "budget_remaining": budget,
         "stopping": stopping_policy.evaluate_project(work, target),
@@ -378,18 +427,23 @@ def build_next_action(
             "operations": (boundary.get("worker_policy") or {}).get("forbidden_operations") or [],
             "project_prohibited_actions": constraints.get("prohibited_actions") or [],
         },
-        "on_completion": [
-            *_acceptance(
+        "on_completion": {
+            "executor": "tools.acceptance_executor.complete_attempt",
+            "acceptance": _acceptance(
                 role_entry,
                 slug,
-                protocol_root=protocol if root_aware else None,
-                work_root=work if root_aware else None,
-                output_root=output if root_aware else None,
+                protocol_root=protocol,
+                work_root=work,
+                output_root=output,
             ),
-            f"python3 tools/task_runtime.py project/{slug} complete --task-id {task_id} "
-            f"--worker-id {worker_id} --lease-token {lease_token} --now <RFC3339>",
-            f"python3 tools/next_action.py project/{slug} --worker {worker_id} --now <RFC3339>",
-        ],
+            "task_runtime_owned": True,
+            "next_action": {
+                "tool": "tools.next_action.build_next_action",
+                "project_id": target,
+                "worker_id": worker_id,
+                "now": "<RFC3339>",
+            },
+        },
     }
     if root_aware:
         result["roots"] = {
@@ -397,21 +451,6 @@ def build_next_action(
             "work_root": str(work),
             "output_root": str(output),
         }
-        result["on_completion"][-2] = _rooted_command(
-            f"python3 tools/task_runtime.py project/{slug} complete --task-id {task_id} "
-            f"--worker-id {worker_id} --lease-token {lease_token} --now <RFC3339>",
-            slug,
-            protocol,
-            work,
-            output,
-        )
-        result["on_completion"][-1] = _rooted_command(
-            f"python3 tools/next_action.py project/{slug} --worker {worker_id} --now <RFC3339>",
-            slug,
-            protocol,
-            work,
-            output,
-        )
     return result
 
 

@@ -24,11 +24,13 @@ from zoneinfo import ZoneInfo
 from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
 
-from _common import atomic_write_text, load_json, load_yaml, stable_json
+from _common import ROOT, atomic_write_text, load_json, load_yaml, stable_json
 from accept_research_request import RequestAcceptanceError, accept_research_request
 from canonical import canonical_sha256
 from harness_paths import HarnessPathError, HarnessPaths, PROJECT_SLUG, ensure_empty_directory
+import human_decisions
 from new_project import create_project
+import task_runtime
 from task_runtime import initialize_runtime
 from validate import validate_repository
 
@@ -345,39 +347,101 @@ def bootstrap(
         raise
 
 
+def record_attempt_result(
+    *,
+    protocol_root: Path,
+    work_root: Path,
+    project_id: str,
+    run_id: str,
+    task_id: str,
+    attempt_id: str,
+    worker_id: str,
+    lease_token: str,
+    result: dict[str, Any],
+    now: str,
+) -> dict[str, Any] | None:
+    """Persist a HUMAN_REQUIRED worker result and release its task lease."""
+
+    if result.get("status") != "HUMAN_REQUIRED":
+        return None
+    request = result.get("human_decision_request")
+    if not isinstance(request, dict):
+        raise HarnessError("HUMAN-DECISION-CATEGORY", "HUMAN_REQUIRED result has no typed decision request")
+    try:
+        return human_decisions.record_human_required(
+            protocol_root=protocol_root,
+            work_root=work_root,
+            project_id=project_id,
+            run_id=run_id,
+            task_id=task_id,
+            attempt_id=attempt_id,
+            worker_id=worker_id,
+            lease_token=lease_token,
+            result_request=request,
+            now=now,
+        )
+    except (human_decisions.HumanDecisionError, task_runtime.TaskRuntimeError) as exc:
+        raise HarnessError(getattr(exc, "rule", "HUMAN-DECISION-STATE"), str(exc)) from exc
+
+
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Bootstrap an isolated agent-harness run.")
-    parser.add_argument("command", choices=["bootstrap"])
-    source = parser.add_mutually_exclusive_group(required=True)
+    parser = argparse.ArgumentParser(description="Bootstrap an isolated agent-harness run or manage human decisions.")
+    parser.add_argument("command", choices=["bootstrap", "decisions"])
+    parser.add_argument("decision_command", nargs="?", choices=["list", "resolve"])
+    parser.add_argument("target", nargs="?")
+    source = parser.add_mutually_exclusive_group(required=False)
     source.add_argument("--request", type=Path, help="versioned research-request YAML/JSON")
     source.add_argument("--slug", help="project slug for the minimal slug/title entry point")
     parser.add_argument("--title", help="project title; required with --slug")
     parser.add_argument("--creator-id")
-    parser.add_argument("--protocol-root", type=Path, required=True)
-    parser.add_argument("--work-root", type=Path, required=True)
-    parser.add_argument("--output-root", type=Path, required=True)
-    parser.add_argument("--run-id", required=True)
+    parser.add_argument("--protocol-root", type=Path)
+    parser.add_argument("--work-root", type=Path)
+    parser.add_argument("--output-root", type=Path)
+    parser.add_argument("--root", type=Path, default=ROOT)
+    parser.add_argument("--run-id")
     parser.add_argument("--now", help="RFC 3339 initialization timestamp")
     parser.add_argument("--profiles-root", type=Path)
     parser.add_argument("--art-history-root", type=Path)
     parser.add_argument("--production-schema", type=Path)
+    parser.add_argument("--response", type=Path)
     args = parser.parse_args()
     try:
-        result = bootstrap(
-            protocol_root=args.protocol_root,
-            work_root=args.work_root,
-            output_root=args.output_root,
-            run_id=args.run_id,
-            now=args.now,
-            request_path=args.request,
-            slug=args.slug,
-            title=args.title,
-            creator_id=args.creator_id,
-            profiles_root=args.profiles_root,
-            art_history_root=args.art_history_root,
-            production_schema=args.production_schema,
-        )
-    except (HarnessError, HarnessPathError, RequestAcceptanceError, OSError, ValueError) as exc:
+        if args.command == "bootstrap":
+            if args.request is None and args.slug is None or args.request is not None and args.slug is not None:
+                parser.error("bootstrap requires exactly one of --request or --slug")
+            if not all((args.protocol_root, args.work_root, args.output_root, args.run_id)):
+                parser.error("bootstrap requires --protocol-root, --work-root, --output-root, and --run-id")
+            result = bootstrap(
+                protocol_root=args.protocol_root,
+                work_root=args.work_root,
+                output_root=args.output_root,
+                run_id=args.run_id,
+                now=args.now,
+                request_path=args.request,
+                slug=args.slug,
+                title=args.title,
+                creator_id=args.creator_id,
+                profiles_root=args.profiles_root,
+                art_history_root=args.art_history_root,
+                production_schema=args.production_schema,
+            )
+        else:
+            if args.decision_command not in {"list", "resolve"} or not args.target:
+                parser.error("decisions requires list|resolve and project/<slug>")
+            protocol_root = (args.protocol_root or args.root).resolve()
+            work_root = (args.work_root or args.root).resolve()
+            if args.decision_command == "list":
+                result = {"project_id": args.target, "requests": human_decisions.unresolved_requests(work_root=work_root, project_id=args.target)}
+            else:
+                if args.response is None:
+                    parser.error("decisions resolve requires --response")
+                result = human_decisions.resolve_request(
+                    protocol_root=protocol_root,
+                    work_root=work_root,
+                    project_id=args.target,
+                    response=load_json(args.response),
+                )
+    except (HarnessError, HarnessPathError, RequestAcceptanceError, human_decisions.HumanDecisionError, task_runtime.TaskRuntimeError, OSError, ValueError) as exc:
         print(f"FAILED: {exc}")
         return 1
     print(stable_json(result), end="")

@@ -65,6 +65,7 @@ class WorkerAdapterContractTest(unittest.TestCase):
         after = sorted(path.relative_to(REPO_ROOT).as_posix() for path in REPO_ROOT.rglob("*") if path.is_file())
         self.assertEqual("HUMAN_REQUIRED", result["status"])
         self.assertIsNotNone(result["human_decision_request"])
+        self.assertEqual("CENTRAL_PROPOSITION_CHANGE", result["human_decision_request"]["human_decision_category"])
         self.assertEqual(before, after)
 
     def test_failure_classes_cover_process_and_protocol_faults(self) -> None:

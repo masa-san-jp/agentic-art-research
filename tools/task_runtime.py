@@ -67,7 +67,7 @@ def _runtime_policy(root: Path) -> tuple[dict[str, Any], set[str], set[str], set
     failure_classes = set(vocabulary.get("task_failure_classes", [])) if isinstance(vocabulary, dict) else set()
     retryable = set(configured.get("retryable_failure_classes", []))
     terminal = set(configured.get("terminal_failure_classes", []))
-    if task_statuses != {"PENDING", "RUNNING", "SUCCEEDED", "FAILED", "BLOCKED"}:
+    if task_statuses != {"PENDING", "RUNNING", "WAITING_HUMAN", "SUCCEEDED", "FAILED", "BLOCKED"}:
         raise TaskRuntimeError("config/vocabularies.yaml: task_statuses must declare the runtime statuses")
     if not retryable or not terminal or not retryable.isdisjoint(terminal):
         raise TaskRuntimeError("config/stopping-policy.yaml: task failure classes must be disjoint")
@@ -113,6 +113,8 @@ def _canonical_tasks(root: Path, definitions: Iterable[dict[str, Any]]) -> dict[
             "result": None,
             "failure": None,
             "effect_key": None,
+            "human_decision_request": None,
+            "human_decision_response": None,
         }
         if title is not None:
             task["title"] = title
@@ -492,6 +494,198 @@ def resume(root: Path, target: str, *, now: str | None = None) -> dict[str, Any]
     return _mutate(_project(root.resolve(), target), mutate)
 
 
+def wait_for_human(
+    root: Path,
+    target: str,
+    task_id: str,
+    worker_id: str,
+    lease_token: str,
+    request: dict[str, Any],
+    *,
+    now: str | None = None,
+) -> dict[str, Any]:
+    """Release a worker lease while a typed human decision is pending."""
+
+    occurred_at = _timestamp(now)
+    if not isinstance(request, dict):
+        raise TaskRuntimeError("HUMAN-DECISION-STATE: request must be an object")
+    request_id = request.get("id")
+    request_sha256 = request.get("request_sha256")
+    category = request.get("human_decision_category")
+    if not (
+        isinstance(request_id, str)
+        and re.fullmatch(r"DR[0-9]{3,}", request_id)
+        and isinstance(request_sha256, str)
+        and re.fullmatch(r"sha256:[0-9a-f]{64}", request_sha256)
+        and isinstance(category, str)
+        and category
+    ):
+        raise TaskRuntimeError("HUMAN-DECISION-STATE: request identity is incomplete")
+
+    def mutate(state: dict[str, Any], events: list[dict[str, Any]]) -> tuple[dict[str, Any], list[dict[str, Any]], Any]:
+        runtime = state[TASK_RUNTIME_KEY]
+        generated: list[dict[str, Any]] = []
+        _reconcile_new_events(runtime, events, generated, occurred_at)
+        task = _task(runtime, task_id)
+        _assert_lease(task, worker_id, lease_token)
+        task["attempts"] = max(0, int(task["attempts"]) - 1)
+        task["status"] = "WAITING_HUMAN"
+        task["lease"] = None
+        task["failure"] = None
+        task["human_decision_request"] = {
+            "id": request_id,
+            "request_sha256": request_sha256,
+            "category": category,
+        }
+        task["human_decision_response"] = None
+        if state.get("current_task") == task_id:
+            state["current_task"] = None
+        generated.append(
+            _event(
+                events + generated,
+                "TASK_WAITING_HUMAN",
+                occurred_at,
+                task_id=task_id,
+                attempt=int(task["attempts"]) + 1,
+                attempts_after=task["attempts"],
+                worker_id=worker_id,
+                request_id=request_id,
+                request_sha256=request_sha256,
+                human_decision_category=category,
+            )
+        )
+        return state, generated, {"task_id": task_id, "status": "WAITING_HUMAN", "request_id": request_id}
+
+    return _mutate(_project(root.resolve(), target), mutate)
+
+
+def resolve_human(
+    root: Path,
+    target: str,
+    task_id: str,
+    request_id: str,
+    request_sha256: str,
+    response: dict[str, Any],
+    *,
+    now: str | None = None,
+) -> dict[str, Any]:
+    """Bind a validated response to a waiting task and make it ready again."""
+
+    occurred_at = _timestamp(now)
+    response_id = response.get("id") if isinstance(response, dict) else None
+    response_sha256 = response.get("response_sha256") if isinstance(response, dict) else None
+    action = response.get("action") if isinstance(response, dict) else None
+    selected_option = response.get("selected_option") if isinstance(response, dict) else None
+    if not (
+        isinstance(response_id, str)
+        and re.fullmatch(r"DRR[0-9]{3,}", response_id)
+        and isinstance(response_sha256, str)
+        and re.fullmatch(r"sha256:[0-9a-f]{64}", response_sha256)
+        and action in {"APPROVE", "REJECT", "SELECT", "CANCEL"}
+    ):
+        raise TaskRuntimeError("HUMAN-DECISION-STATE: response identity is incomplete")
+
+    def mutate(state: dict[str, Any], events: list[dict[str, Any]]) -> tuple[dict[str, Any], list[dict[str, Any]], Any]:
+        runtime = state[TASK_RUNTIME_KEY]
+        generated: list[dict[str, Any]] = []
+        _reconcile_new_events(runtime, events, generated, occurred_at)
+        task = _task(runtime, task_id)
+        if task.get("status") == "PENDING" and (task.get("human_decision_response") or {}).get("response_sha256") == response_sha256:
+            return state, generated, {"task_id": task_id, "status": "PENDING", "response_id": response_id, "idempotent": True}
+        if task.get("status") != "WAITING_HUMAN":
+            raise TaskRuntimeError("HUMAN-DECISION-STATE: task is not waiting for a human decision")
+        pending = task.get("human_decision_request") or {}
+        if pending.get("id") != request_id or pending.get("request_sha256") != request_sha256:
+            raise TaskRuntimeError("HUMAN-DECISION-STALE: response does not match the pending request")
+        task["status"] = "PENDING"
+        task["lease"] = None
+        task["failure"] = None
+        task["human_decision_response"] = {
+            "id": response_id,
+            "request_id": request_id,
+            "request_sha256": request_sha256,
+            "response_sha256": response_sha256,
+            "action": action,
+            "selected_option": selected_option,
+            "resolved_at": response.get("resolved_at", occurred_at),
+        }
+        generated.append(
+            _event(
+                events + generated,
+                "TASK_HUMAN_DECISION_RESOLVED",
+                occurred_at,
+                task_id=task_id,
+                request_id=request_id,
+                request_sha256=request_sha256,
+                response_id=response_id,
+                response_sha256=response_sha256,
+                action=action,
+                selected_option=selected_option,
+            )
+        )
+        return state, generated, {"task_id": task_id, "status": "PENDING", "response_id": response_id, "idempotent": False}
+
+    return _mutate(_project(root.resolve(), target), mutate)
+
+
+wait_for_decision = wait_for_human
+resolve_decision = resolve_human
+
+
+def replay_runtime(root: Path, target: str) -> dict[str, Any]:
+    """Reconstruct task status from the task event log for recovery checks."""
+
+    project = _project(root.resolve(), target)
+    runtime: dict[str, Any] | None = None
+    events = read_jsonl(project / "07_runtime/run-log.jsonl")
+    for event in events:
+        event_type = event.get("event_type")
+        if event_type == "TASK_RUNTIME_INITIALIZED":
+            runtime = {
+                "version": 1,
+                "initialized_at": event.get("occurred_at"),
+                "tasks": _canonical_tasks(root.resolve(), _plan_tasks(project)),
+            }
+            continue
+        if runtime is None or not isinstance(event.get("task_id"), str):
+            continue
+        task = _task(runtime, event["task_id"])
+        if event_type == "TASK_CLAIMED":
+            task.update({
+                "status": "RUNNING",
+                "attempts": event.get("attempt", task["attempts"]),
+                "lease": {"owner": event.get("worker_id"), "token": event.get("lease_token"), "expires_at": event.get("lease_expires_at")},
+                "failure": None,
+            })
+        elif event_type == "TASK_WAITING_HUMAN":
+            task.update({
+                "status": "WAITING_HUMAN",
+                "attempts": event.get("attempts_after", max(0, task["attempts"] - 1)),
+                "lease": None,
+                "failure": None,
+                "human_decision_request": {"id": event.get("request_id"), "request_sha256": event.get("request_sha256"), "category": event.get("human_decision_category")},
+                "human_decision_response": None,
+            })
+        elif event_type == "TASK_HUMAN_DECISION_RESOLVED":
+            task.update({
+                "status": "PENDING",
+                "lease": None,
+                "failure": None,
+                "human_decision_response": {"id": event.get("response_id"), "request_id": event.get("request_id"), "request_sha256": event.get("request_sha256"), "response_sha256": event.get("response_sha256"), "action": event.get("action"), "selected_option": event.get("selected_option"), "resolved_at": event.get("occurred_at")},
+            })
+        elif event_type == "TASK_SUCCEEDED":
+            task.update({"status": "SUCCEEDED", "lease": None, "effect_key": event.get("effect_key"), "failure": None})
+        elif event_type == "TASK_BLOCKED":
+            task.update({"status": "BLOCKED", "lease": None, "failure": {"class": "DEPENDENCY_FAILED", "occurred_at": event.get("occurred_at"), "message": "A required dependency failed or was blocked."}})
+        elif event_type in {"TASK_FAILED", "TASK_RETRY_SCHEDULED"}:
+            task.update({"status": event.get("retry_status", "FAILED"), "lease": None, "failure": {"class": event.get("failure_class"), "occurred_at": event.get("occurred_at"), "message": "Task failure recorded in the event log."}})
+        elif event_type == "TASK_LEASE_EXPIRED":
+            task.update({"status": event.get("retry_status", "PENDING"), "lease": None, "attempts": event.get("attempt", task["attempts"]) - 1, "lease_expiries": int(task.get("lease_expiries", 0)) + 1})
+    if runtime is None:
+        raise TaskRuntimeError("task runtime has no initialization event")
+    return runtime
+
+
 def heartbeat(
     root: Path,
     target: str,
@@ -654,6 +848,11 @@ def main() -> int:
     parser.add_argument("--task-id")
     parser.add_argument("--effect-key")
     parser.add_argument("--result-json")
+    parser.add_argument(
+        "--harness-completion",
+        action="store_true",
+        help="Allow the public CLI completion boundary only after typed acceptance execution.",
+    )
     parser.add_argument("--failure-class")
     parser.add_argument("--message")
     args = parser.parse_args()
@@ -679,6 +878,8 @@ def main() -> int:
                 lease_seconds=args.lease_seconds,
             )
         elif args.command == "complete":
+            if not args.harness_completion:
+                parser.error("TASK-COMPLETE-WITHOUT-GATE: complete is owned by the acceptance executor")
             if not all((args.task_id, args.worker_id, args.lease_token, args.result_json)):
                 parser.error("complete requires --task-id, --worker-id, --lease-token, and --result-json")
             result = complete(

@@ -1,4 +1,4 @@
-version: 9
+version: 13
 updated_at: "2026-08-25T00:00:00+09:00"
 selection_policy: lowest_id_ready_with_dependencies_done
 allowed_statuses: [BACKLOG, READY, IN_PROGRESS, BLOCKED, DONE]
@@ -338,9 +338,9 @@ tasks:
   - id: HARNESS-004
     milestone: G3
     title: Execute typed acceptance atomically with task completion
-    status: READY
+    status: DONE
     depends_on: [HARNESS-001, HARNESS-003]
-    acceptance: Typed acceptance commands execute from explicit roots and task promotion plus complete are atomic, idempotent, and fail closed.
+    acceptance: Typed acceptance gates execute from explicit roots and task promotion plus complete are atomic, idempotent, and fail closed.
     issue_refs: ["agentic-art-research#72"]
     checks:
       - python3 -m unittest tests.test_acceptance_executor
@@ -348,17 +348,17 @@ tasks:
   - id: HARNESS-005
     milestone: G3
     title: Implement human decision request resolve and resume
-    status: BACKLOG
+    status: DONE
     depends_on: [HARNESS-001, HARNESS-002]
     acceptance: Policy-required human decisions are typed, resumable, idempotent, and block only the affected task or run.
     issue_refs: ["agentic-art-research#73"]
     checks:
-      - python3 -m unittest tests.test_decision_requests
+      - python3 -m unittest tests.test_human_decisions
       - python3 tools/validate.py --check
   - id: HARNESS-006
     milestone: G4
     title: Add supervisor heartbeat retry and crash resume loop
-    status: BACKLOG
+    status: READY
     depends_on: [HARNESS-002, HARNESS-003, HARNESS-004, HARNESS-005]
     acceptance: The supervisor renews leases, classifies retryable failures, resumes crashed attempts without duplicate effects, and terminates within configured bounds.
     issue_refs: ["agentic-art-research#74"]

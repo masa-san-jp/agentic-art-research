@@ -52,6 +52,7 @@ SCHEMA_FOR_YAML_OBJECT = {
     "05_production/production-handoff.yaml": "production-handoff",
     "00_intake/research-request.yaml": "research-request",
     "00_intake/research-request-receipt.yaml": "research-request-receipt",
+    "07_runtime/human-decisions.yaml": "human-decisions",
 }
 SCHEMA_FOR_JSON = {
     "07_runtime/research-state.json": "research-state",
@@ -84,6 +85,12 @@ DOMAIN_SCHEMAS = (
     "prior-art",
     "self-repetition-review",
     "run-log-event",
+    "acceptance-gate",
+    "acceptance-report",
+    "acceptance-transaction",
+    "human-decision-request",
+    "human-decision-response",
+    "human-decisions",
 )
 RecordEntry = tuple[str, Path, int | None, dict[str, Any]]
 REFERENCE_FIELDS = {
@@ -2095,6 +2102,57 @@ def _load_schema_validators(root: Path, findings: list[Finding]) -> dict[str, Dr
     return validators
 
 
+def _check_human_decision_journal(root: Path, path: Path, value: Any, findings: list[Finding]) -> None:
+    if not isinstance(value, dict):
+        return
+    requests = value.get("requests") if isinstance(value.get("requests"), list) else []
+    responses = value.get("responses") if isinstance(value.get("responses"), list) else []
+    by_id = {str(item.get("id")): item for item in requests if isinstance(item, dict) and item.get("id")}
+    categories = {
+        "PERSONAL_DATA_ACCESS",
+        "EXTERNAL_ACTION",
+        "ACCESS_CLASSIFICATION_CHANGE",
+        "RIGHTS_OR_SAFETY_UNCERTAINTY",
+        "CENTRAL_PROPOSITION_CHANGE",
+        "SCOPE_OR_BUDGET_EXPANSION",
+    }
+    for index, request in enumerate(requests):
+        if not isinstance(request, dict):
+            continue
+        field = f"requests[{index}]"
+        if request.get("human_decision_category") not in categories:
+            findings.append(Finding(_relative_path(root, path), "HUMAN-DECISION-CATEGORY", "request category is not approved", field=f"{field}.human_decision_category", remediation="Use one of the six design-specification human decision categories."))
+        expected_hash = canonical_sha256({key: item for key, item in request.items() if key != "request_sha256"})
+        if request.get("request_sha256") != expected_hash:
+            findings.append(Finding(_relative_path(root, path), "HUMAN-DECISION-STALE", "request hash does not match request content", field=f"{field}.request_sha256", remediation="Recompute request_sha256 from the canonical request without its hash field."))
+        option_ids = {str(item.get("id")) for item in request.get("options", []) if isinstance(item, dict)}
+        if request.get("recommended_option") is not None and request.get("recommended_option") not in option_ids:
+            findings.append(Finding(_relative_path(root, path), "HUMAN-DECISION-OPTION", "recommended option is not in the request options", field=f"{field}.recommended_option", remediation="Select an option ID that exists in the request."))
+    response_ids: set[str] = set()
+    for index, response in enumerate(responses):
+        if not isinstance(response, dict):
+            continue
+        field = f"responses[{index}]"
+        decision_id = str(response.get("decision_id"))
+        request = by_id.get(decision_id)
+        if response.get("id") in response_ids or decision_id in {str(item.get("decision_id")) for item in responses[:index] if isinstance(item, dict)}:
+            findings.append(Finding(_relative_path(root, path), "HUMAN-DECISION-REPLAY", "decision has more than one response", field=field, remediation="Keep one immutable response for each decision request."))
+        if response.get("id"):
+            response_ids.add(str(response["id"]))
+        if request is None or response.get("request_sha256") != (request or {}).get("request_sha256"):
+            findings.append(Finding(_relative_path(root, path), "HUMAN-DECISION-STALE", "response is not bound to the current request hash", field=f"{field}.request_sha256", remediation="Resolve the currently listed request without editing its content."))
+            continue
+        for identity in ("project_id", "run_id", "task_id", "attempt_id"):
+            if response.get(identity) != request.get(identity):
+                findings.append(Finding(_relative_path(root, path), "HUMAN-DECISION-STATE", f"response {identity} differs from request", field=f"{field}.{identity}", remediation="Keep response identity equal to the pending request."))
+        option_ids = {str(item.get("id")) for item in request.get("options", []) if isinstance(item, dict)}
+        if response.get("selected_option") is not None and response.get("selected_option") not in option_ids:
+            findings.append(Finding(_relative_path(root, path), "HUMAN-DECISION-OPTION", "selected option is not in the request options", field=f"{field}.selected_option", remediation="Select an option ID from the pending request."))
+        expected_response_hash = canonical_sha256({key: item for key, item in response.items() if key != "response_sha256"})
+        if response.get("response_sha256") != expected_response_hash:
+            findings.append(Finding(_relative_path(root, path), "HUMAN-DECISION-STALE", "response hash does not match response content", field=f"{field}.response_sha256", remediation="Recompute response_sha256 from the canonical response without its hash field."))
+
+
 def _validate_yaml_collection(
     root: Path,
     path: Path,
@@ -2507,6 +2565,114 @@ def validate_repository(
 
     schema_validators = _load_schema_validators(protocol, findings)
 
+    # Acceptance is protocol configuration, not project data.  Validate it
+    # here so a legacy shell command or malformed typed gate cannot enter a
+    # work root and be discovered only after a worker has run.
+    task_roles_path = protocol / "config" / "task-roles.yaml"
+    try:
+        task_roles = load_yaml(task_roles_path) or {}
+    except Exception as exc:
+        findings.append(_exception_finding(root, task_roles_path, "ACCEPTANCE-CHECK-SCHEMA", exc))
+        task_roles = {}
+    acceptance_kinds = {
+        "repository_validate",
+        "project_validate",
+        "collection_minimum",
+        "run_event_minimum",
+        "stopping_evaluate",
+        "hypothesis_selection",
+        "medium_decision",
+        "graph_current",
+        "completion_status",
+    }
+    roles = task_roles.get("roles") if isinstance(task_roles, dict) else None
+    if not isinstance(roles, dict):
+        findings.append(
+            Finding(
+                _relative_path(root, task_roles_path),
+                "ACCEPTANCE-CHECK-SCHEMA",
+                "config/task-roles.yaml must contain roles",
+                field="roles",
+                remediation="Define each role with a non-empty acceptance_checks list.",
+            )
+        )
+    else:
+        gate_validator = schema_validators.get("acceptance-gate")
+        for role_name, role_entry in sorted(roles.items(), key=lambda item: str(item[0])):
+            if not isinstance(role_entry, dict):
+                findings.append(
+                    Finding(
+                        _relative_path(root, task_roles_path),
+                        "ACCEPTANCE-CHECK-SCHEMA",
+                        f"role {role_name!r} must be a mapping",
+                        field=f"roles.{role_name}",
+                        remediation="Use an object containing typed acceptance_checks.",
+                    )
+                )
+                continue
+            if "acceptance" in role_entry:
+                findings.append(
+                    Finding(
+                        _relative_path(root, task_roles_path),
+                        "ACCEPTANCE-CHECK-LEGACY",
+                        f"role {role_name!r} contains legacy shell acceptance",
+                        field=f"roles.{role_name}.acceptance",
+                        remediation="Replace shell commands with acceptance_checks typed gates.",
+                    )
+                )
+            checks = role_entry.get("acceptance_checks")
+            if not isinstance(checks, list) or not checks:
+                findings.append(
+                    Finding(
+                        _relative_path(root, task_roles_path),
+                        "ACCEPTANCE-CHECK-SCHEMA",
+                        f"role {role_name!r} acceptance_checks must be a non-empty list",
+                        field=f"roles.{role_name}.acceptance_checks",
+                        remediation="Add versioned typed gates from acceptance-gate.schema.json.",
+                    )
+                )
+                continue
+            seen_ids: set[str] = set()
+            for index, check in enumerate(checks):
+                field = f"roles.{role_name}.acceptance_checks[{index}]"
+                if not isinstance(check, dict):
+                    findings.append(
+                        Finding(
+                            _relative_path(root, task_roles_path),
+                            "ACCEPTANCE-CHECK-SCHEMA",
+                            "acceptance check must be an object",
+                            field=field,
+                            remediation="Use an object with id and supported kind.",
+                        )
+                    )
+                    continue
+                check_id = check.get("id")
+                kind = check.get("kind")
+                if isinstance(check_id, str) and check_id in seen_ids:
+                    findings.append(
+                        Finding(
+                            _relative_path(root, task_roles_path),
+                            "ACCEPTANCE-CHECK-SCHEMA",
+                            f"duplicate acceptance check id {check_id!r}",
+                            field=f"{field}.id",
+                            remediation="Give each role acceptance gate a unique AG-* id.",
+                        )
+                    )
+                if isinstance(check_id, str):
+                    seen_ids.add(check_id)
+                if kind not in acceptance_kinds:
+                    findings.append(
+                        Finding(
+                            _relative_path(root, task_roles_path),
+                            "ACCEPTANCE-CHECK-UNKNOWN",
+                            f"unsupported acceptance check kind {kind!r}",
+                            field=f"{field}.kind",
+                            remediation="Use a kind declared in acceptance-gate.schema.json.",
+                        )
+                    )
+                if gate_validator:
+                    findings.extend(_schema_findings(root, task_roles_path, gate_validator, check, field_prefix=field))
+
     forbidden = set(access.get("forbidden_extensions", [])) if isinstance(access, dict) else set()
     forbidden_filenames = access.get("forbidden_filenames", []) if isinstance(access, dict) else []
     secret_patterns = access.get("secret_patterns", []) if isinstance(access, dict) else []
@@ -2672,6 +2838,8 @@ def validate_repository(
                 validator = schema_validators.get(schema_name)
                 if validator:
                     findings.extend(_schema_findings(root, path, validator, value))
+                if relative == "07_runtime/human-decisions.yaml":
+                    _check_human_decision_journal(root, path, value, findings)
                 if relative == "01_planning/research-plan.yaml":
                     try:
                         load_completion_quality_policy(root, value)

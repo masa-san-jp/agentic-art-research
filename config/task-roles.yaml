@@ -23,8 +23,8 @@ by_title_contains:
 
 # 役割ごとに「手順書のどの段を読むか」「どこへ書いてよいか」「何が満たされたら完了か」。
 #
-# acceptance のコマンドは実行可能な形で書く。`{slug}` は入口が実際の slug に置き換える。
-# 判定できない文（「十分に調べる」等）はここに置かない。
+# acceptance_checks はversioned typed gateであり、任意shell commandを置かない。
+# pathはproject-relative、判定できない文（「十分に調べる」等）はここに置かない。
 
 roles:
   planner:
@@ -32,9 +32,9 @@ roles:
     write_targets:
       - {path: "01_planning/question-register.yaml", record: question}
       - {path: "01_planning/research-plan.yaml", record: plan}
-    acceptance:
-      - "python3 tools/validate.py --project {slug} --check"
-      - "python3 -c \"import yaml;q=yaml.safe_load(open('projects/{slug}/01_planning/question-register.yaml'))['questions'];assert q,'質問が0件';print(len(q))\""
+    acceptance_checks:
+      - {id: AG-PLANNER-VALIDATE, kind: project_validate}
+      - {id: AG-PLANNER-QUESTIONS, kind: collection_minimum, path: "01_planning/question-register.yaml", collection_key: questions, minimum: 1}
 
   collector:
     protocol_sections: [4, 5]
@@ -43,19 +43,19 @@ roles:
       - {path: "02_evidence/source-ledger.jsonl", record: source}
     runtime_targets:
       - {path: "07_runtime/run-log.jsonl", namespace: harness, record: run-log-event, schema: "schemas/run-log-event.schema.json"}
-    acceptance:
-      - "python3 tools/validate.py --project {slug} --check"
-      - "python3 -c \"import sys;n=sum(1 for l in open('projects/{slug}/02_evidence/evidence-ledger.jsonl') if l.strip());assert n>0,'証拠が0件';print(n)\""
-      - "grep -c SEARCH_ATTEMPT projects/{slug}/07_runtime/run-log.jsonl"
-      - "python3 tools/stopping_policy.py project/{slug} evaluate"
+    acceptance_checks:
+      - {id: AG-COLLECTOR-VALIDATE, kind: project_validate}
+      - {id: AG-COLLECTOR-EVIDENCE, kind: collection_minimum, path: "02_evidence/evidence-ledger.jsonl", minimum: 1}
+      - {id: AG-COLLECTOR-SEARCH, kind: run_event_minimum, path: "07_runtime/run-log.jsonl", event_type: SEARCH_ATTEMPT, minimum: 1}
+      - {id: AG-COLLECTOR-STOPPING, kind: stopping_evaluate}
 
   curator:
     protocol_sections: [5]
     write_targets:
       - {path: "02_evidence/evidence-ledger.jsonl", record: evidence, schema: "schemas/evidence.schema.json"}
       - {path: "06_governance/rights-register.yaml", record: right}
-    acceptance:
-      - "python3 tools/validate.py --project {slug} --check"
+    acceptance_checks:
+      - {id: AG-CURATOR-VALIDATE, kind: project_validate}
 
   analyst:
     protocol_sections: [6]
@@ -64,9 +64,9 @@ roles:
       - {path: "03_knowledge/claims.jsonl", record: claim, schema: "schemas/claim.schema.json"}
       - {path: "03_knowledge/relationships.jsonl", record: relationship}
       - {path: "03_knowledge/contradictions.jsonl", record: contradiction}
-    acceptance:
-      - "python3 tools/validate.py --project {slug} --check"
-      - "python3 -c \"n=sum(1 for l in open('projects/{slug}/03_knowledge/claims.jsonl') if l.strip());assert n>0,'主張が0件';print(n)\""
+    acceptance_checks:
+      - {id: AG-ANALYST-VALIDATE, kind: project_validate}
+      - {id: AG-ANALYST-CLAIMS, kind: collection_minimum, path: "03_knowledge/claims.jsonl", minimum: 1}
 
   critic:
     protocol_sections: [6, 7]
@@ -77,12 +77,12 @@ roles:
       - {path: "04_decisions/decision-log.yaml", record: decision, schema: "schemas/decision.schema.json"}
       - {path: "03_knowledge/prior-art.jsonl", record: prior-art, schema: "schemas/prior-art.schema.json"}
       - {path: "04_decisions/self-repetition-review.yaml", record: self-repetition-review, schema: "schemas/self-repetition-review.schema.json"}
-    acceptance:
-      - "python3 tools/validate.py --project {slug} --check"
-      - "python3 -c \"import yaml;r=yaml.safe_load(open('projects/{slug}/04_decisions/rejected-options.yaml'))['rejected_options'];assert r,'棄却案が0件。選んでいない';print(len(r))\""
-      - "python3 -c \"import yaml;u=yaml.safe_load(open('projects/{slug}/04_decisions/uncertainty-register.yaml'))['uncertainties'];assert u,'不確実性が0件。調べていない';print(len(u))\""
-      - "python3 -c \"n=sum(1 for l in open('projects/{slug}/03_knowledge/prior-art.jsonl') if l.strip());assert n>0,'先行作品調査が0件。新しいと確かめていない';print(n)\""
-      - "python3 -c \"import yaml;r=yaml.safe_load(open('projects/{slug}/04_decisions/self-repetition-review.yaml'));assert r and r.get('past_works_considered'),'過去作との距離を測っていない';print(r['risk'])\""
+    acceptance_checks:
+      - {id: AG-CRITIC-VALIDATE, kind: project_validate}
+      - {id: AG-CRITIC-REJECTED, kind: collection_minimum, path: "04_decisions/rejected-options.yaml", collection_key: rejected_options, minimum: 1}
+      - {id: AG-CRITIC-UNCERTAINTY, kind: collection_minimum, path: "04_decisions/uncertainty-register.yaml", collection_key: uncertainties, minimum: 1}
+      - {id: AG-CRITIC-PRIOR-ART, kind: collection_minimum, path: "03_knowledge/prior-art.jsonl", minimum: 1}
+      - {id: AG-CRITIC-SELF-REVIEW, kind: collection_minimum, path: "04_decisions/self-repetition-review.yaml", collection_key: past_works_considered, minimum: 1}
 
   production-translator:
     protocol_sections: [8]
@@ -95,15 +95,12 @@ roles:
       - {path: "04_decisions/decision-log.yaml", record: decision, schema: "schemas/decision.schema.json"}
       - {path: "05_production/visual-language.yaml", record: visual-language, schema: "schemas/visual-language.schema.json"}
       - {path: "05_production/creative-direction.md", record: prose}
-    acceptance:
-      - "python3 tools/validate.py --project {slug} --check"
-      - "python3 -c \"import yaml;v=yaml.safe_load(open('projects/{slug}/05_production/visual-language.yaml'));assert v and 'medium' in v,'visual languageが未作成';assert v.get('prohibited_expressions'),'禁止表現が0件';print(v['schema_version'])\""
-      - "python3 -c \"import yaml;r=yaml.safe_load(open('projects/{slug}/05_production/production-requirements.yaml'))['requirements'];assert r,'制作要件が0件';print(len(r))\""
-      # 比較が COMPLETE で推薦が一意なら、build_handoff は変更なしで AGENT_RECOMMENDED を出す。
-      # 人の承認を外すのではなく、選べる状態まで書き切ることで承認待ちにしない。
-      - "python3 -c \"import yaml;c=yaml.safe_load(open('projects/{slug}/04_decisions/hypothesis-comparison.yaml'))['comparisons'];assert c,'仮説比較が0件';x=c[0];assert x.get('status')=='COMPLETE',x.get('status');r=[o for o in x['options'] if o.get('recommendation')=='RECOMMENDED'];assert len(r)==1,f'推薦が一意でない: {{len(r)}}件';print(r[0]['hypothesis_id'])\""
-      # 媒体を決めた記録が無いと、制作は「何で作るか」を自分で決め直すことになる。
-      - "python3 -c \"import yaml;d=yaml.safe_load(open('projects/{slug}/04_decisions/decision-log.yaml'))['decisions'];m=[x for x in d if 'medium' in (x.get('question','')+x.get('selected_option','')).lower() or '媒体' in x.get('question','')];assert m,'媒体の判断が記録されていない';assert all(x.get('rejected_options') for x in m),'媒体を棄却案なしで決めている';print(m[0]['id'])\""
+    acceptance_checks:
+      - {id: AG-TRANSLATOR-VALIDATE, kind: project_validate}
+      - {id: AG-TRANSLATOR-MEDIUM, kind: medium_decision}
+      - {id: AG-TRANSLATOR-REQUIREMENTS, kind: collection_minimum, path: "05_production/production-requirements.yaml", collection_key: requirements, minimum: 1}
+      - {id: AG-TRANSLATOR-HYPOTHESIS, kind: hypothesis_selection}
+      - {id: AG-TRANSLATOR-VISUAL, kind: collection_minimum, path: "05_production/visual-language.yaml", collection_key: prohibited_expressions, minimum: 1}
 
   validator:
     protocol_sections: [9, 10]
@@ -112,7 +109,7 @@ roles:
       - {path: "06_governance/safety-risk-register.yaml", record: risk}
     runtime_targets:
       - {path: "07_runtime/research-state.json", namespace: harness, record: state}
-    acceptance:
-      - "python3 tools/validate.py --project {slug} --check"
-      - "python3 tools/build_graph.py --check"
-      - "python3 tools/complete.py project/{slug}"
+    acceptance_checks:
+      - {id: AG-VALIDATOR-VALIDATE, kind: project_validate}
+      - {id: AG-VALIDATOR-GRAPH, kind: graph_current}
+      - {id: AG-VALIDATOR-COMPLETION, kind: completion_status}

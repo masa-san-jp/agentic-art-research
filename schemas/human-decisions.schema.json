@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/human-decisions.schema.json",
+  "title": "Project human decision journal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "requests", "responses"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "requests": {
+      "type": "array",
+      "items": {"$ref": "human-decision-request.schema.json"}
+    },
+    "responses": {
+      "type": "array",
+      "items": {"$ref": "human-decision-response.schema.json"}
+    }
+  }
+}
