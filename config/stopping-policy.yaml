@@ -27,6 +27,31 @@ defaults:
     default_max_attempts: 3
     retryable_failure_classes: [TRANSIENT, TIMEOUT, RATE_LIMIT, LEASE_EXPIRED, VALIDATION]
     terminal_failure_classes: [PERMANENT, AUTHORIZATION, DEPENDENCY_FAILED]
+  supervisor:
+    max_runtime_seconds: 14400
+    max_tasks: 100
+    max_consecutive_no_progress: 3
+    shutdown_grace_seconds: 5
+    heartbeat_interval_seconds: 900
+    heartbeat_lease_seconds: 1800
+    worker_timeout_seconds: 300
+    retry_backoff_seconds:
+      TRANSIENT: [1, 2, 4]
+      TIMEOUT: [1, 2, 4]
+      RATE_LIMIT: [2, 4, 8]
+      LEASE_EXPIRED: [1, 2, 4]
+      VALIDATION: [1, 2, 4]
+      PERMANENT: [0]
+      AUTHORIZATION: [0]
+      DEPENDENCY_FAILED: [0]
+    worker_failure_classes:
+      WORKER-TIMEOUT: TIMEOUT
+      WORKER-EXIT: TRANSIENT
+      WORKER-COMMAND: PERMANENT
+      WORKER-PROTOCOL: PERMANENT
+      WORKER-OUTPUT-LIMIT: VALIDATION
+      WORKER-SECRET-OUTPUT: AUTHORIZATION
+      WORKER-CAPABILITY: AUTHORIZATION
 overrides_require:
   - reason
   - approved_by

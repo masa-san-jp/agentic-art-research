@@ -91,6 +91,7 @@ DOMAIN_SCHEMAS = (
     "human-decision-request",
     "human-decision-response",
     "human-decisions",
+    "harness-journal",
 )
 RecordEntry = tuple[str, Path, int | None, dict[str, Any]]
 REFERENCE_FIELDS = {

@@ -29,6 +29,7 @@ from accept_research_request import RequestAcceptanceError, accept_research_requ
 from canonical import canonical_sha256
 from harness_paths import HarnessPathError, HarnessPaths, PROJECT_SLUG, ensure_empty_directory
 import human_decisions
+import harness_supervisor
 from new_project import create_project
 import task_runtime
 from task_runtime import initialize_runtime
@@ -386,8 +387,8 @@ def record_attempt_result(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Bootstrap an isolated agent-harness run or manage human decisions.")
-    parser.add_argument("command", choices=["bootstrap", "decisions"])
-    parser.add_argument("decision_command", nargs="?", choices=["list", "resolve"])
+    parser.add_argument("command", choices=["bootstrap", "decisions", "run", "resume"])
+    parser.add_argument("decision_command", nargs="?")
     parser.add_argument("target", nargs="?")
     source = parser.add_mutually_exclusive_group(required=False)
     source.add_argument("--request", type=Path, help="versioned research-request YAML/JSON")
@@ -404,6 +405,12 @@ def main() -> int:
     parser.add_argument("--art-history-root", type=Path)
     parser.add_argument("--production-schema", type=Path)
     parser.add_argument("--response", type=Path)
+    parser.add_argument("--worker", default="supervisor")
+    parser.add_argument("--adapter", default="fake")
+    parser.add_argument("--command-json")
+    parser.add_argument("--fixture-mode")
+    parser.add_argument("--max-runtime-seconds", type=int)
+    parser.add_argument("--max-tasks", type=int)
     args = parser.parse_args()
     try:
         if args.command == "bootstrap":
@@ -425,7 +432,7 @@ def main() -> int:
                 art_history_root=args.art_history_root,
                 production_schema=args.production_schema,
             )
-        else:
+        elif args.command == "decisions":
             if args.decision_command not in {"list", "resolve"} or not args.target:
                 parser.error("decisions requires list|resolve and project/<slug>")
             protocol_root = (args.protocol_root or args.root).resolve()
@@ -441,7 +448,35 @@ def main() -> int:
                     project_id=args.target,
                     response=load_json(args.response),
                 )
-    except (HarnessError, HarnessPathError, RequestAcceptanceError, human_decisions.HumanDecisionError, task_runtime.TaskRuntimeError, OSError, ValueError) as exc:
+        else:
+            target = args.decision_command
+            if not target or not target.startswith("project/"):
+                parser.error(f"{args.command} requires project/<slug>")
+            if not all((args.protocol_root, args.work_root, args.output_root, args.run_id)):
+                parser.error(f"{args.command} requires --protocol-root, --work-root, --output-root, and --run-id")
+            command = None
+            if args.command_json is not None:
+                try:
+                    command = json.loads(args.command_json)
+                except json.JSONDecodeError as exc:
+                    parser.error(f"--command-json must be a JSON argv array: {exc}")
+                if not isinstance(command, list) or any(not isinstance(item, str) for item in command):
+                    parser.error("--command-json must be a JSON argv array")
+            supervisor = harness_supervisor.Supervisor(
+                protocol_root=args.protocol_root,
+                work_root=args.work_root,
+                output_root=args.output_root,
+                project_id=target,
+                run_id=args.run_id,
+                worker_id=args.worker,
+                adapter=args.adapter,
+                command=command,
+                fixture_mode=args.fixture_mode,
+                max_runtime_seconds=args.max_runtime_seconds,
+                max_tasks=args.max_tasks,
+            )
+            result = supervisor.run(resume=args.command == "resume")
+    except (HarnessError, HarnessPathError, RequestAcceptanceError, human_decisions.HumanDecisionError, harness_supervisor.SupervisorError, task_runtime.TaskRuntimeError, OSError, ValueError) as exc:
         print(f"FAILED: {exc}")
         return 1
     print(stable_json(result), end="")

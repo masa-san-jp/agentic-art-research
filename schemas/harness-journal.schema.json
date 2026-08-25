@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/harness-journal.schema.json",
+  "title": "Supervisor journal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "journal_id", "project_id", "run_id", "supervisor_id", "status", "phase",
+    "task_id", "attempt_id", "lease", "attempt", "retry", "human_wait", "limits", "resume_command", "events"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "journal_id": {"type": "string", "pattern": "^HJ[0-9a-f]{16}$"},
+    "project_id": {"$ref": "common.schema.json#/$defs/projectId"},
+    "run_id": {"type": "string", "pattern": "^HR[0-9]{3,}$"},
+    "supervisor_id": {"type": "string", "pattern": "^[A-Za-z0-9._-]{1,80}$"},
+    "status": {"enum": ["RUNNING", "PAUSED", "SUCCEEDED", "FAILED", "BLOCKED", "SHUTDOWN", "NO_TASK_READY"]},
+    "phase": {"enum": ["RECONCILE", "CLAIMED", "ATTEMPT_PREPARED", "WORKER_RUNNING", "HEARTBEAT", "RESULT_RECORDED", "ACCEPTANCE", "PROMOTED", "COMPLETED", "RETRY_WAIT", "WAITING_HUMAN", "SHUTDOWN", "TERMINAL"]},
+    "task_id": {"type": ["string", "null"], "pattern": "^[A-Z][A-Z0-9_-]{2,}$"},
+    "attempt_id": {"type": ["string", "null"], "pattern": "^AT[A-Za-z0-9_-]{3,}$"},
+    "lease": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/lease"}]},
+    "attempt": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/attempt"}]},
+    "retry": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/retry"}]},
+    "human_wait": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/humanWait"}]},
+    "limits": {"$ref": "#/$defs/limits"},
+    "resume_command": {"type": "string", "minLength": 1, "pattern": "^[^\\r\\n]+$"},
+    "events": {"type": "array", "items": {"$ref": "#/$defs/event"}}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "lease": {
+      "type": "object", "additionalProperties": false,
+      "required": ["owner", "expires_at", "token_sha256"],
+      "properties": {
+        "owner": {"type": "string", "minLength": 1, "maxLength": 80},
+        "expires_at": {"$ref": "common.schema.json#/$defs/timestamp"},
+        "token_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "attempt": {
+      "type": "object", "additionalProperties": false,
+      "required": ["request_sha256", "result_sha256", "changeset_sha256", "acceptance_report_sha256", "effect_key"],
+      "properties": {
+        "request_sha256": {"$ref": "#/$defs/sha256"},
+        "result_sha256": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/sha256"}]},
+        "changeset_sha256": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/sha256"}]},
+        "acceptance_report_sha256": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/sha256"}]},
+        "effect_key": {"type": ["string", "null"], "minLength": 1}
+      }
+    },
+    "retry": {
+      "type": "object", "additionalProperties": false,
+      "required": ["failure_class", "attempt", "next_at"],
+      "properties": {
+        "failure_class": {"$ref": "common.schema.json#/$defs/taskFailureClass"},
+        "attempt": {"type": "integer", "minimum": 1},
+        "next_at": {"$ref": "common.schema.json#/$defs/timestamp"}
+      }
+    },
+    "humanWait": {
+      "type": "object", "additionalProperties": false,
+      "required": ["request_id", "request_sha256"],
+      "properties": {
+        "request_id": {"type": "string", "pattern": "^DR[0-9]{3,}$"},
+        "request_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "limits": {
+      "type": "object", "additionalProperties": false,
+      "required": ["started_at", "max_runtime_seconds", "max_tasks", "processed_tasks"],
+      "properties": {
+        "started_at": {"$ref": "common.schema.json#/$defs/timestamp"},
+        "max_runtime_seconds": {"type": "integer", "minimum": 1},
+        "max_tasks": {"type": "integer", "minimum": 1},
+        "processed_tasks": {"type": "integer", "minimum": 0}
+      }
+    },
+    "event": {
+      "type": "object", "additionalProperties": false,
+      "required": ["seq", "occurred_at", "phase"],
+      "properties": {
+        "seq": {"type": "integer", "minimum": 1},
+        "occurred_at": {"$ref": "common.schema.json#/$defs/timestamp"},
+        "phase": {"$ref": "#/properties/phase"},
+        "task_id": {"type": ["string", "null"], "pattern": "^[A-Z][A-Z0-9_-]{2,}$"},
+        "attempt_id": {"type": ["string", "null"], "pattern": "^AT[A-Za-z0-9_-]{3,}$"},
+        "failure_class": {"type": ["string", "null"], "minLength": 1},
+        "request_sha256": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/sha256"}]},
+        "result_sha256": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/sha256"}]},
+        "report_sha256": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/sha256"}]}
+      }
+    }
+  }
+}

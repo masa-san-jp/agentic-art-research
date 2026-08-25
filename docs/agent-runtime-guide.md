@@ -107,6 +107,28 @@ request/responseは`human-decision-request.schema.json`と
 resolve後はtaskが新しいleaseを取得できる`PENDING`へ戻り、次のcontext packにresponse ID/hashと
 actionだけを含める。承認に書かれていない制作判断は推測せず、通知や外部送信は行わない。
 
+### Project supervisor
+
+個別のclaim、worker、heartbeat、acceptance、completeを手で連結せず、1 runをbounded loopで運転する場合はsupervisorを使う。
+
+```bash
+python3 tools/harness.py run project/example \
+  --protocol-root <protocol-root> \
+  --work-root <work-root> \
+  --output-root <output-root> \
+  --run-id HR001 --worker supervisor-a --adapter fake
+
+python3 tools/harness.py resume project/example \
+  --protocol-root <protocol-root> \
+  --work-root <work-root> \
+  --output-root <output-root> \
+  --run-id HR001 --worker supervisor-a --adapter fake
+```
+
+supervisorは`reconcile → claim → attempt workspace → worker → changeset → acceptance/promotion/complete`の順序を固定し、`<work-root>/.harness/supervisor/<project>/<run>.json`へhashと状態だけを記録する。lease token、project本文、credential、private marker、絶対ローカルパスはjournalへ保存しない。同じproject/runの同時実行は`HARNESS-RUN-LOCKED`で拒否される。
+
+worker実行中は設定された間隔でheartbeatを送り、失敗時はworkerを停止して`HARNESS-HEARTBEAT`とretry/terminal判定へ接続する。process crash後はjournal、attempt result、acceptance transaction、期限切れleaseを照合し、完了済みresultを再実行せずにresumeする。SIGINT/SIGTERMは新規claimを止め、`HARNESS-SHUTDOWN`と実行可能なresume commandを残す。`HUMAN_REQUIRED`は正常な`PAUSED` outcomeとしてdecision requestを返し、resolve後に同じtaskを再開する。max runtime、max tasks、retry上限のいずれかで必ず停止する。
+
 queue/stateの実行順序はrepository rootの`execution/task-queue.yaml`と`execution/state.yaml`が正本である。次のtaskを手で推測せず、次で矛盾を検査する。
 
 ```bash

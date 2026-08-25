@@ -94,6 +94,20 @@ class WorkerAdapterContractTest(unittest.TestCase):
                 if mode == "stderr_oversize":
                     self.assertLessEqual(result["diagnostics"]["bytes"], 101)
 
+    def test_running_worker_receives_heartbeat_callbacks_before_timeout(self) -> None:
+        calls = []
+
+        result = run_attempt(
+            self.make_request("timeout"),
+            adapter="fake",
+            protocol_root=REPO_ROOT,
+            timeout_seconds=0.08,
+            heartbeat_callback=lambda: calls.append("heartbeat"),
+            heartbeat_interval_seconds=0.01,
+        )
+        self.assertEqual("WORKER-TIMEOUT", result["failure"]["class"])
+        self.assertGreaterEqual(len(calls), 1)
+
     def test_capability_and_command_safety_fail_without_starting_a_shell(self) -> None:
         result = run_attempt(self.make_request(required=["network"]), adapter="fake", protocol_root=REPO_ROOT)
         self.assertEqual("WORKER-CAPABILITY", result["failure"]["class"])

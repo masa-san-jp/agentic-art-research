@@ -1,5 +1,5 @@
-version: 13
-updated_at: "2026-08-25T00:00:00+09:00"
+version: 15
+updated_at: "2026-08-26T00:00:00+09:00"
 selection_policy: lowest_id_ready_with_dependencies_done
 allowed_statuses: [BACKLOG, READY, IN_PROGRESS, BLOCKED, DONE]
 tasks:
@@ -358,7 +358,7 @@ tasks:
   - id: HARNESS-006
     milestone: G4
     title: Add supervisor heartbeat retry and crash resume loop
-    status: READY
+    status: DONE
     depends_on: [HARNESS-002, HARNESS-003, HARNESS-004, HARNESS-005]
     acceptance: The supervisor renews leases, classifies retryable failures, resumes crashed attempts without duplicate effects, and terminates within configured bounds.
     issue_refs: ["agentic-art-research#74"]
@@ -368,7 +368,7 @@ tasks:
   - id: HARNESS-007
     milestone: G4
     title: Complete one-command request to verified handoff flow
-    status: BACKLOG
+    status: READY
     depends_on: [HARNESS-001, HARNESS-006]
     acceptance: One explicit command runs request acceptance through validation and verified handoff without hidden cwd or root assumptions.
     issue_refs: ["agentic-art-research#75"]

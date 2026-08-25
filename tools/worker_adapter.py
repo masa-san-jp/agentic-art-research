@@ -14,7 +14,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from typing import Any, Callable, Iterable, Sequence
 
 from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
@@ -44,6 +44,10 @@ class WorkerAdapterError(ValueError):
         self.failure_class = failure_class
         self.message = message
         super().__init__(f"{failure_class}: {message}")
+
+
+class AttemptHeartbeatError(RuntimeError):
+    """The supervisor could not renew the lease for a running worker."""
 
 
 @dataclass(frozen=True)
@@ -259,6 +263,8 @@ def _run_process(
     timeout: float,
     max_stdout_bytes: int,
     max_stderr_bytes: int,
+    heartbeat_callback: Callable[[], None] | None = None,
+    heartbeat_interval: float | None = None,
 ) -> tuple[bytes, bytes, int, bool, str | None]:
     try:
         process = subprocess.Popen(
@@ -287,14 +293,25 @@ def _run_process(
         timed_out = False
         overflow_stream: str | None = None
         stop_at = time.monotonic() + timeout
+        next_heartbeat = time.monotonic() + heartbeat_interval if heartbeat_callback and heartbeat_interval else None
         while selector.get_map():
             remaining = stop_at - time.monotonic()
             if remaining <= 0 and process.poll() is None:
                 timed_out = True
                 _terminate(process)
                 break
-            events = selector.select(max(0.0, remaining))
+            if next_heartbeat is not None and time.monotonic() >= next_heartbeat and process.poll() is None:
+                heartbeat_callback()
+                next_heartbeat = time.monotonic() + float(heartbeat_interval)
+            wait_for = max(0.0, remaining)
+            if next_heartbeat is not None:
+                wait_for = min(wait_for, max(0.0, next_heartbeat - time.monotonic()))
+            events = selector.select(wait_for)
             if not events:
+                if next_heartbeat is not None and time.monotonic() >= next_heartbeat and process.poll() is None:
+                    heartbeat_callback()
+                    next_heartbeat = time.monotonic() + float(heartbeat_interval)
+                    continue
                 if process.poll() is None:
                     timed_out = True
                     _terminate(process)
@@ -392,6 +409,8 @@ def run_attempt(
     max_stdout_bytes: int | None = None,
     max_stderr_bytes: int | None = None,
     output_path: Path | None = None,
+    heartbeat_callback: Callable[[], None] | None = None,
+    heartbeat_interval_seconds: float | None = None,
 ) -> dict[str, Any]:
     """Run exactly one attempt and return a schema-valid result when possible."""
 
@@ -455,6 +474,8 @@ def run_attempt(
             min(settings.timeout_seconds, remaining),
             settings.max_stdout_bytes,
             settings.max_stderr_bytes,
+            heartbeat_callback=heartbeat_callback,
+            heartbeat_interval=heartbeat_interval_seconds,
         )
     except WorkerAdapterError as exc:
         result = _failure_result(request, exc.failure_class, "Worker process could not be started.")

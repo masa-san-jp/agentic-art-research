@@ -1,8 +1,8 @@
 version: 1
-updated_at: "2026-08-25T00:00:00+09:00"
+updated_at: "2026-08-26T00:00:00+09:00"
 current_milestone: G4
-next_task: HARNESS-006
-last_completed_task: HARNESS-005
+next_task: HARNESS-007
+last_completed_task: HARNESS-006
 terminal: false
 blocked_by: []
 resume_from:
@@ -33,8 +33,13 @@ resume_from:
     - tools/task_runtime.py
     - tools/harness.py
     - tests/test_human_decisions.py
-  action: Implement HARNESS-006 supervisor heartbeat, retry, and crash resume loop.
+    - schemas/harness-journal.schema.json
+    - tools/harness_supervisor.py
+    - tests/test_harness_supervisor.py
+    - tools/worker_adapter.py
+    - docs/agent-runtime-guide.md
+  action: Implement HARNESS-007 one-command request to verified handoff flow.
 last_verification:
   result: PASS
   command: .venv/bin/python -m unittest discover -s tests -v; .venv/bin/python tools/validate.py --check; .venv/bin/python tools/security_check.py --check; .venv/bin/python tools/docs_check.py --check; .venv/bin/python tools/chaos_check.py; .venv/bin/python tools/build_graph.py --check; git diff --check
-  detail: 237 tests and all HARNESS-005 local gates passed. Typed acceptance schemas/config, atomic attempt promotion/completion, and the six-category human decision request/response flow with WAITING_HUMAN, idempotent replay, named security/state rules, runtime replay, and explicit resolve CLI are implemented. Next start is HARNESS-006.
+  detail: 245 tests and all HARNESS-006 local gates passed. Supervisor run/resume CLI, strict hash-only journal, project/run lock, heartbeat callback, retry mapping/backoff, signal shutdown, human pause, bounded loop, durable result reuse, and acceptance transaction recovery are implemented. Next start is HARNESS-007.

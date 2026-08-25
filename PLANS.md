@@ -41,6 +41,7 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 - [x] (2026-08-25 JST) `HARNESS-003`: task attemptをcanonical projectから隔離し、role write target、safe manifest、changeset、protected root、baseline conflict、quarantineを実装。222 unittestと全ローカルgateが合格。次は`HARNESS-004`。
 - [x] (2026-08-25 JST) `HARNESS-004`: role acceptanceをtyped checkへ移行し、attempt validation、changeset promotion、task completeを一つのatomic transactionへ接続。229 unittestと全ローカルgateが合格。次は`HARNESS-005`。
 - [x] (2026-08-25 JST) `HARNESS-005`: HUMAN_REQUIREDをtyped human decision requestへ永続化し、list/resolve、新lease resume、replay、stale/replay/option/stateのnamed ruleを実装。237 unittestと全ローカルgateが合格。次は`HARNESS-006`。
+- [x] (2026-08-26 JST) `HARNESS-006`: supervisorのheartbeat、retry、crash resume loop、run lock、shutdown、human pause、CLIを実装。245 unittestと全ローカルgateが合格。次は`HARNESS-007`。
 
 チェックボックスとUTCまたはJST日時。未完了、部分完了、完了を正確に表す。
 
@@ -59,6 +60,8 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 - 2026-08-25: `VALIDATION` gate failureはworkerの修正余地を残すためtask-runtimeではretryableに分類した。workerの直接completeはCLI boundaryで拒否し、Python APIの完了はacceptance executorからだけ呼ぶ契約にした。
 - 2026-08-25: promotion後の障害に備え、attempt内にtransaction journalとproject preimageを保持した。rollbackはcanonical project全体を復元し、runtime state/logも同じpreimageで戻すため、メモリ上のsnapshotだけに依存しない。
 - 2026-08-25: HUMAN_REQUIREDは通知やUIを持たせず、typed journalへの永続化と明示resolve CLIに限定した。同一requestの再送はWAITING_HUMANのno-op、同一responseの再送はPENDINGのno-opとして、leaseとattemptの二重消費を防ぐ。
+- 2026-08-25: HARNESS-006ではsupervisorの所有範囲をclaimからworker、changeset、acceptance、completeまでに限定し、プロジェクト本文をjournalへ複製しない。retry待機・signal shutdown・run lockは別の明示状態として記録する。
+- 2026-08-26: heartbeatがcanonical runtime state/logを更新するため、attemptのruntime-owned snapshotだけを同期してからchangeset検査する契約にした。worker write targetとの混同を避け、canonical projectへの直接変更は従来どおり拒否する。
 
 実装中に判明した制約、失敗、想定との差を、短い証拠とともに記録する。
 
@@ -77,6 +80,7 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 - 2026-08-25: knowledge schemaのenumはcommon schemaへ集約し、configとの一致テストに加えてvalidatorのnamed semantic ruleで未知語彙をblockingにした。schemaだけでは表現できない自己relationship、qualified profile reference、期間順序はvalidatorで拒否する。
 - 2026-08-25: visual languageの空テンプレートはDRAFT〜DECIDINGでは許容するが、READY_FOR_PRODUCTION以降は媒介決定、技法、適用可能なpalette/composition、禁止表現を必須にした。既存の完了判定fixtureはこの契約に合わせて明示的な媒介決定とartifactを持つよう更新した。
 - 2026-08-25: worker adapterのstdout/stderrは固定上限付きselector readerで読み、超過時はprocess groupをkillする。resultはworker応答の受入だけを担い、task runtimeのclaim/completeやoutput adoptionは後続タスクへ分離する。
+- 2026-08-26: supervisorのresumeでは新しいleaseを取得しても、journalが示す既存attemptのdurable resultを優先してworkerを再実行しない。transaction recoveryはlease reconcileより先に行い、promotion途中のcanonical変更を安全に戻す。
 - 2026-08-25: worker write setから`07_runtime`のharness-owned state/logを分離するため、role configに`runtime_targets` namespaceを追加し、attempt changesetは`write_targets`だけを検証する。
 - 2026-08-25: canonical checkoutの既存fileがfilesystem由来のhard-link countを持つため、source/protected baselineでは既存linkを読み取り、attempt copy後のworkspaceだけをhard-link拒否対象にした。これによりsnapshot hashは環境依存のinode情報を含まず、worker-created hard-linkはfail closedできる。
 - 2026-08-25: acceptance validationの一部 evaluatorはroot内のconfigを読むため、attempt projectだけでなくprotocol configをephemeral validation rootへコピーした。protocolのschema検証とGit正本は引き続き明示的なprotocol rootを参照する。
@@ -99,6 +103,7 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 - 完了 (2026-08-25): `HARNESS-003`でattempt workspace manifest/changeset、role worker/runtime namespace、protected root snapshot、safe file checks、atomic candidate promotion、baseline conflict、quarantine/recoveryを追加した。222 unittest、validator、security、chaos、docs、graph、diff gateが合格し、次の開始点は`HARNESS-004`。
 - 完了 (2026-08-25): `HARNESS-004`でtyped acceptance gate/report/transaction schema、全roleのacceptance_checks、explicit-root next action、ephemeral validation、changeset promotionとtask completionのatomic接続、VALIDATION retry、journal/preimage rollback/crash recovery、idempotent effect、直接complete拒否を追加した。229 unittest、validator、security、docs、chaos、graph、diff gateが合格した。次の開始点は`HARNESS-005`。
 - 完了 (2026-08-25): `HARNESS-005`で6分類のtyped human decision request/response schema、journal、WAITING_HUMAN lease解放、attempt非消費、resolve後PENDING、CLI list/resolve、runtime replay、context hash伝播、named stale/replay/option/security/state rulesを追加した。237 unittestとvalidator、security、docs、chaos、graph、diff gateが合格した。次の開始点は`HARNESS-006`。
+- 完了 (2026-08-26): `HARNESS-006`で`harness.py run|resume`、strict supervisor journal、project/run lock、injectable sleep/clock、heartbeat callback、failure mapping/backoff、attempt result/transaction crash resume、HUMAN_REQUIRED paused outcome、signal shutdown、bounded loopを実装した。245 unittest、validator、security、docs、chaos、graph、diff gateが合格した。次の開始点は`HARNESS-007`。
 
 ## HARNESS-003 ExecPlan
 
@@ -750,6 +755,52 @@ request/responseは自己hashを除いたcanonical payloadのSHA-256で固定す
 - CLI: `tools/harness.py decisions list|resolve project/<slug> --work-root <root> [--response <json>]`
 - Python: `human_decisions.record_human_required`, `human_decisions.resolve_request`, `task_runtime.replay_runtime`
 - issue: `agentic-art-research#73`; dependencies: `HARNESS-001`, `HARNESS-002`, `HARNESS-004`; next task: `HARNESS-006` / Issue #74
+
+## HARNESS-006 ExecPlan
+
+### Purpose / Big Picture
+
+Issue #74の契約として、1つのproject/runをsupervisorがbounded loopで運転する。`reconcile → claim → attempt workspace → worker → changeset → acceptance/promotion/complete → next`をjournalへ記録し、heartbeat、retry backoff、human pause、signal shutdown、crash resume、run lockを同じ正本から再開できる状態にする。
+
+### Context and Orientation
+
+- supervisor: `tools/harness_supervisor.py`
+- CLI boundary: `tools/harness.py run|resume`
+- journal contract: `schemas/harness-journal.schema.json`
+- existing boundaries: `tools/task_runtime.py`, `tools/worker_adapter.py`, `tools/attempt_workspace.py`, `tools/acceptance_executor.py`, `tools/next_action.py`
+- tests: `tests/test_harness_supervisor.py`, `tests/test_worker_adapter.py`, `tests/test_task_runtime.py`
+
+### Progress
+
+- [x] journal schema/config and run lock
+- [x] worker lifecycle, heartbeat, retry/backoff, and terminal/paused outcomes
+- [x] attempt/acceptance/complete integration and crash resume
+- [x] run/resume CLI, signal shutdown, and contract tests
+- [x] all release gates, queue/state, and commit
+
+### Plan of Work
+
+1. Add a strict journal schema and supervisor policy for limits, retry mapping, and deterministic backoff.
+2. Add an injectable-clock supervisor with a non-blocking per-project run lock and safe signal shutdown.
+3. Build typed attempt requests from `next_action`, run provider-neutral workers with heartbeat callbacks, and persist only hashes/metadata.
+4. Resume durable attempt results and acceptance transactions, classify failures into configured runtime classes, and pause on HUMAN_REQUIRED.
+5. Add normal, heartbeat, retry, crash, lock, shutdown, human-pause, bounds, and journal-security tests; run all gates.
+
+### Validation and Acceptance
+
+- normal deterministic worker execution advances all ready tasks without duplicate claim/effect;
+- heartbeat extends the held lease and heartbeat failure terminates the worker without promotion;
+- timeout, exit, protocol, acceptance, and lease failures map to configured retry/terminal classes with deterministic backoff and no unbounded loop;
+- an attempt/result/acceptance transaction can resume after process interruption without re-running completed effects;
+- concurrent supervisors are rejected by `HARNESS-RUN-LOCKED`, shutdown returns `HARNESS-SHUTDOWN` with a valid journal and resume command, and HUMAN_REQUIRED returns paused state;
+- journal contains no project source body, credential, private marker, or absolute local path and validates against its schema;
+- all unittest, validate, security, docs, chaos, graph, and diff gates pass.
+
+### Interfaces and Dependencies
+
+- CLI: `tools/harness.py run|resume project/<slug> --protocol-root ... --work-root ... --output-root ... --run-id ...`
+- Python: `harness_supervisor.Supervisor`, `harness_supervisor.run_supervisor`, `harness_supervisor.resume_supervisor`
+- issue: `agentic-art-research#74`; dependencies: `HARNESS-002`, `HARNESS-003`, `HARNESS-004`, `HARNESS-005`; next task: `HARNESS-007` / Issue #75
 
 ## 実行規則
 
