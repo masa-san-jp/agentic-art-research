@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
+import json
 import os
 import re
 import stat
@@ -172,10 +173,70 @@ def _scan_archives(root: Path, policy: dict[str, Any], files: list[Path]) -> lis
     return findings
 
 
+def _scan_protocol_output_boundary(root: Path) -> list[SecurityFinding]:
+    """Reject project materialization from the canonical protocol checkout.
+
+    Temporary work roots intentionally contain project packages while they are
+    being validated. The boundary therefore applies only when this module is
+    scanning its own canonical repository root; CI invokes the same command
+    from that checkout.
+    """
+    if root.resolve() != ROOT.resolve():
+        return []
+
+    allowed_files = {
+        "projects": {"README.md"},
+        "data": {"README.md", "dependency-graph.json"},
+    }
+    findings: list[SecurityFinding] = []
+    for directory, allowed in allowed_files.items():
+        base = root / directory
+        if not base.exists():
+            continue
+        for path in sorted(base.rglob("*")):
+            if path.is_dir():
+                continue
+            relative = path.relative_to(base).as_posix()
+            if relative not in allowed:
+                findings.append(
+                    _finding(
+                        root,
+                        path,
+                        "PROTOCOL-OUTPUT-BOUNDARY",
+                        f"canonical protocol checkout contains project output under {directory}/",
+                    )
+                )
+
+    graph_path = root / "data" / "dependency-graph.json"
+    if graph_path.exists() and graph_path.is_file():
+        try:
+            graph = json.loads(graph_path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+            findings.append(
+                _finding(
+                    root,
+                    graph_path,
+                    "PROTOCOL-OUTPUT-BOUNDARY",
+                    "canonical dependency graph is not valid JSON",
+                )
+            )
+        else:
+            if graph != {"edges": [], "nodes": [], "projects": []}:
+                findings.append(
+                    _finding(
+                        root,
+                        graph_path,
+                        "PROTOCOL-OUTPUT-BOUNDARY",
+                        "canonical dependency graph must be empty",
+                    )
+                )
+    return findings
+
+
 def scan_advanced_security(root: Path, policy: dict[str, Any] | None = None) -> list[SecurityFinding]:
     root = root.resolve()
     policy = policy if policy is not None else (load_yaml(root / "config" / "access-policy.yaml") or {})
-    findings: list[SecurityFinding] = []
+    findings: list[SecurityFinding] = _scan_protocol_output_boundary(root)
     files: list[Path] = []
     for directory, directories, filenames in os.walk(root, topdown=True, followlinks=False):
         directory_path = Path(directory)

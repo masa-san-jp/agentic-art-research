@@ -1,0 +1,7 @@
+{
+  "id": "U001",
+  "statement": "The effect at installation scale is untested.",
+  "severity": "UNKNOWN",
+  "decision_ids": ["DC001"],
+  "review_trigger": "Prototype review does not communicate the intended absence."
+}

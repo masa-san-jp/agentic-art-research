@@ -12,7 +12,7 @@ import yaml
 from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
 
-from _common import ROOT, atomic_write_text, iter_project_dirs, load_json, load_yaml, stable_json
+from _common import atomic_write_text, iter_project_dirs, load_json, load_yaml, stable_json
 from canonical import canonical_sha256
 from new_project import create_project
 from validate import validate_repository
@@ -244,6 +244,10 @@ def _materialize(root: Path, request: dict[str, Any], digest: str, accepted_at: 
         plan["objective"] = request["intent"]["purpose"]
         atomic_write_text(plan_path, _yaml_text(plan))
 
+        from executive_brief import write_executive_brief
+
+        write_executive_brief(root, f"project/{slug}")
+
         findings = validate_repository(root, f"project/{slug}")
         if findings:
             rendered = "\n".join(finding.render() for finding in findings)
@@ -287,7 +291,7 @@ def main() -> int:
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--dry-run", action="store_true")
     mode.add_argument("--apply", action="store_true")
-    parser.add_argument("--root", type=Path, default=ROOT)
+    parser.add_argument("--root", type=Path, required=True, help="temporary work root or external output staging root")
     parser.add_argument("--accepted-at", help="RFC 3339 receipt time; defaults to current Asia/Tokyo time")
     args = parser.parse_args()
     try:

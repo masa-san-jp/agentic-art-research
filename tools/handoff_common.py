@@ -32,6 +32,7 @@ class HandoffSources:
     comparison_document: dict[str, Any]
     prototype_document: dict[str, Any]
     requirements_document: dict[str, Any]
+    visual_language_document: dict[str, Any]
     acceptance_tests_document: dict[str, Any]
     decisions_document: dict[str, Any]
     insights_document: dict[str, Any]
@@ -156,6 +157,12 @@ def load_handoff_sources(root: Path, target: str) -> HandoffSources:
         load_yaml(requirements_path),
         "requirements",
     )
+    visual_language_path = project / "05_production" / "visual-language.yaml"
+    visual_language_document = _mapping(
+        visual_language_path,
+        load_yaml(visual_language_path),
+        label="visual language",
+    )
     acceptance_path = project / "05_production" / "acceptance-tests.yaml"
     acceptance_tests_document, acceptance_tests = _collection(
         acceptance_path,
@@ -193,6 +200,7 @@ def load_handoff_sources(root: Path, target: str) -> HandoffSources:
         comparison_document=comparison_document,
         prototype_document=prototype_document,
         requirements_document=requirements_document,
+        visual_language_document=visual_language_document,
         acceptance_tests_document=acceptance_tests_document,
         decisions_document=decisions_document,
         insights_document=insights_document,

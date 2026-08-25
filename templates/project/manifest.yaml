@@ -14,7 +14,9 @@ entry_points:
   prior_art: 03_knowledge/prior-art.jsonl
   decision_log: 04_decisions/decision-log.yaml
   self_repetition_review: 04_decisions/self-repetition-review.yaml
+  executive_brief: 04_decisions/executive-brief.md
   production_requirements: 05_production/production-requirements.yaml
+  visual_language: 05_production/visual-language.yaml
   production_hypotheses: 04_decisions/production-hypotheses.yaml
   hypothesis_comparison: 04_decisions/hypothesis-comparison.yaml
   prototype_plans: 05_production/prototype-plans.yaml

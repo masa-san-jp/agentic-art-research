@@ -9,7 +9,7 @@
 | 構造 | schemas |
 | 語彙・閾値 | config |
 | プロジェクト事実 | projects |
-| 制作者派生シグナル | profiles |
+| 制作者派生シグナル | 外部profile output root（`--profiles-root`）。repositoryの`profiles/`はREADMEのみ |
 | 索引・グラフ・監査 | data。生成物 |
 
 ## 設計変更
@@ -31,4 +31,3 @@
 ## エージェントの停止
 
 エージェントは失敗を無限に反復しない。既定再試行を使い切ったら、`BLOCKED` または `COMPLETE_WITH_GAPS` とし、原因、試行、解除条件を記録する。
-

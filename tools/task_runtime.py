@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import fcntl
 import hashlib
 import json
@@ -352,6 +353,69 @@ def load_runtime(root: Path, target: str) -> dict[str, Any]:
     project = _project(root.resolve(), target)
     state, _ = _read_runtime(project)
     return state[TASK_RUNTIME_KEY]
+
+
+def _held_task(runtime: dict[str, Any], worker_id: str, now: str) -> str | None:
+    moment = _parse_timestamp(now)
+    for task_id in sorted(runtime.get("tasks") or {}):
+        task = _task(runtime, task_id)
+        lease = task.get("lease")
+        if task.get("status") != "RUNNING" or not isinstance(lease, dict):
+            continue
+        if lease.get("owner") != worker_id:
+            continue
+        expires_at = lease.get("expires_at")
+        if not isinstance(expires_at, str) or _parse_timestamp(expires_at) <= moment:
+            continue
+        return task_id
+    return None
+
+
+def peek_next(
+    root: Path,
+    target: str,
+    worker_id: str,
+    *,
+    now: str,
+    lease_seconds: int | None = None,
+) -> dict[str, Any] | None:
+    """Preview the same next-task decision as ``claim_next`` without writing.
+
+    Lease expiry and dependency propagation are reconciled on a deep copy so
+    preview and live selection share the same ready predicate while the
+    persisted state and event log remain byte-for-byte untouched.
+    """
+    if not isinstance(worker_id, str) or not worker_id.strip():
+        raise TaskRuntimeError("worker_id must be a non-empty string")
+    _parse_timestamp(now)
+    root = root.resolve()
+    policy, _, _, _ = _runtime_policy(root)
+    seconds = policy["default_lease_seconds"] if lease_seconds is None else lease_seconds
+    if not isinstance(seconds, int) or seconds <= 0:
+        raise TaskRuntimeError("lease_seconds must be a positive integer")
+    project = _project(root, target)
+    state, events = _read_runtime(project)
+    runtime = copy.deepcopy(state[TASK_RUNTIME_KEY])
+    simulated_events = copy.deepcopy(events)
+    _reconcile(runtime, simulated_events, now)
+
+    held_id = _held_task(runtime, worker_id, now)
+    if held_id is not None:
+        return {
+            "task_id": held_id,
+            "lease": copy.deepcopy(_task(runtime, held_id).get("lease")),
+            "resumed": True,
+            "would_claim": None,
+        }
+    for task_id in sorted(runtime["tasks"]):
+        if _ready(runtime, task_id):
+            return {
+                "task_id": task_id,
+                "lease": None,
+                "resumed": False,
+                "would_claim": {"task_id": task_id, "lease_seconds": seconds},
+            }
+    return None
 
 
 def claim_next(

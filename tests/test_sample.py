@@ -45,7 +45,7 @@ class SampleProjectContractTest(unittest.TestCase):
         impact = impact_report(graph, "EV001")
         self.assertTrue(impact["found"])
         self.assertEqual(
-            {"CL001", "CL002", "IN001", "DC001", "RQ001", "AT001"},
+            {"CL001", "CL002", "IN001", "DC001", "DC002", "RQ001", "AT001"},
             {item["id"] for item in impact["downstream"]},
         )
         self.assertIn("RQ001", {item["id"] for item in impact["downstream"]})

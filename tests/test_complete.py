@@ -78,6 +78,74 @@ class CompletionContractTest(unittest.TestCase):
                 "reviews:\n  - id: SR001\n    scope: Concept and visual language\n    prior_work_refs: [PA001]\n    risk_level: LOW\n    assessment: The proposal has a distinct interaction.\n    mitigation: Preserve the documented difference.\n    reviewed_at: '2026-08-11T00:00:00+09:00'\n",
                 encoding="utf-8",
             )
+        (project / "02_evidence" / "evidence-ledger.jsonl").write_text(
+            json.dumps(
+                {
+                    "id": "EV001",
+                    "source_type": "primary-web-page",
+                    "source_location": "https://example.com/completion-fixture",
+                    "created_at": "unknown",
+                    "acquired_at": "2026-08-11T00:00:00+09:00",
+                    "content_hash": "sha256:" + "0" * 64,
+                    "rights_status": "publicly citeable",
+                    "sensitivity": "PUBLIC_CITABLE",
+                    "redistribution": "allowed",
+                    "related_questions": [],
+                    "extraction_status": "processed",
+                    "direct_observation": False,
+                    "observed_by": None,
+                },
+                ensure_ascii=False,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        (project / "04_decisions" / "decision-log.yaml").write_text(
+            "decisions:\n"
+            "  - id: DC002\n"
+            "    question: Which medium should carry the completion fixture?\n"
+            "    selected_option: installation\n"
+            "    rejected_options: [sculpture]\n"
+            "    insight_ids: []\n"
+            "    evidence_ids: [EV001]\n"
+            "    reason: The fixture uses an installation as its explicit medium decision.\n"
+            "    authority: agent-recommended\n"
+            "    status: ADOPTED\n",
+            encoding="utf-8",
+        )
+        (project / "05_production" / "visual-language.yaml").write_text(
+            "schema_version: 1.0.0\n"
+            "medium:\n"
+            "  primary: installation\n"
+            "  statement: The fixture uses an installation.\n"
+            "  source_decision_id: DC002\n"
+            "techniques:\n"
+            "  - id: VT001\n"
+            "    name: restrained arrangement\n"
+            "    intent: Keep the fixture visually legible.\n"
+            "    source_decision_ids: [DC002]\n"
+            "    requirement_ids: []\n"
+            "palette:\n"
+            "  applicability: APPLICABLE\n"
+            "  preferred: [single hue]\n"
+            "  prohibited: []\n"
+            "  rationale: A single hue keeps the fixture legible.\n"
+            "  source_decision_ids: [DC002]\n"
+            "composition:\n"
+            "  applicability: APPLICABLE\n"
+            "  preferred: [clear interval]\n"
+            "  prohibited: []\n"
+            "  rationale: A clear interval keeps the fixture readable.\n"
+            "  source_decision_ids: [DC002]\n"
+            "prohibited_expressions:\n"
+            "  - id: VP001\n"
+            "    statement: Do not obscure the interval.\n"
+            "    reason: The selected medium must remain legible.\n"
+            "    source_decision_ids: [DC002]\n"
+            "    requirement_ids: []\n"
+            "unresolved_uncertainty_ids: []\n",
+            encoding="utf-8",
+        )
         if governance_complete:
             (project / "06_governance" / "rights-register.yaml").write_text(
                 "rights:\n  - id: RT001\n    status: CLEARED\n", encoding="utf-8"

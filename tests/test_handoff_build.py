@@ -145,7 +145,9 @@ class HandoffBuildContractTest(unittest.TestCase):
         self.assertIn("manifest.yaml", first)
         self.assertIn("provenance.yaml", first)
         self.assertIn("artifacts/source-ref-index.yaml", first)
+        self.assertIn("artifacts/visual-language.yaml", first)
         self.assertIn("schemas/production-handoff.schema.json", first)
+        self.assertIn("schemas/visual-language.schema.json", first)
         self.assertNotIn("artifacts/evidence-ledger.jsonl", first)
         self.assertNotIn(b"source_location", first["artifacts/source-ref-index.yaml"])
         self.assertFalse(any(b"/Users/" in content or b"/private/" in content for content in first.values()))
@@ -205,6 +207,7 @@ class HandoffBuildContractTest(unittest.TestCase):
         bundle = build_bundle(root, "project/handoff-build", "production-agent")
         self.assertIn("04_decisions/production-hypotheses.yaml", bundle)
         self.assertIn("05_production/production-handoff.yaml", bundle)
+        self.assertIn("05_production/visual-language.yaml", bundle)
         self.assertNotIn("evidence-ledger.jsonl", bundle)
 
     def test_export_rejects_quoted_local_paths_in_public_artifacts(self) -> None:

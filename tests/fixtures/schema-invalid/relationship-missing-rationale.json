@@ -1,0 +1,7 @@
+{
+  "id": "RL001",
+  "from_id": "OB001",
+  "to_id": "CL001",
+  "type": "influenced_by",
+  "evidence_ids": ["EV001"]
+}

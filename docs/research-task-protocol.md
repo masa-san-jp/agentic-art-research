@@ -9,7 +9,7 @@
 ## 2. 重複を確認する
 
 - 同一プロジェクトのquestion、evidence、claimを検索する。
-- `profiles/` の関連シグナルを検索する。
+- 外部profile output rootの関連シグナルを`--profiles-root`で検証・検索する。repositoryの`profiles/`には実profileを置かない。
 - `art-history-notes` のbundleを利用できる場合は検索する。
 - 同一URL、同一hash、転載関係の資料を独立証拠として重複計上しない。
 
@@ -75,4 +75,3 @@ python3 tools/audit.py
 ## 10. 引き継ぐ
 
 task状態、使用したソース、未解決、再開条件、影響する判断を記録する。次のエージェントが会話なしで再開できることを確認する。
-

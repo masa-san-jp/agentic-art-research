@@ -1,0 +1,11 @@
+{
+  "schema_id": "research-signal-export/v1",
+  "export_id": "RSE-harmony-study-PR001",
+  "research_project_id": "project/harmony-study",
+  "production_project_id": "production/harmony-study",
+  "result_id": "PR001",
+  "source_result_sha256": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "signal_count": 0,
+  "signals_sha256": "sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+  "generated_at": "2026-08-11T16:00:00+09:00"
+}

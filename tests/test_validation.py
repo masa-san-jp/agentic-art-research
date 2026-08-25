@@ -248,6 +248,193 @@ class ValidationErrorContractTest(unittest.TestCase):
         self.assertEqual("id", finding.field)
         self.assertIn("EV001", finding.message)
 
+    def test_typed_decision_registries_resolve_in_both_directions(self) -> None:
+        root = self.make_root()
+        project = create_project(root, "typed-decision", "Typed Decision")
+        evidence = {
+            "id": "EV001",
+            "source_type": "primary_public",
+            "source_location": "https://example.invalid/source/001",
+            "creator": "creator/fixture",
+            "created_at": "unknown",
+            "acquired_at": "2026-08-11T15:00:00+09:00",
+            "content_hash": "sha256:" + "0" * 64,
+            "rights_status": "public-use",
+            "sensitivity": "PUBLIC_CITABLE",
+            "redistribution": "allowed",
+            "related_projects": ["project/typed-decision"],
+            "related_questions": [],
+            "extraction_status": "processed",
+            "direct_observation": False,
+            "observed_by": "collector",
+        }
+        (project / "02_evidence" / "evidence-ledger.jsonl").write_text(json.dumps(evidence) + "\n", encoding="utf-8")
+        (project / "04_decisions" / "decision-log.yaml").write_text(
+            yaml.safe_dump(
+                {
+                    "decisions": [
+                        {
+                            "id": "DC001",
+                            "question": "Which option should be adopted?",
+                            "selected_option": "Use the restrained option.",
+                            "rejected_options": [],
+                            "rejected_option_ids": ["RO001"],
+                            "insight_ids": [],
+                            "evidence_ids": ["EV001"],
+                            "reason": "The evidence supports the restrained option.",
+                            "uncertainty": "The audience response remains untested.",
+                            "uncertainty_ids": ["U001"],
+                            "review_trigger": "Prototype review fails.",
+                            "authority": "agent-recommended",
+                            "status": "ADOPTED",
+                        }
+                    ]
+                },
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+        (project / "04_decisions" / "rejected-options.yaml").write_text(
+            yaml.safe_dump(
+                {"rejected_options": [{"id": "RO001", "title": "Use the explicit option", "reason": "It weakens the intended absence.", "decision_ids": ["DC001"]}]},
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+        (project / "04_decisions" / "uncertainty-register.yaml").write_text(
+            yaml.safe_dump(
+                {"uncertainties": [{"id": "U001", "statement": "The audience response remains untested.", "severity": "MAJOR", "decision_ids": ["DC001"], "review_trigger": "Prototype review fails."}]},
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+
+        self.assertEqual([], validate_repository(root))
+
+    def test_typed_decision_registry_reverse_reference_is_blocking(self) -> None:
+        root = self.make_root()
+        project = create_project(root, "broken-decision-registry", "Broken Decision Registry")
+        (project / "04_decisions" / "decision-log.yaml").write_text(
+            yaml.safe_dump(
+                {
+                    "decisions": [
+                        {
+                            "id": "DC001",
+                            "question": "Which option should be adopted?",
+                            "selected_option": "Use the restrained option.",
+                            "rejected_options": [],
+                            "rejected_option_ids": [],
+                            "insight_ids": [],
+                            "evidence_ids": ["EV001"],
+                            "reason": "The evidence supports the restrained option.",
+                            "uncertainty": None,
+                            "review_trigger": None,
+                            "authority": "agent-recommended",
+                            "status": "PROPOSED",
+                        }
+                    ]
+                },
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+        (project / "04_decisions" / "rejected-options.yaml").write_text(
+            "rejected_options:\n  - id: RO001\n    title: Explicit option\n    reason: It weakens the intended absence.\n    decision_ids: [DC001]\n",
+            encoding="utf-8",
+        )
+        findings = validate_repository(root)
+        self.assertTrue(any(item.rule == "DECISION-REGISTRY-REVERSE" for item in findings))
+
+
+class ExecutionQueueStateValidationTest(unittest.TestCase):
+    def make_root(self) -> Path:
+        temporary = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, temporary, True)
+        for name in ("config", "schemas"):
+            shutil.copytree(REPO_ROOT / name, temporary / name)
+        (temporary / "projects").mkdir()
+        (temporary / "data").mkdir()
+        return temporary
+
+    def write_execution(self, root: Path, tasks: list[dict], **state_overrides: object) -> None:
+        execution = root / "execution"
+        execution.mkdir()
+        queue = {
+            "version": 5,
+            "selection_policy": "lowest_id_ready_with_dependencies_done",
+            "allowed_statuses": ["BACKLOG", "READY", "IN_PROGRESS", "BLOCKED", "DONE"],
+            "tasks": tasks,
+        }
+        state: dict[str, object] = {
+            "version": 1,
+            "next_task": "BOUNDARY-001",
+            "last_completed_task": "RUNTIME-005",
+            "terminal": False,
+        }
+        state.update(state_overrides)
+        (execution / "task-queue.yaml").write_text(yaml.safe_dump(queue, sort_keys=False), encoding="utf-8")
+        (execution / "state.yaml").write_text(yaml.safe_dump(state, sort_keys=False), encoding="utf-8")
+
+    def base_tasks(self) -> list[dict]:
+        return [
+            {"id": f"RUNTIME-{number:03d}", "status": "DONE", "depends_on": []}
+            for number in range(1, 6)
+        ] + [{"id": "BOUNDARY-001", "status": "READY", "depends_on": ["RUNTIME-005"]}]
+
+    def test_queue_and_state_are_valid_when_next_task_is_lowest_ready(self) -> None:
+        root = self.make_root()
+        self.write_execution(root, self.base_tasks())
+
+        findings = validate_repository(root)
+
+        self.assertEqual([], [finding for finding in findings if finding.rule.startswith("EXECUTION-")])
+
+    def test_missing_runtime_task_is_a_named_blocking_rule(self) -> None:
+        root = self.make_root()
+        tasks = [task for task in self.base_tasks() if task["id"] != "RUNTIME-005"]
+        self.write_execution(root, tasks)
+
+        findings = validate_repository(root)
+
+        self.assertTrue(any(finding.rule == "EXECUTION-RUNTIME-TASK-MISSING" for finding in findings))
+
+    def test_unknown_dependency_is_rejected(self) -> None:
+        root = self.make_root()
+        tasks = self.base_tasks()
+        tasks[-1]["depends_on"] = ["MISSING-001"]
+        self.write_execution(root, tasks, next_task=None)
+
+        findings = validate_repository(root)
+
+        self.assertTrue(any(finding.rule == "EXECUTION-DEPENDENCY-MISSING" for finding in findings))
+
+    def test_dependency_cycle_is_rejected(self) -> None:
+        root = self.make_root()
+        tasks = self.base_tasks()
+        tasks[-1] = {"id": "BOUNDARY-001", "status": "BACKLOG", "depends_on": ["GAP-001"]}
+        tasks.append({"id": "GAP-001", "status": "BACKLOG", "depends_on": ["BOUNDARY-001"]})
+        self.write_execution(root, tasks, next_task=None)
+
+        findings = validate_repository(root)
+
+        self.assertTrue(any(finding.rule == "EXECUTION-DEPENDENCY-CYCLE" for finding in findings))
+
+    def test_wrong_next_task_is_rejected(self) -> None:
+        root = self.make_root()
+        self.write_execution(root, self.base_tasks(), next_task="RUNTIME-005")
+
+        findings = validate_repository(root)
+
+        self.assertTrue(any(finding.rule == "EXECUTION-NEXT-TASK" for finding in findings))
+
+    def test_terminal_true_is_rejected_until_all_tasks_are_done(self) -> None:
+        root = self.make_root()
+        self.write_execution(root, self.base_tasks(), terminal=True)
+
+        findings = validate_repository(root)
+
+        self.assertTrue(any(finding.rule == "EXECUTION-TERMINAL-EARLY" for finding in findings))
+
 
 if __name__ == "__main__":
     unittest.main()

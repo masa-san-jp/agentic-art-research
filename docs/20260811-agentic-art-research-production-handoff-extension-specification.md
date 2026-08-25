@@ -380,6 +380,21 @@ production側から最低限次を受け取る。
 7. `MAJOR` は `ANALYZING` へ再開する。
 8. `CRITICAL` は制作停止要求と人間承認へ送る。
 
+### 10.1 Research signal export
+
+import後のproject-local監査と、次回researchが再利用するsignal bundleの生成は分離する。`tools/export_feedback_signals.py`は、明示された`project/<slug>`と`--result-id`のimport済みresultだけをread-onlyで読み、次の2ファイルを明示`--output`へatomicに生成する。外部repository、Drive、APIへの配送はこのCLIの責務ではない。
+
+```bash
+python3 tools/export_feedback_signals.py project/<slug> \
+  --result-id PR001 \
+  --output <signal-bundle-directory> \
+  --root <working-root>
+```
+
+正本schemaは`schemas/research-signal-export.schema.json`、schema IDは`research-signal-export/v1`とする。`manifest.json`はexport ID、project/result ID、source result hash、signal count、signals hash、source resultの`generated_at`を持つ。`signals.jsonl`はacceptance testごとに1件で、project正本のmethod、pass condition、target requirement、production resultのresult・conditions、対象要件と交差するobservationsだけを含む。提示条件は現行result schemaにfieldがないため`presentation_conditions: null`とし、自由文から推測しない。
+
+source resultのproduction-owned schema、import log、import audit hash、acceptance test、requirementを再検証する。未知field、識別子、email、phone、secret、private URL、絶対path、`PRIVATE_RAW`／`RESTRICTED`を検出したら`FEEDBACK-EXPORT-CONTRACT`または`FEEDBACK-EXPORT-PRIVACY`で停止し、入力を推測補正しない。同じexportの再実行は`ALREADY_EXPORTED`、異なる既存bytesは`FEEDBACK-EXPORT-CONFLICT`で非破壊に失敗する。
+
 ## 11. 検証規則
 
 `workflow_mode: PRODUCTION_HANDOFF` のとき、次をblocking ruleとする。
@@ -413,6 +428,7 @@ python3 tools/export_handoff.py project/harmony-study --output data/handoffs/har
 python3 tools/import_production_result.py path/to/production-result.yaml --dry-run
 python3 tools/import_production_result.py path/to/production-result.yaml --apply
 python3 tools/impact.py --production-result PR001
+python3 tools/export_feedback_signals.py project/<slug> --result-id PR001 --output <signal-bundle-directory> --root <working-root>
 ```
 
 - `build_handoff.py` は正本から決定的にhandoffを生成する。
@@ -421,7 +437,7 @@ python3 tools/impact.py --production-result PR001
 - `--apply` は検証済み結果だけを台帳、証拠候補、監査ログへ追記する。
 - 同じresult IDとhashの再取込は冪等に成功し、異なる内容で同じIDなら失敗する。
 
-`export_handoff.py` のbundleはproduction側の受理契約に合わせて `manifest.yaml`、`production-handoff.yaml`、`provenance.yaml`、`schemas/`、`artifacts/` を持つ。`artifacts/` には仮説、比較、要件、受入試験、Prototype Plan、source-ref index、creative directionのsnapshotを置く。source-ref indexは `references` 配列と `record_hash` を出力する。原証拠本文、禁止区分、秘密、ローカル絶対パスはexportしない。
+`export_handoff.py` のbundleはproduction側の受理契約に合わせて `manifest.yaml`、`production-handoff.yaml`、`provenance.yaml`、`schemas/`、`artifacts/` を持つ。`artifacts/` には仮説、比較、要件、受入試験、Prototype Plan、`visual-language.yaml`、source-ref index、creative directionのsnapshotを置く。`schemas/visual-language.schema.json`もsnapshotし、manifestのfile hashへ含める。source-ref indexは `references` 配列と `record_hash` を出力する。原証拠本文、禁止区分、秘密、ローカル絶対パスはexportしない。
 
 ## 13. エージェント権限
 

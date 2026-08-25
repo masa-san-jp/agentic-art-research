@@ -3,7 +3,7 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .DS_Store
-projects/smoke-project/
+projects/*/
 data/handoffs/
 
 # Raw or secret-bearing formats are forbidden by policy as well as ignored here.

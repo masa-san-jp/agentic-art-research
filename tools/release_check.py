@@ -31,6 +31,8 @@ SCHEMA_NAMES = (
     "insight",
     "decision",
     "requirement",
+    "research-signal-export",
+    "visual-language",
     "research-state",
     "completion-report",
 )

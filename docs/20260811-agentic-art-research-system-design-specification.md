@@ -107,7 +107,7 @@
 | 領域 | 正本 | 本リポジトリでの扱い |
 |---|---|---|
 | 一般美術史、運動、作家、作品、場所、時代文脈 | `art-history-notes` | URN、commit SHA、取得日時、必要な抜粋を参照する |
-| 制作者本人の美意識・関心の派生情報 | 本リポジトリ | `profiles/` に根拠ID・有効期限付きで保存する |
+| 制作者本人の美意識・関心の派生情報 | 外部profile output root | `profiles/` はREADMEのみを置き、`--profiles-root`で根拠ID・有効期限付きの派生signalを検証する |
 | 作品ごとの調査、判断、制作要件 | 本リポジトリ | `projects/<project-id>/` を正本とする |
 | 私的な原データ | Google Drive、Personal Data Fabric等の許可済み保管先 | URI、ハッシュ、メタデータのみを台帳に保存する |
 | 完成作品本体 | 制作リポジトリまたはアセット保管先 | 作品ID、版、ハッシュ、参照URIのみを保存する |
@@ -199,6 +199,11 @@ agentic-art-research/
 │   ├── project-manifest.schema.json
 │   ├── evidence.schema.json
 │   ├── claim.schema.json
+│   ├── observation.schema.json
+│   ├── relationship.schema.json
+│   ├── contradiction.schema.json
+│   ├── external-reference.schema.json
+│   ├── aesthetic-signal.schema.json
 │   ├── insight.schema.json
 │   ├── decision.schema.json
 │   ├── requirement.schema.json
@@ -214,12 +219,7 @@ agentic-art-research/
 │   └── integration-art-history-notes.md
 ├── templates/
 │   └── project/
-├── profiles/
-│   └── <creator-id>/
-│       ├── manifest.yaml
-│       ├── aesthetic-signals.jsonl
-│       ├── interest-timeline.jsonl
-│       └── uncertainty-register.yaml
+├── profiles/                         # protocol README only; instances are external
 ├── projects/
 │   └── <project-id>/
 │       ├── manifest.yaml
@@ -273,6 +273,7 @@ projects/<project-id>/
 ├── 05_production/
 │   ├── creative-direction.md
 │   ├── production-requirements.yaml
+│   ├── visual-language.yaml
 │   ├── acceptance-tests.yaml
 │   ├── prototype-backlog.yaml
 │   └── production-agent-context.md
@@ -533,6 +534,15 @@ acceptance_test:
 
 「不穏にする」「美しくする」のような判定不能な文は、そのまま必須要件にしない。観察可能な形式、比較対象、評価者、試験方法のいずれかを追加する。
 
+### 12.5 Visual language
+
+`05_production/visual-language.yaml`は、研究側の媒体decisionを制作側へ渡すための
+typed artifactである。`schemas/visual-language.schema.json`を正本とし、媒体は
+`decision-log.yaml`の`ADOPTED`な一意の媒体選択decisionからのみ参照する。自由文から
+媒体を推測しない。DRAFT〜DECIDINGではtemplateの空骨格を許可し、
+`READY_FOR_PRODUCTION`以降は媒体、技法、適用条件、禁止表現、未解決不確実性の参照を
+validatorが検査する。素材・施工・製造・最終権利安全保証はproduction/governance側の責務とする。
+
 ## 13. 個人美意識プロファイル
 
 プロファイルは固定人格診断ではなく、時系列の仮説集合として保存する。
@@ -540,16 +550,22 @@ acceptance_test:
 ```yaml
 aesthetic_signal:
   id: AS001
-  creator_id: creator/masa
+  creator_id: creator-masa
   statement: 対象を直接説明するより欠落によって示す傾向
-  evidence_ids: [EV003, EV007]
-  observed_period: 2024/2026
-  strength: recurrent
-  context: completed-works
-  counterexamples: [EV034]
+  evidence_refs: [project/example-project::EV003, project/example-project::EV007]
+  observed_period: {from: 2024-01-01, to: 2026-12-31}
+  strength: MODERATE
+  context: LONG_TERM
+  counterexample_refs: [project/example-project::EV034]
   confidence_status: SUPPORTED
   review_after: 2027-02-11
 ```
+
+The canonical profile template is `templates/profile/aesthetic-signals.yaml`. Real
+creator/profile instances are never committed here; `tools/validate.py` and
+`tools/build_graph.py` read an explicitly supplied `--profiles-root` (or `<root>/profiles`
+when omitted). Signals must resolve project-qualified evidence, and
+`observed_period.from <= observed_period.to <= review_after`.
 
 規律:
 
@@ -564,7 +580,7 @@ aesthetic_signal:
 ### 14.1 CLI
 
 ```bash
-python3 tools/new_project.py <project-id>
+python3 tools/new_project.py <project-id> --root <temporary-work-root>
 python3 tools/validate.py --check
 python3 tools/build_graph.py
 python3 tools/bundle.py project/<project-id> --audience human

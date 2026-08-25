@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/contradiction.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "claim_ids", "description", "status", "resolution"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^CT[0-9]{3,}$"},
+    "claim_ids": {
+      "type": "array",
+      "minItems": 2,
+      "items": {"type": "string", "pattern": "^CL[0-9]{3,}$"}
+    },
+    "description": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "status": {"$ref": "common.schema.json#/$defs/contradictionStatus"},
+    "resolution": {"type": ["string", "null"], "minLength": 1}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "RESOLVED"}}},
+      "then": {
+        "properties": {"resolution": {"type": "string", "minLength": 1}},
+        "required": ["resolution"]
+      }
+    }
+  ]
+}

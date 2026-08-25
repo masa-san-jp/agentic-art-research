@@ -12,6 +12,7 @@ entry_points:
   evidence_ledger: 02_evidence/evidence-ledger.jsonl
   decision_log: 04_decisions/decision-log.yaml
   production_requirements: 05_production/production-requirements.yaml
+  visual_language: 05_production/visual-language.yaml
   completion_report: 07_runtime/completion-report.json
 access:
   classification: PROJECT_INTERNAL

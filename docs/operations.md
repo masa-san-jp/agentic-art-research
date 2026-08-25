@@ -29,18 +29,27 @@ python3 tools/docs_check.py --check
 
 ## Normal run
 
-新規プロジェクトは雛形から作成し、正本ファイルを編集してから検証する。
+新規プロジェクトはcanonical repositoryではなく、一時作業rootで雛形から作成し、正本ファイルを編集してから検証する。
 
 ```bash
-python3 tools/new_project.py example-project --title "Example Project"
-python3 tools/task_runtime.py project/example-project init --now 2026-08-11T00:00:00+09:00
-python3 tools/task_runtime.py project/example-project claim --worker-id worker-a
-python3 tools/build_graph.py
-python3 tools/bundle.py project/example-project --audience human
-python3 tools/audit.py
+WORK_ROOT="$(mktemp -d /tmp/agentic-art-project.XXXXXX)"
+git clone --local --no-hardlinks . "$WORK_ROOT"
+python3 "$WORK_ROOT/tools/new_project.py" example-project --title "Example Project" --root "$WORK_ROOT"
+python3 "$WORK_ROOT/tools/task_runtime.py" project/example-project init --now 2026-08-11T00:00:00+09:00 --root "$WORK_ROOT"
+python3 "$WORK_ROOT/tools/next_action.py" project/example-project \
+  --worker worker-a \
+  --now 2026-08-11T00:00:00+09:00 \
+  --dry-run \
+  --root "$WORK_ROOT"
+python3 "$WORK_ROOT/tools/task_runtime.py" project/example-project claim --worker-id worker-a --root "$WORK_ROOT"
+python3 "$WORK_ROOT/tools/executive_brief.py" project/example-project --root "$WORK_ROOT"
+python3 "$WORK_ROOT/tools/build_graph.py" --root "$WORK_ROOT"
+python3 "$WORK_ROOT/tools/bundle.py" project/example-project --audience human --root "$WORK_ROOT"
+python3 "$WORK_ROOT/tools/audit.py" --root "$WORK_ROOT"
 ```
 
 タスクは `execution/task-queue.yaml` の依存関係とID順に従い、1件ずつ claim する。
+claim前のpreviewはread-onlyであり、previewのJSONは作業開始のcontext確認に使う。実際にclaimするlive入口はフラグなしの`next_action.py`、または互換用の`task_runtime.py ... claim`である。
 停止時は進捗、実行コマンド、結果、残課題、`resume_from` を `execution/state.yaml` に残す。
 期限切れleaseだけを再開し、同じ `effect_key` の効果を二重適用しない。
 
@@ -50,13 +59,44 @@ python3 tools/audit.py
 上流セッションまたは別リポジトリから依頼を受ける場合は、まずschema適合と衝突だけをdry-runで確認する。
 
 ```bash
-python3 tools/accept_research_request.py path/to/research-request.yaml --dry-run
+python3 tools/accept_research_request.py path/to/research-request.yaml --dry-run --root "$WORK_ROOT"
 python3 tools/accept_research_request.py path/to/research-request.yaml --apply \
-  --accepted-at 2026-08-12T09:00:00+09:00
-python3 tools/validate.py --project project/<slug> --check
+  --accepted-at 2026-08-12T09:00:00+09:00 --root "$WORK_ROOT"
+python3 tools/validate.py --project project/<slug> --check --root "$WORK_ROOT"
+python3 tools/export_feedback_signals.py project/<slug> \
+  --result-id PR001 \
+  --output /tmp/agentic-art-signal-bundle \
+  --root "$WORK_ROOT"
+```
+
+Knowledge records are project-local and profile instances are external. Keep real profile
+data outside the protocol repository and pass its root explicitly when validating or
+building the graph:
+
+```bash
+python3 tools/validate.py --root "$WORK_ROOT" --profiles-root /path/to/profile-root --check
+python3 tools/build_graph.py --root "$WORK_ROOT" --profiles-root /path/to/profile-root
+python3 tools/impact.py --root "$WORK_ROOT" --profiles-root /path/to/profile-root --node profile/<creator-id>::AS001
+```
+
+The profile root contains `aesthetic-signals.yaml` with a `signals` list. Each signal must
+resolve every `project/<slug>::EV###` reference; no profile instance, raw personal source,
+or project-derived graph is copied into this repository.
+
+媒体判断を制作側へ渡すときは、先に`decision-log.yaml`へ媒体選択を`ADOPTED`として記録し、
+その後に`05_production/visual-language.yaml`をauthoringする。validatorは媒体を自由文から
+推測せず、DRAFTの空骨格以外ではDC参照、技法・要件、palette/composition、禁止表現を検査する。
+production handoffのbundleには同artifactと`visual-language.schema.json`のsnapshotが含まれる。
+
+repositoryのqueue/stateを更新した後は、実行順序のSSOT検査を必ず通す。`next_task`は、IN_PROGRESSがなければ依存完了済みの最小ID READY taskでなければならない。
+
+```bash
+python3 tools/validate.py --check
 ```
 
 受理CLIは外部sourceを取得せず、production repoへ書き込まず、`RESEARCH_ONLY` projectとcanonical SHA-256 receiptだけを作る。同一依頼の再実行は `ALREADY_APPLIED` になり、異なる内容の同一IDや既存projectは拒否する。入力契約は `docs/20260812-agentic-art-research-inbound-request-extension-specification.md` にある。
+
+feedback signal exportはimport済みのresultと監査eventをread-onlyで参照する。受入試験・要件の解決、production-result schema、hash、PII/private境界を再検証してから、明示した出力先へatomicに2ファイルを作る。外部repository、Drive、APIへの配送は行わない。
 
 ## Incident response
 

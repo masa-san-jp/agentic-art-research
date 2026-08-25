@@ -98,6 +98,7 @@ class FeedbackImportContractTest(unittest.TestCase):
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": "https://example.invalid/test/production-result.schema.json",
             "type": "object",
+            "additionalProperties": False,
             "required": [
                 "schema_version",
                 "result_id",

@@ -1,0 +1,8 @@
+{
+  "id": "RL001",
+  "from_id": "OB001",
+  "to_id": "CL001",
+  "type": "influenced_by",
+  "rationale": "The observation provides the basis for the claim.",
+  "evidence_ids": ["EV001"]
+}

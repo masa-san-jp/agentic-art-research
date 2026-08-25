@@ -17,6 +17,26 @@ python3 tools/task_runtime.py project/example claim --worker-id worker-a
 python3 tools/task_runtime.py project/example resume --now 2026-08-11T00:10:00+09:00
 ```
 
+作業開始前に次のtaskを確認するだけなら、`next_action.py --dry-run`を使う。これはleaseをclaimせず、`research-state.json`や`run-log.jsonl`も変更しない。
+
+```bash
+python3 tools/next_action.py project/example \
+  --worker worker-a \
+  --now 2026-08-25T00:00:00+09:00 \
+  --dry-run \
+  --root <temporary-root>
+```
+
+未claim taskは`TASK_PREVIEWED`（`lease: null`）、同じworkerが保持中のtaskは`TASK_RESUME_PREVIEW`、予算超過は`BUDGET_EXCEEDED`、ready taskなしは`NO_TASK_READY`になる。previewと同じworker・時刻でliveを実行した場合、task ID、role、context、write targets、acceptanceは一致する。
+
+queue/stateの実行順序はrepository rootの`execution/task-queue.yaml`と`execution/state.yaml`が正本である。次のtaskを手で推測せず、次で矛盾を検査する。
+
+```bash
+python3 tools/validate.py --check
+```
+
+validatorは未知dependency、循環、依存未完了taskのREADY化、複数IN_PROGRESS、誤った`next_task`、全task完了前の`terminal: true`をblockingにする。
+
 workerが停止した場合は期限切れleaseだけが再取得対象になる。失敗は設定済みの
 `TRANSIENT`、`TIMEOUT`、`RATE_LIMIT`などの分類を必須とし、最大試行回数を超えて
 同じ失敗を反復しない。完了効果にはタスク単位の決定的な`effect_key`を使い、同じ

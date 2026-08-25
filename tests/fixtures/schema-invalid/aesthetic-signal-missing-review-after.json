@@ -1,0 +1,11 @@
+{
+  "id": "AS001",
+  "creator_id": "creator-fixture",
+  "statement": "The creator repeatedly uses absence as a compositional constraint.",
+  "evidence_refs": ["project/harmony-study::EV001"],
+  "observed_period": {"from": "2026-01-01", "to": "2026-06-30"},
+  "strength": "MODERATE",
+  "context": "LONG_TERM",
+  "counterexample_refs": [],
+  "confidence_status": "SUPPORTED"
+}

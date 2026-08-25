@@ -38,7 +38,38 @@ def _add_edge(
     edges.add((source_key, target_key, relation))
 
 
-def build_graph(root: Path) -> dict[str, Any]:
+def _add_qualified_edge(
+    edges: set[tuple[str, str, str]],
+    nodes: dict[str, dict[str, Any]],
+    source: str,
+    target: str,
+    relation: str,
+) -> None:
+    """Add an edge whose endpoints are already project/profile-qualified keys."""
+    if source not in nodes or target not in nodes:
+        missing = source if source not in nodes else target
+        raise ValueError(f"unresolved graph reference: {missing}")
+    edges.add((source, target, relation))
+
+
+def _profile_signal_records(profiles_root: Path | None) -> list[dict[str, Any]]:
+    if profiles_root is None:
+        return []
+    if profiles_root.is_file():
+        paths = [profiles_root] if profiles_root.name == "aesthetic-signals.yaml" else []
+    elif profiles_root.is_dir():
+        paths = sorted(profiles_root.rglob("aesthetic-signals.yaml"))
+    else:
+        paths = []
+    records: list[dict[str, Any]] = []
+    for path in paths:
+        value = load_yaml(path) or {}
+        if isinstance(value, dict) and isinstance(value.get("signals"), list):
+            records.extend(signal for signal in value["signals"] if isinstance(signal, dict))
+    return records
+
+
+def build_graph(root: Path, profiles_root: Path | None = None) -> dict[str, Any]:
     nodes: dict[str, dict[str, Any]] = {}
     edges: set[tuple[str, str, str]] = set()
     project_index: list[dict[str, Any]] = []
@@ -48,8 +79,14 @@ def build_graph(root: Path) -> dict[str, Any]:
         questions = yaml_list(project / "01_planning" / "question-register.yaml", "questions")
         evidence = read_jsonl(project / "02_evidence" / "evidence-ledger.jsonl")
         claims = read_jsonl(project / "03_knowledge" / "claims.jsonl")
+        knowledge_observations = read_jsonl(project / "03_knowledge" / "observations.jsonl")
+        relationships = read_jsonl(project / "03_knowledge" / "relationships.jsonl")
+        contradictions = read_jsonl(project / "03_knowledge" / "contradictions.jsonl")
+        external_references = read_jsonl(project / "03_knowledge" / "external-references.jsonl")
         insights = yaml_list(project / "04_decisions" / "insight-register.yaml", "insights")
         decisions = yaml_list(project / "04_decisions" / "decision-log.yaml", "decisions")
+        rejected_options = yaml_list(project / "04_decisions" / "rejected-options.yaml", "rejected_options")
+        registry_uncertainties = yaml_list(project / "04_decisions" / "uncertainty-register.yaml", "uncertainties")
         requirements = yaml_list(project / "05_production" / "production-requirements.yaml", "requirements")
         tests = yaml_list(project / "05_production" / "acceptance-tests.yaml", "acceptance_tests")
         hypotheses = yaml_list(project / "04_decisions" / "production-hypotheses.yaml", "hypotheses")
@@ -60,10 +97,10 @@ def build_graph(root: Path) -> dict[str, Any]:
         for result in production_results:
             if not isinstance(result, dict) or not isinstance(result.get("result_id"), str):
                 continue
-            observations = result.get("observations", [])
-            if not isinstance(observations, list):
+            result_observations = result.get("observations", [])
+            if not isinstance(result_observations, list):
                 continue
-            for observation in observations:
+            for observation in result_observations:
                 if not isinstance(observation, dict) or not isinstance(observation.get("id"), str):
                     continue
                 production_observations.append(
@@ -73,11 +110,21 @@ def build_graph(root: Path) -> dict[str, Any]:
                         "result_id": result["result_id"],
                     }
                 )
-        uncertainties = [
+        inline_uncertainties = [
             uncertainty
             for hypothesis in hypotheses
             for uncertainty in hypothesis.get("uncertainties", [])
             if isinstance(uncertainty, dict)
+        ]
+        registered_uncertainty_ids = {
+            uncertainty.get("id")
+            for uncertainty in registry_uncertainties
+            if isinstance(uncertainty, dict) and isinstance(uncertainty.get("id"), str)
+        }
+        uncertainties = registry_uncertainties + [
+            uncertainty
+            for uncertainty in inline_uncertainties
+            if uncertainty.get("id") not in registered_uncertainty_ids
         ]
         prototype_tasks = [
             task
@@ -92,7 +139,7 @@ def build_graph(root: Path) -> dict[str, Any]:
         if isinstance(handoff_value, dict) and handoff_value.get("handoff_id"):
             handoffs = [{"id": handoff_value["handoff_id"], **handoff_value}]
 
-        for records, kind in ((questions, "question"), (evidence, "evidence"), (claims, "claim"), (insights, "insight"), (decisions, "decision"), (requirements, "requirement"), (tests, "acceptance_test")):
+        for records, kind in ((questions, "question"), (evidence, "evidence"), (claims, "claim"), (knowledge_observations, "observation"), (relationships, "relationship"), (contradictions, "contradiction"), (external_references, "external_reference"), (insights, "insight"), (decisions, "decision"), (rejected_options, "rejected_option"), (requirements, "requirement"), (tests, "acceptance_test")):
             _add_nodes(nodes, records, kind, project_id)
         for records, kind in (
             (hypotheses, "production_hypothesis"),
@@ -116,6 +163,22 @@ def build_graph(root: Path) -> dict[str, Any]:
                 _add_edge(edges, nodes, project_id, source, record["id"], "supports")
             for source in record.get("opposing_claims", []):
                 _add_edge(edges, nodes, project_id, source, record["id"], "opposes")
+        for record in knowledge_observations:
+            for source in record.get("evidence_ids", []):
+                _add_edge(edges, nodes, project_id, record["id"], source, "based_on")
+        for record in relationships:
+            for field, relation in (("from_id", "relates_from"), ("to_id", "relates_to")):
+                source = record.get(field)
+                if isinstance(source, str):
+                    _add_edge(edges, nodes, project_id, record["id"], source, relation)
+            for source in record.get("evidence_ids", []):
+                _add_edge(edges, nodes, project_id, record["id"], source, "supported_by")
+        for record in contradictions:
+            for source in record.get("claim_ids", []):
+                _add_edge(edges, nodes, project_id, record["id"], source, "contradicts")
+        for record in external_references:
+            for source in record.get("evidence_ids", []):
+                _add_edge(edges, nodes, project_id, record["id"], source, "supported_by")
         for record in insights:
             for source in record.get("claim_ids", []):
                 _add_edge(edges, nodes, project_id, source, record["id"], "informs")
@@ -126,6 +189,16 @@ def build_graph(root: Path) -> dict[str, Any]:
                 _add_edge(edges, nodes, project_id, source, record["id"], "informs")
             for source in record.get("evidence_ids", []):
                 _add_edge(edges, nodes, project_id, source, record["id"], "informs")
+            for source in record.get("rejected_option_ids", []):
+                _add_edge(edges, nodes, project_id, record["id"], source, "rejects")
+            for source in record.get("uncertainty_ids", []):
+                _add_edge(edges, nodes, project_id, record["id"], source, "has_uncertainty")
+        for record in rejected_options:
+            for source in record.get("decision_ids", []):
+                _add_edge(edges, nodes, project_id, record["id"], source, "rejected_by")
+        for record in registry_uncertainties:
+            for source in record.get("decision_ids", []):
+                _add_edge(edges, nodes, project_id, record["id"], source, "uncertainty_of")
         for record in requirements:
             for source in record.get("source_decisions", []):
                 _add_edge(edges, nodes, project_id, source, record["id"], "requires")
@@ -219,6 +292,21 @@ def build_graph(root: Path) -> dict[str, Any]:
                     if evidence_record.get("source_location") == evidence_uri:
                         _add_edge(edges, nodes, project_id, result_id, evidence_record["id"], "derived_test_evidence")
 
+    for signal in _profile_signal_records((profiles_root or (root / "profiles")).resolve()):
+        signal_id = signal.get("id")
+        creator_id = signal.get("creator_id")
+        if not isinstance(signal_id, str) or not isinstance(creator_id, str):
+            continue
+        profile_id = f"profile/{creator_id}"
+        key = node_key(profile_id, signal_id)
+        if key in nodes:
+            raise ValueError(f"duplicate graph node: {key}")
+        nodes[key] = {"key": key, "id": signal_id, "kind": "aesthetic_signal", "project_id": profile_id}
+        for field, relation in (("evidence_refs", "based_on"), ("counterexample_refs", "counterexample")):
+            for reference in signal.get(field, []):
+                if isinstance(reference, str):
+                    _add_qualified_edge(edges, nodes, key, reference, relation)
+
     return {
         "nodes": [nodes[key] for key in sorted(nodes)],
         "edges": [{"from": source, "to": target, "type": kind} for source, target, kind in sorted(edges)],
@@ -229,10 +317,11 @@ def build_graph(root: Path) -> dict[str, Any]:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Build deterministic dependency graph from canonical project data.")
     parser.add_argument("--root", type=Path, default=ROOT)
+    parser.add_argument("--profiles-root", type=Path, help="Read external profile instances from this root (defaults to <root>/profiles).")
     parser.add_argument("--check", action="store_true", help="Fail if generated output is stale.")
     args = parser.parse_args()
     root = args.root.resolve()
-    graph = build_graph(root)
+    graph = build_graph(root, args.profiles_root.resolve() if args.profiles_root else None)
     output = root / "data" / "dependency-graph.json"
     content = stable_json(graph)
     if args.check:
