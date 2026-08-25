@@ -46,6 +46,9 @@ archive_limits:
   max_members: 1000
   max_archive_bytes: 52428800
   max_member_bytes: 20971520
+attempt_workspace_limits:
+  max_file_bytes: 20971520
+  max_total_bytes: 52428800
 approved_snapshot_requires:
   - rights_status
   - redistribution

@@ -44,6 +44,12 @@ adapter設定は`config/worker-adapters.yaml`のargv、capability、environment 
 
 このadapterはattempt resultを返すだけで、`07_runtime/research-state.json`、`run-log.jsonl`、task lease、acceptance、output adoptionを変更しない。`HUMAN_REQUIRED`はtyped decision requestとして後続のdecision flowへ渡し、taskのcomplete/promotionは別の原子操作で行う。認証情報はschema、ログ、manifestへ入れず、allowlistされた環境変数の値もdiagnosticからredactする。
 
+### Attempt file boundary
+
+worker processのcwdは`<work-root>/.harness/attempts/<run>/<task>/<attempt>/project`であり、canonical projectではない。`tools/attempt_workspace.py`がbaseline/protected manifestを作り、worker終了後にbefore/afterを`attempt-changeset.schema.json`へ変換する。`config/task-roles.yaml#roles.<role>.write_targets`のexact relative pathだけをworker file setとし、`runtime_targets`はharnessの別namespaceとしてadapter/promotionから隔離する。
+
+`inspect_attempt`はprotocol root、canonical project以外のwork root、別project、data、output rootの変更も検出する。許可外path、schema/private/secret/size違反、symlink・hard-link・特殊file・path traversal・case/Unicode collisionがある場合、許可内変更を含めて全attemptを拒否する。`promote_attempt`はproject lock下でbaseline hashを再確認し、candidate treeを作ってから交換するため、同時変更は`ATTEMPT-BASELINE-CONFLICT`となり既存projectを上書きしない。
+
 queue/stateの実行順序はrepository rootの`execution/task-queue.yaml`と`execution/state.yaml`が正本である。次のtaskを手で推測せず、次で矛盾を検査する。
 
 ```bash

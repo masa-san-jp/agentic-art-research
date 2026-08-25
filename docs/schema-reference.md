@@ -103,6 +103,9 @@ Agent attemptは `schemas/agent-attempt-request.schema.json` と
 
 `tools/worker_adapter.py`はprovider-neutralなargvを`shell=False`で起動し、stdinへrequest JSONを1 objectとして渡す。stdoutはresult JSON一つ、stderrは上限付き診断であり、adapterは`task_runtime`を更新しない。adapter設定の正本は`config/worker-adapters.yaml`で、認証情報や特定providerのSDK設定を置かない。workerのstdout/stderr、result、診断にはsecret、lease token、credential値、absolute pathを残さず、検出時はfail closedする。
 
+Attempt workspaceのsnapshotは `schemas/attempt-workspace-manifest.schema.json`、差分は
+`schemas/attempt-changeset.schema.json` が正本である。manifestの対象はrelative pathだけで、file type、mode、size、SHA-256を保持する。changesetのoperationは`ADD`、`MODIFY`、`DELETE`、`RENAME`に限定し、before/after manifest hashと変更ファイルのhashを持つ。`07_runtime`のharness-owned targetはworker changesetへ入れず、roleのworker write target、protected-root boundary、baseline lock、promotionは実行系の正本である。
+
 `MAJOR`または`CRITICAL`の制作仮説上の不確実性は、少なくとも一つの`prototype_plan_ids`か、空でない`external_validation_reason`を持つ。handoffの`prototype_plan_ids`自体は、重大な不確実性がない場合または外部検証へ明示的に委ねる場合は空配列でよい。`open_gaps`は各項目に`blocking`を持ち、`READY` handoffではblocking gapを許可しない。
 
 handoff hashは`tools/canonical.py`のcanonical JSON（`integrity`除外、sorted keys、compact UTF-8）から再計算し、payloadは`config/handoff-policy.yaml`の262,144 bytes上限を超えてはならない。

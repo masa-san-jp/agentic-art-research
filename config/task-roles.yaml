@@ -41,7 +41,8 @@ roles:
     write_targets:
       - {path: "02_evidence/evidence-ledger.jsonl", record: evidence, schema: "schemas/evidence.schema.json"}
       - {path: "02_evidence/source-ledger.jsonl", record: source}
-      - {path: "07_runtime/run-log.jsonl", record: run-log-event, schema: "schemas/run-log-event.schema.json"}
+    runtime_targets:
+      - {path: "07_runtime/run-log.jsonl", namespace: harness, record: run-log-event, schema: "schemas/run-log-event.schema.json"}
     acceptance:
       - "python3 tools/validate.py --project {slug} --check"
       - "python3 -c \"import sys;n=sum(1 for l in open('projects/{slug}/02_evidence/evidence-ledger.jsonl') if l.strip());assert n>0,'証拠が0件';print(n)\""
@@ -109,7 +110,8 @@ roles:
     write_targets:
       - {path: "06_governance/privacy-review.yaml", record: review}
       - {path: "06_governance/safety-risk-register.yaml", record: risk}
-      - {path: "07_runtime/research-state.json", record: state}
+    runtime_targets:
+      - {path: "07_runtime/research-state.json", namespace: harness, record: state}
     acceptance:
       - "python3 tools/validate.py --project {slug} --check"
       - "python3 tools/build_graph.py --check"

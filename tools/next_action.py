@@ -92,7 +92,11 @@ def budget_remaining(project: Path, events: list[dict[str, Any]]) -> dict[str, A
 
 
 def _write_targets(role_entry: dict[str, Any]) -> list[dict[str, Any]]:
-    return [dict(target) for target in role_entry.get("write_targets") or []]
+    return [dict(target) for target in role_entry.get("write_targets") or [] if target.get("namespace", "worker") == "worker"]
+
+
+def _runtime_targets(role_entry: dict[str, Any]) -> list[dict[str, Any]]:
+    return [dict(target) for target in role_entry.get("runtime_targets") or []]
 
 
 def _rooted_command(
@@ -360,6 +364,7 @@ def build_next_action(
         "context": build_context_pack(work, target, task_id, role),
         "instructions": protocol_sections(protocol_text, list(role_entry.get("protocol_sections") or [])),
         "write_targets": _write_targets(role_entry),
+        "runtime_targets": _runtime_targets(role_entry),
         "acceptance": _acceptance(
             role_entry,
             slug,

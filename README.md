@@ -66,6 +66,8 @@ python3 tools/harness.py bootstrap \
 
 bootstrap後のworker実行は、`schemas/agent-attempt-request.schema.json`／`agent-attempt-result.schema.json`と`config/worker-adapters.yaml`を正本にする。`tools/worker_adapter.py`はprovider-neutralなargvを`shell=False`で起動し、timeout、exit/signal、protocol、output limit、secret、capabilityの失敗を`WORKER-*` resultへ変換する。adapterはtask runtimeやproject正本を変更せず、認証情報、lease token、absolute pathをresult/diagnosticへ残さない。
 
+workerのファイル変更は`tools/attempt_workspace.py`を通す。`create_attempt_workspace`はrun/task/attempt単位のsnapshotをwork rootの`.harness/attempts/`へ作り、`inspect_attempt`はroleのworker write targetだけをchangesetとして認める。protocol、canonical project、別project、data、output、runtime namespaceへの変更、symlink/hard-link/path collision、secret/private/size違反はfail closedし、promotionはbaseline lock下の`promote_attempt`だけが行う。crashしたworkspaceは`.harness/quarantine/`へ移動して再取得できる。
+
 ## ローカル実行
 
 プロトコル自体の検証は、このリポジトリで実行する。

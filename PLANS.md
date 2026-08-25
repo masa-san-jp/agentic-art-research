@@ -38,6 +38,7 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 - [x] (2026-08-25 JST) `VISUAL-LANGUAGE-001`: 媒介・技法・palette/composition・prohibited expressionをtyped visual-language artifactへ固定し、production-translator contextとproduction handoff bundle/schema snapshotへ接続。200 unittestとvalidator/security/docs/graph gate合格。queue上の次タスクはない。
 - [x] (2026-08-25 JST) `HARNESS-001`: protocol/work/output rootを分離し、schema-validなatomic/idempotent bootstrap、dependency preflight、protocol provenance、cwd非依存next actionを実装。205 unittestとvalidator/security/docs/graph/diff gate合格。次は`HARNESS-002`。
 - [x] (2026-08-25 JST) `HARNESS-002`: provider-neutralなargv worker adapter、versioned attempt request/result schema、bounded/redacted diagnostics、fake worker contractを実装。runtimeを変更せず、timeout/exit/protocol/output-limit/secret/capabilityをnamed failureへ変換し、213 unittestと全ローカルgateが合格。次は`HARNESS-003`。
+- [x] (2026-08-25 JST) `HARNESS-003`: task attemptをcanonical projectから隔離し、role write target、safe manifest、changeset、protected root、baseline conflict、quarantineを実装。222 unittestと全ローカルgateが合格。次は`HARNESS-004`。
 
 チェックボックスとUTCまたはJST日時。未完了、部分完了、完了を正確に表す。
 
@@ -70,6 +71,8 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 - 2026-08-25: knowledge schemaのenumはcommon schemaへ集約し、configとの一致テストに加えてvalidatorのnamed semantic ruleで未知語彙をblockingにした。schemaだけでは表現できない自己relationship、qualified profile reference、期間順序はvalidatorで拒否する。
 - 2026-08-25: visual languageの空テンプレートはDRAFT〜DECIDINGでは許容するが、READY_FOR_PRODUCTION以降は媒介決定、技法、適用可能なpalette/composition、禁止表現を必須にした。既存の完了判定fixtureはこの契約に合わせて明示的な媒介決定とartifactを持つよう更新した。
 - 2026-08-25: worker adapterのstdout/stderrは固定上限付きselector readerで読み、超過時はprocess groupをkillする。resultはworker応答の受入だけを担い、task runtimeのclaim/completeやoutput adoptionは後続タスクへ分離する。
+- 2026-08-25: worker write setから`07_runtime`のharness-owned state/logを分離するため、role configに`runtime_targets` namespaceを追加し、attempt changesetは`write_targets`だけを検証する。
+- 2026-08-25: canonical checkoutの既存fileがfilesystem由来のhard-link countを持つため、source/protected baselineでは既存linkを読み取り、attempt copy後のworkspaceだけをhard-link拒否対象にした。これによりsnapshot hashは環境依存のinode情報を含まず、worker-created hard-linkはfail closedできる。
 
 決定、理由、代替案、影響、日付を記録する。
 
@@ -85,6 +88,59 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 - 完了 (2026-08-25): `VISUAL-LANGUAGE-001`で`visual-language.schema.json`、媒介語彙、空テンプレート、媒介決定の一意性・採択状態・参照・lifecycle検証を追加した。production-translatorの書込対象と受入条件、production-agent bundle、handoff artifact、schema snapshotへ接続し、正常・失敗fixtureを追加した。200 unittest、validator、security、docs、graph、diff checkが合格した。queueの全タスクがDONEとなったため、次の開始点はない。
 - 完了 (2026-08-25): `HARNESS-001`で`harness.py bootstrap`、`harness-run.schema.json`、root境界、dependency preflight、protocol provenance、root-aware acceptance/next action、正常・失敗・冪等性テストを追加した。205 unittest、validator、security、docs、graph、diff gateが合格し、次の開始点は`HARNESS-002`。
 - 完了 (2026-08-25): `HARNESS-002`でversioned attempt request/result schema、provider-neutral argv adapter、secret/path/lease redaction、bounded output、fake worker、正常・失敗・冪等性・runtime non-mutation testsを追加した。213 unittest、validator、security、docs、graph、diff gateが合格し、次の開始点は`HARNESS-003`。
+- 完了 (2026-08-25): `HARNESS-003`でattempt workspace manifest/changeset、role worker/runtime namespace、protected root snapshot、safe file checks、atomic candidate promotion、baseline conflict、quarantine/recoveryを追加した。222 unittest、validator、security、chaos、docs、graph、diff gateが合格し、次の開始点は`HARNESS-004`。
+
+## HARNESS-003 ExecPlan
+
+### Purpose / Big Picture
+
+Issue #71の契約として、workerがcanonical work project、protocol、別project、data、output、runtimeを直接変更できないよう、claim時点のproject snapshotから一意なattempt workspaceを作る。worker終了後はbefore/after manifestからdeterministic changesetを作成し、roleの宣言済みworker write targetだけを許可する。promotionは後続のacceptance gateが呼ぶ明示APIに限定し、baseline conflictをlock下で拒否する。
+
+### Context and Orientation
+
+- workspace and changeset implementation: `tools/attempt_workspace.py`
+- typed contracts: `schemas/attempt-workspace-manifest.schema.json`, `schemas/attempt-changeset.schema.json`
+- role write/runtime namespace: `config/task-roles.yaml`, `tools/next_action.py`
+- protected content policy: `config/access-policy.yaml`, `tools/security_check.py`
+- tests: `tests/test_attempt_workspace.py`
+
+### Plan of Work
+
+1. safe filesystem snapshot、path normalization、symlink/device/socket/hard-link/size/secret checks、Unicode NFC + case collision検出を共通化する。
+2. `run/task/attempt`単位のstaging workspaceへprojectをcopyし、baseline/protected-root manifestをatomicに保存する。同じID・baselineは再利用し、異なる入力は拒否する。
+3. before/afterからADD/MODIFY/DELETE/RENAME changesetをdeterministically生成し、roleのworker write set、file mode、security policy、schemaをfail closedで検証する。
+4. protected rootsの変更検出、baseline lock、candidate staging、promotion、crash quarantine/recoveryを実装する。worker runtime mutationやcanonical direct mutationはpromoteしない。
+5. role config、next action、docs、正常/失敗/secret/large/symlink/hard-link/traversal/collision/delete/rename/concurrent/idempotence testsを更新し、全gateを通す。
+
+### Concrete Steps
+
+```bash
+.venv/bin/python -m unittest tests.test_attempt_workspace -v
+.venv/bin/python tools/validate.py --check
+.venv/bin/python tools/security_check.py --check
+.venv/bin/python tools/chaos_check.py
+.venv/bin/python tools/docs_check.py --check
+.venv/bin/python tools/build_graph.py --check
+git diff --check
+```
+
+### Validation and Acceptance
+
+- every role's declared worker file target yields a valid deterministic changeset; `runtime_targets` remain harness-owned and cannot be promoted by the worker;
+- protocol/README/AGENTS/config/schemas, canonical project, another project, data, output root, and runtime changes are rejected with `ATTEMPT-WRITE-BOUNDARY` or the more specific unsafe/security rule;
+- symlink, hard-link, device/socket, path traversal, case/Unicode collision, forbidden/private/secret, and size violations fail closed; allowed changes are not partially promoted when any sibling change is rejected;
+- same run/task/attempt and baseline reuses the same workspace/manifest bytes; crashes can be quarantined and recovered without changing canonical project; concurrent canonical changes produce `ATTEMPT-BASELINE-CONFLICT` without overwrite;
+- all required unittest, validate, security, chaos, docs, graph, and diff gates pass.
+
+### Idempotence and Recovery
+
+Attempt directories are keyed by `run_id/task_id/attempt_id`. Workspace creation is staged and atomically published. Rejected or crashed attempts remain outside the canonical project and can be moved to a run-scoped quarantine. Promotion verifies baseline under a project lock and prepares a candidate tree before replacing the project; an existing result or different baseline is never silently overwritten.
+
+### Interfaces and Dependencies
+
+- Python: `attempt_workspace.create_attempt_workspace`, `snapshot_project`, `build_changeset`, `promote_attempt`, `quarantine_attempt`
+- schemas: `attempt-workspace-manifest.schema.json`, `attempt-changeset.schema.json`
+- issue: `agentic-art-research#71`; dependency: `HARNESS-001`; next task after completion: `HARNESS-004` / Issue #72
 
 完了した動作、未完了、教訓、次の計画への影響を記録する。
 

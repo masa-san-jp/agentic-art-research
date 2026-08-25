@@ -81,6 +81,34 @@ requestは`agent-attempt-request.schema.json`、resultは`agent-attempt-result.s
 
 adapterはattempt resultだけを生成し、`07_runtime/research-state.json`、`run-log.jsonl`、lease、acceptance、output rootを変更しない。結果の採用、acceptance実行、task completeは後続の原子処理が行う。結果ファイルの同一bytes再実行は冪等で、異なるbytesの既存ファイルは上書きしない。
 
+### Attempt workspace and promotion boundary
+
+workerへはcanonical projectのpathを渡さず、claim時点のsnapshotから作ったattempt workspaceのpathだけを渡す。runtime state/logは`runtime_targets`のharness namespaceであり、workerの`write_targets`には含めない。
+
+```text
+<work-root>/.harness/attempts/<run-id>/<task-id>/<attempt-id>/
+├── baseline-manifest.json
+├── protected-manifest.json
+├── metadata.json
+├── project/                 # worker cwd
+└── changeset.json
+```
+
+```python
+from attempt_workspace import create_attempt_workspace, inspect_attempt, promote_attempt
+
+attempt = create_attempt_workspace(
+    protocol_root=protocol_root, work_root=work_root, output_root=output_root,
+    project_id="project/example", run_id="HR001", task_id="TASK001",
+    attempt_id="AT001", role="collector",
+)
+changeset = inspect_attempt(attempt, protocol_root=protocol_root, work_root=work_root, output_root=output_root)
+# acceptance executorが成功した後だけ、同じattemptを明示的にpromotionする。
+promote_attempt(attempt, protocol_root=protocol_root, work_root=work_root, output_root=output_root)
+```
+
+manifestはrelative path、file type、mode、size、SHA-256を持ち、symlink、device/socket、hard-link、path traversal、case/Unicode collisionを拒否する。追加・変更・削除・renameは`schemas/attempt-changeset.schema.json`で決定的に表現され、宣言外の一件でもattempt全体を`ATTEMPT-WRITE-BOUNDARY`で拒否する。`ATTEMPT-BASELINE-CONFLICT`時はcanonical projectを上書きしない。worker crash時は`quarantine_attempt`でcanonical外へ隔離し、`recover_quarantined_attempt`で再開できる。
+
 新規プロジェクトはcanonical repositoryではなく、一時作業rootで雛形から作成し、正本ファイルを編集してから検証する。
 
 ```bash

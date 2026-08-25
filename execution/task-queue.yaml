@@ -1,4 +1,4 @@
-version: 8
+version: 9
 updated_at: "2026-08-25T00:00:00+09:00"
 selection_policy: lowest_id_ready_with_dependencies_done
 allowed_statuses: [BACKLOG, READY, IN_PROGRESS, BLOCKED, DONE]
@@ -328,7 +328,7 @@ tasks:
   - id: HARNESS-003
     milestone: G3
     title: Isolate task attempt workspace and enforce write targets
-    status: READY
+    status: DONE
     depends_on: [HARNESS-001]
     acceptance: Each task attempt gets an isolated workspace and writes outside declared targets fail closed with a named audit event.
     issue_refs: ["agentic-art-research#71"]
@@ -338,7 +338,7 @@ tasks:
   - id: HARNESS-004
     milestone: G3
     title: Execute typed acceptance atomically with task completion
-    status: BACKLOG
+    status: READY
     depends_on: [HARNESS-001, HARNESS-003]
     acceptance: Typed acceptance commands execute from explicit roots and task promotion plus complete are atomic, idempotent, and fail closed.
     issue_refs: ["agentic-art-research#72"]

@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/attempt-changeset.schema.json",
+  "title": "Task attempt changeset",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project_id",
+    "run_id",
+    "task_id",
+    "attempt_id",
+    "role",
+    "baseline_manifest_sha256",
+    "after_manifest_sha256",
+    "changes"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "project_id": {"$ref": "common.schema.json#/$defs/projectId"},
+    "run_id": {"type": "string", "pattern": "^HR[0-9]{3,}$"},
+    "task_id": {"type": "string", "pattern": "^[A-Z][A-Z0-9_-]{2,}$"},
+    "attempt_id": {"type": "string", "pattern": "^AT[A-Za-z0-9_-]{3,}$"},
+    "role": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "baseline_manifest_sha256": {"$ref": "common.schema.json#/$defs/sha256"},
+    "after_manifest_sha256": {"$ref": "common.schema.json#/$defs/sha256"},
+    "changes": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/change"}
+    }
+  },
+  "$defs": {
+    "relativePath": {
+      "type": "string",
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+    },
+    "change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operation", "path", "before_sha256", "after_sha256", "size"],
+      "properties": {
+        "operation": {"enum": ["ADD", "MODIFY", "DELETE", "RENAME"]},
+        "path": {"$ref": "#/$defs/relativePath"},
+        "from_path": {"$ref": "#/$defs/relativePath"},
+        "before_sha256": {
+          "type": ["string", "null"],
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "after_sha256": {
+          "type": ["string", "null"],
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "size": {"type": "integer", "minimum": 0}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"operation": {"const": "RENAME"}}, "required": ["operation"]},
+          "then": {"required": ["from_path"]}
+        },
+        {
+          "if": {"properties": {"operation": {"const": "ADD"}}, "required": ["operation"]},
+          "then": {
+            "properties": {
+              "before_sha256": {"type": "null"},
+              "after_sha256": {"type": "string"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"operation": {"const": "DELETE"}}, "required": ["operation"]},
+          "then": {
+            "properties": {
+              "before_sha256": {"type": "string"},
+              "after_sha256": {"type": "null"}
+            }
+          }
+        }
+      ]
+    }
+  }
+}

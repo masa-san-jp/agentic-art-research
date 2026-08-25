@@ -1,8 +1,8 @@
 version: 1
 updated_at: "2026-08-25T00:00:00+09:00"
 current_milestone: G3
-next_task: HARNESS-003
-last_completed_task: HARNESS-002
+next_task: HARNESS-004
+last_completed_task: HARNESS-003
 terminal: false
 blocked_by: []
 resume_from:
@@ -19,8 +19,10 @@ resume_from:
     - schemas/agent-attempt-result.schema.json
     - tools/worker_adapter.py
     - tests/test_worker_adapter.py
-  action: Implement HARNESS-003 isolated task attempt workspace and write-target enforcement.
+    - tools/attempt_workspace.py
+    - tests/test_attempt_workspace.py
+  action: Implement HARNESS-004 typed acceptance executor and atomic task completion.
 last_verification:
   result: PASS
   command: .venv/bin/python -m unittest discover -s tests -v; .venv/bin/python tools/validate.py --check; .venv/bin/python tools/security_check.py --check; .venv/bin/python tools/docs_check.py --check; .venv/bin/python tools/build_graph.py --check; git diff --check
-  detail: 213 tests and all HARNESS-002 local gates passed. Attempt request/result schemas, provider-neutral shell-less adapter, bounded/redacted diagnostics, named worker failures, fake worker, idempotent result output, and runtime non-mutation are implemented. Next start is HARNESS-003.
+  detail: 222 tests and all HARNESS-003 local gates passed. Attempt workspace snapshot/changeset, worker/runtime namespace separation, protected-root boundary, safe file checks, atomic candidate promotion, baseline conflict, and quarantine/recovery are implemented. Next start is HARNESS-004.
