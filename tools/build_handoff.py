@@ -390,6 +390,7 @@ def build_handoff(
     handoff_id: str | None = None,
     revision: int | None = None,
     supersedes: str | None = None,
+    commit: bool = False,
 ) -> Path:
     sources = load_handoff_sources(root, target)
     if sources.project_data.get("status") == "INCOMPLETE" or sources.completion_report.get("status") == "INCOMPLETE":
@@ -416,7 +417,39 @@ def build_handoff(
             atomic_write_text(path, previous_text)
         rendered = "\n".join(finding.render() for finding in findings)
         raise HandoffBuildError(f"generated handoff failed repository validation:\n{rendered}")
+    if commit:
+        _commit_handoff(sources.root, path)
     return path
+
+
+def _commit_handoff(root: Path, path: Path) -> None:
+    """Commit the generated handoff, and only it.
+
+    Export requires a provably clean tree so the exported bundle can name the
+    commit its contents came from. Generating the handoff is what dirties the
+    tree, so nothing could ever be exported straight after being generated.
+
+    Only the handoff is staged. Sweeping in whatever else happens to be
+    uncommitted would make the bundle point at a commit carrying changes it
+    never meant to carry.
+    """
+    import subprocess
+
+    relative = path.relative_to(root)
+    git = ["git", "-C", str(root)]
+    unchanged = subprocess.run([*git, "diff", "--quiet", "HEAD", "--", str(relative)], capture_output=True)
+    if unchanged.returncode == 0:
+        return
+    for command in (
+        [*git, "add", "--", str(relative)],
+        [*git, "-c", "user.email=handoff@agentic-art", "-c", "user.name=build_handoff",
+         "commit", "-q", "-m", f"Generate {relative.as_posix()}", "--", str(relative)],
+    ):
+        result = subprocess.run(command, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise HandoffBuildError(
+                f"could not commit the generated handoff: {(result.stderr or result.stdout).strip()}"
+            )
 
 
 def main() -> int:
@@ -428,6 +461,8 @@ def main() -> int:
     parser.add_argument("--handoff-id")
     parser.add_argument("--revision", type=int)
     parser.add_argument("--supersedes")
+    parser.add_argument("--commit", action="store_true",
+                        help="生成した受け渡しだけをコミットする。輸出は清潔なツリーを要求するため")
     args = parser.parse_args()
     try:
         path = build_handoff(
@@ -438,6 +473,7 @@ def main() -> int:
             handoff_id=args.handoff_id,
             revision=args.revision,
             supersedes=args.supersedes,
+            commit=args.commit,
         )
     except (HandoffInputError, HandoffBuildError, OSError) as exc:
         parser.error(str(exc))
