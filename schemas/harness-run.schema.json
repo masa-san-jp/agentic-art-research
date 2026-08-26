@@ -22,7 +22,7 @@
   ],
   "properties": {
     "schema_version": {"const": "1.0.0"},
-    "status": {"enum": ["BOOTSTRAPPED"]},
+    "status": {"enum": ["BOOTSTRAPPED", "COMPLETE", "ALREADY_PUBLISHED", "PAUSED", "FAILED", "BLOCKED", "NO_TASK_READY"]},
     "run_id": {"type": "string", "pattern": "^HR[0-9]{3,}$"},
     "request_kind": {"enum": ["RESEARCH_REQUEST", "SLUG_TITLE"]},
     "request_sha256": {"$ref": "common.schema.json#/$defs/sha256"},
@@ -56,6 +56,16 @@
           }
         }
       }
-    }
+    },
+    "outcome_sha256": {"$ref": "common.schema.json#/$defs/sha256"},
+    "published_outcome_sha256": {"$ref": "common.schema.json#/$defs/sha256"},
+    "phase": {"enum": ["PREFLIGHT", "BOOTSTRAPPED", "RUNNING", "COMPLETING", "BUILDING_HANDOFF", "EXPORTING", "PUBLISHING", "COMPLETE"]},
+    "worker_fingerprint": {"$ref": "common.schema.json#/$defs/sha256"},
+    "task_counts": {"$ref": "harness-outcome.schema.json#/$defs/task_counts"},
+    "completion_status": {"type": ["string", "null"], "enum": ["COMPLETE", "COMPLETE_WITH_GAPS", "INCOMPLETE", "BLOCKED", null]},
+    "handoff_id": {"type": ["string", "null"], "pattern": "^HO[0-9]{3,}$"},
+    "artifacts": {"$ref": "harness-outcome.schema.json#/properties/artifacts"},
+    "output_path": {"type": ["string", "null"], "minLength": 1},
+    "resume_command": {"type": ["string", "null"], "minLength": 1}
   }
 }

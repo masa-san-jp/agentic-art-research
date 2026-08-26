@@ -449,6 +449,7 @@ class Supervisor:
             output_path=result_path,
             heartbeat_callback=lambda: self._heartbeat(task_id, self.worker_id, token),
             heartbeat_interval_seconds=interval,
+            now=lambda: _timestamp(self.now()),
         )
 
     def _failure_class(self, result: dict[str, Any]) -> str:

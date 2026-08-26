@@ -82,7 +82,7 @@ roles:
       - {id: AG-CRITIC-REJECTED, kind: collection_minimum, path: "04_decisions/rejected-options.yaml", collection_key: rejected_options, minimum: 1}
       - {id: AG-CRITIC-UNCERTAINTY, kind: collection_minimum, path: "04_decisions/uncertainty-register.yaml", collection_key: uncertainties, minimum: 1}
       - {id: AG-CRITIC-PRIOR-ART, kind: collection_minimum, path: "03_knowledge/prior-art.jsonl", minimum: 1}
-      - {id: AG-CRITIC-SELF-REVIEW, kind: collection_minimum, path: "04_decisions/self-repetition-review.yaml", collection_key: past_works_considered, minimum: 1}
+      - {id: AG-CRITIC-SELF-REVIEW, kind: collection_minimum, path: "04_decisions/self-repetition-review.yaml", collection_key: reviews, minimum: 1}
 
   production-translator:
     protocol_sections: [8]

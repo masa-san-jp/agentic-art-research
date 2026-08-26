@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/harness-outcome.schema.json",
+  "title": "Agent harness public outcome",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "outcome_sha256",
+    "status",
+    "phase",
+    "run_id",
+    "project_id",
+    "request_sha256",
+    "protocol_commit",
+    "task_counts",
+    "completion_status",
+    "handoff_id",
+    "artifacts",
+    "output_path",
+    "resume_command",
+    "paused",
+    "failure"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "outcome_sha256": {"$ref": "common.schema.json#/$defs/sha256"},
+    "status": {"enum": ["COMPLETE", "ALREADY_PUBLISHED", "PAUSED", "FAILED", "BLOCKED", "NO_TASK_READY"]},
+    "phase": {"enum": ["PREFLIGHT", "BOOTSTRAPPED", "RUNNING", "COMPLETING", "BUILDING_HANDOFF", "EXPORTING", "PUBLISHING", "COMPLETE"]},
+    "run_id": {"type": "string", "pattern": "^HR[0-9]{3,}$"},
+    "project_id": {"$ref": "common.schema.json#/$defs/projectId"},
+    "request_sha256": {"$ref": "common.schema.json#/$defs/sha256"},
+    "protocol_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "worker_fingerprint": {"$ref": "common.schema.json#/$defs/sha256"},
+    "task_counts": {"$ref": "#/$defs/task_counts"},
+    "completion_status": {"type": ["string", "null"], "enum": ["COMPLETE", "COMPLETE_WITH_GAPS", "INCOMPLETE", "BLOCKED", null]},
+    "handoff_id": {"type": ["string", "null"], "pattern": "^HO[0-9]{3,}$"},
+    "handoff_sha256": {"anyOf": [{"$ref": "common.schema.json#/$defs/sha256"}, {"type": "null"}]},
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "sha256", "size_bytes"],
+        "properties": {
+          "path": {"type": "string", "pattern": "^(research-project|handoff|run-manifest\\.json|checksums\\.json)(/|$)"},
+          "sha256": {"$ref": "common.schema.json#/$defs/sha256"},
+          "size_bytes": {"type": "integer", "minimum": 0}
+        }
+      }
+    },
+    "output_path": {"type": ["string", "null"], "minLength": 1},
+    "resume_command": {"type": ["string", "null"], "minLength": 1},
+    "paused": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["request_id", "request_sha256"],
+      "properties": {
+        "request_id": {"type": "string", "pattern": "^DR[0-9]{3,}$"},
+        "request_sha256": {"$ref": "common.schema.json#/$defs/sha256"}
+      }
+    },
+    "failure": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["rule", "message"],
+      "properties": {
+        "rule": {"type": "string", "pattern": "^HARNESS-[A-Z0-9_-]+$"},
+        "message": {"type": "string", "minLength": 1}
+      }
+    }
+  },
+  "$defs": {
+    "task_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total", "succeeded", "pending", "running", "waiting_human", "failed", "blocked"],
+      "properties": {
+        "total": {"type": "integer", "minimum": 0},
+        "succeeded": {"type": "integer", "minimum": 0},
+        "pending": {"type": "integer", "minimum": 0},
+        "running": {"type": "integer", "minimum": 0},
+        "waiting_human": {"type": "integer", "minimum": 0},
+        "failed": {"type": "integer", "minimum": 0},
+        "blocked": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}

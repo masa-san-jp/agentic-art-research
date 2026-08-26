@@ -197,10 +197,23 @@ def _run_one(check: dict[str, Any], *, protocol_root: Path, validation_root: Pat
         if kind == "hypothesis_selection":
             value = load_yaml(validation_root / "projects" / _project_id_path(project_id) / "04_decisions/hypothesis-comparison.yaml") or {}
             comparisons = value.get("comparisons", []) if isinstance(value, dict) else []
-            complete = [item for item in comparisons if isinstance(item, dict) and item.get("status") == "COMPLETE"]
-            recommended = [option for item in complete for option in item.get("options", []) if isinstance(option, dict) and option.get("recommendation") == "RECOMMENDED"]
-            passed = bool(complete) and len(recommended) == 1
-            return _gate_result(check, passed=passed, expected={"complete": 1, "recommended": 1}, actual={"complete": len(complete), "recommended": len(recommended)}, path="04_decisions/hypothesis-comparison.yaml")
+            complete_comparisons = [item for item in comparisons if isinstance(item, dict) and item.get("status") == "COMPLETE"]
+            recommended = [
+                item.get("recommended_hypothesis_id")
+                for item in complete_comparisons
+                if isinstance(item.get("recommended_hypothesis_id"), str)
+            ]
+            # Accept the legacy in-memory fixture shape while the versioned
+            # schema remains authoritative for persisted project data.
+            if not recommended:
+                recommended = [
+                    option.get("hypothesis_id")
+                    for item in complete_comparisons
+                    for option in item.get("options", [])
+                    if isinstance(option, dict) and option.get("recommendation") == "RECOMMENDED"
+                ]
+            passed = bool(complete_comparisons) and len(recommended) == 1
+            return _gate_result(check, passed=passed, expected={"complete": 1, "recommended": 1}, actual={"complete": len(complete_comparisons), "recommended": len(recommended)}, path="04_decisions/hypothesis-comparison.yaml")
         if kind == "medium_decision":
             value = load_yaml(validation_root / "projects" / _project_id_path(project_id) / "04_decisions/decision-log.yaml") or {}
             decisions = value.get("decisions", []) if isinstance(value, dict) else []

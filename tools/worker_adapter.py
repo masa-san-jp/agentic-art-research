@@ -411,6 +411,7 @@ def run_attempt(
     output_path: Path | None = None,
     heartbeat_callback: Callable[[], None] | None = None,
     heartbeat_interval_seconds: float | None = None,
+    now: Callable[[], datetime] | None = None,
 ) -> dict[str, Any]:
     """Run exactly one attempt and return a schema-valid result when possible."""
 
@@ -445,7 +446,8 @@ def run_attempt(
         deadline = _parse_timestamp(request["deadline"])
     except (TypeError, ValueError) as exc:
         raise WorkerAdapterError("WORKER-PROTOCOL", "attempt deadline is invalid") from exc
-    remaining = (deadline - datetime.now(timezone.utc)).total_seconds()
+    current_time = now() if now is not None else datetime.now(timezone.utc)
+    remaining = (deadline - current_time).total_seconds()
     if remaining <= 0:
         result = _failure_result(request, "WORKER-TIMEOUT", "Worker attempt deadline has expired.", _diagnostics(timed_out=True))
         _validate_instance(_schema_validator(protocol, "agent-attempt-result"), result, "WORKER-PROTOCOL", "adapter result")

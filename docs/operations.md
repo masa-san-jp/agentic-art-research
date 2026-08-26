@@ -51,6 +51,39 @@ python3 tools/harness.py bootstrap \
 
 同じrequest hash・run ID・rootで再実行した場合は既存run JSONをそのまま返す。異なるrequest、別run ID、既存の非空work/output、既存projectとの衝突は`HARNESS-BOOTSTRAP-CONFLICT`で停止し、既存ファイルを上書きしない。
 
+### One-command verified handoff
+
+requestから検証済みhandoffまでを運転する通常入口は`harness.py run --request`である。
+worker adapter、protocol/work/output root、run IDを省略せず、実際のproject outputはcanonical
+repository外のoutput rootへ出す。
+
+```bash
+WORK_ROOT="$(mktemp -d)"
+OUTPUT_ROOT="$(mktemp -d)"
+python3 tools/harness.py run \
+  --request path/to/research-request.yaml \
+  --adapter fake \
+  --protocol-root "$(pwd)" \
+  --work-root "$WORK_ROOT" \
+  --output-root "$OUTPUT_ROOT" \
+  --run-id HR001 \
+  --now 2026-08-25T00:00:00+09:00
+```
+
+phaseは`PREFLIGHT → BOOTSTRAPPED → RUNNING → COMPLETING → BUILDING_HANDOFF → EXPORTING → PUBLISHING → COMPLETE`に固定される。成功時のproject directoryは`research-project/`、`handoff/`、`run-manifest.json`、`checksums.json`だけを含み、staging directoryはrename前に検証される。`INCOMPLETE`、`BLOCKED`、`WAITING_HUMAN`、worker/acceptance/handoff failure時はoutput rootを変更しない。
+
+中断・human pauseからはwork rootを保持したまま、outcomeの`resume_command`または次で再開する。
+
+```bash
+python3 tools/harness.py resume \
+  --protocol-root "$(pwd)" \
+  --work-root "$WORK_ROOT" \
+  --output-root "$OUTPUT_ROOT" \
+  --run-id HR001
+```
+
+同一fingerprintの既存outputは`ALREADY_PUBLISHED`として再利用される。request、worker、protocol commit、run IDのいずれかが異なる場合やchecksumが一致しない場合は`HARNESS-PUBLISH-CONFLICT`で停止し、既存project directoryを上書きしない。作業rootを残す必要がなければ、成功後にだけ運用側で明示的に処分する。
+
 実行開始後のtask入口もrootを明示する。
 
 ```bash

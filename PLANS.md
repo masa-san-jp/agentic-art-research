@@ -43,6 +43,8 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 - [x] (2026-08-25 JST) `HARNESS-005`: HUMAN_REQUIREDをtyped human decision requestへ永続化し、list/resolve、新lease resume、replay、stale/replay/option/stateのnamed ruleを実装。237 unittestと全ローカルgateが合格。次は`HARNESS-006`。
 - [x] (2026-08-26 JST) `HARNESS-006`: supervisorのheartbeat、retry、crash resume loop、run lock、shutdown、human pause、CLIを実装。245 unittestと全ローカルgateが合格。次は`HARNESS-007`。
 
+- [x] (2026-08-26 JST) `HARNESS-007`: request受理からsupervisor、completion、検証済みhandoffのatomic publishまでを1コマンドへ接続。固定phase、versioned outcome、checksums、冪等再実行、衝突拒否、pause/failure/resume、output boundaryを実装。248 unittest、handoff release gate、validator、security、docs、chaos、graph、diff gateが合格。次は`HARNESS-008`。
+
 チェックボックスとUTCまたはJST日時。未完了、部分完了、完了を正確に表す。
 
 ### Surprises & Discoveries
@@ -62,6 +64,7 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 - 2026-08-25: HUMAN_REQUIREDは通知やUIを持たせず、typed journalへの永続化と明示resolve CLIに限定した。同一requestの再送はWAITING_HUMANのno-op、同一responseの再送はPENDINGのno-opとして、leaseとattemptの二重消費を防ぐ。
 - 2026-08-25: HARNESS-006ではsupervisorの所有範囲をclaimからworker、changeset、acceptance、completeまでに限定し、プロジェクト本文をjournalへ複製しない。retry待機・signal shutdown・run lockは別の明示状態として記録する。
 - 2026-08-26: heartbeatがcanonical runtime state/logを更新するため、attemptのruntime-owned snapshotだけを同期してからchangeset検査する契約にした。worker write targetとの混同を避け、canonical projectへの直接変更は従来どおり拒否する。
+- 2026-08-26: HARNESS-007の公開成果物はmetadata自身をchecksum対象に含めず、`research-project/`と`handoff/`のfile setだけを固定した。これによりrun manifestのoutcome hashとchecksumsの自己参照を避けつつ、4項目のoutput boundaryを検証できる。
 
 実装中に判明した制約、失敗、想定との差を、短い証拠とともに記録する。
 
@@ -104,6 +107,7 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 - 完了 (2026-08-25): `HARNESS-004`でtyped acceptance gate/report/transaction schema、全roleのacceptance_checks、explicit-root next action、ephemeral validation、changeset promotionとtask completionのatomic接続、VALIDATION retry、journal/preimage rollback/crash recovery、idempotent effect、直接complete拒否を追加した。229 unittest、validator、security、docs、chaos、graph、diff gateが合格した。次の開始点は`HARNESS-005`。
 - 完了 (2026-08-25): `HARNESS-005`で6分類のtyped human decision request/response schema、journal、WAITING_HUMAN lease解放、attempt非消費、resolve後PENDING、CLI list/resolve、runtime replay、context hash伝播、named stale/replay/option/security/state rulesを追加した。237 unittestとvalidator、security、docs、chaos、graph、diff gateが合格した。次の開始点は`HARNESS-006`。
 - 完了 (2026-08-26): `HARNESS-006`で`harness.py run|resume`、strict supervisor journal、project/run lock、injectable sleep/clock、heartbeat callback、failure mapping/backoff、attempt result/transaction crash resume、HUMAN_REQUIRED paused outcome、signal shutdown、bounded loopを実装した。245 unittest、validator、security、docs、chaos、graph、diff gateが合格した。次の開始点は`HARNESS-007`。
+- 完了 (2026-08-26): `HARNESS-007`で`harness.py run --request`／`resume`をrequest受理から検証済みhandoff publishまで接続し、固定phase outcome、run manifest、checksums、atomic output、ALREADY_PUBLISHED、衝突拒否、pause/failureの非破壊resumeを追加した。248 unittest、validator、security、docs、chaos、graph、diff、handoff release gateが合格した。次の開始点は`HARNESS-008`。
 
 ## HARNESS-003 ExecPlan
 
@@ -801,6 +805,88 @@ Issue #74の契約として、1つのproject/runをsupervisorがbounded loopで�
 - CLI: `tools/harness.py run|resume project/<slug> --protocol-root ... --work-root ... --output-root ... --run-id ...`
 - Python: `harness_supervisor.Supervisor`, `harness_supervisor.run_supervisor`, `harness_supervisor.resume_supervisor`
 - issue: `agentic-art-research#74`; dependencies: `HARNESS-002`, `HARNESS-003`, `HARNESS-004`, `HARNESS-005`; next task: `HARNESS-007` / Issue #75
+
+## HARNESS-007 ExecPlan
+
+### Purpose / Big Picture
+
+Issue #75の契約として、requestを一度受理した実行を単一のpublic CLIからhandoff publishまで運転する。canonical protocol checkoutは読み取り専用のsourceとして扱い、work root内でsupervisor・stopping・completion・handoffを順序どおり実行し、検証済み成果物だけをoutput rootへatomicに公開する。失敗・中断時はoutput rootを変更せず、work rootのrun stateから同じrun IDで再開できるようにする。
+
+### Context and Orientation
+
+- public CLI and bootstrap boundary: `tools/harness.py`, `tools/harness_paths.py`
+- E2E orchestration: `tools/harness_e2e.py`
+- supervisor: `tools/harness_supervisor.py`
+- completion/stopping: `tools/complete.py`, `tools/stopping_policy.py`
+- handoff: `tools/build_handoff.py`, `tools/export_handoff.py`
+- contracts: `schemas/harness-run.schema.json`, `schemas/harness-outcome.schema.json`
+- tests: `tests/test_harness_e2e.py`
+
+### Progress
+
+- [x] outcome/run manifest schemas and phase journal
+- [x] request→supervisor→completion→handoff orchestration
+- [x] atomic output publish, checksums, idempotence, and conflict handling
+- [x] resume/failure boundaries and contract tests
+- [x] all release gates, queue/state, and commit
+
+### Plan of Work
+
+1. Add strict outcome, published run manifest, and checksum contracts with a fixed phase vocabulary and named failures.
+2. Connect request bootstrap and supervisor to stopping, project validation, completion, handoff build, and export using explicit roots and deterministic timestamps.
+3. Stage `research-project/`, `handoff/`, `run-manifest.json`, and `checksums.json`, validate every byte, and atomically publish only the project directory.
+4. Make resume consume the existing work journal and durable supervisor state; return machine-readable paused/failure outcomes without touching existing output.
+5. Add deterministic E2E, already-published, collision, failure, pause, resume, boundary, and canonical immutability tests; run all gates.
+
+### Concrete Steps
+
+```bash
+.venv/bin/python -m unittest tests.test_harness_e2e -v
+.venv/bin/python -m unittest discover -s tests -v
+.venv/bin/python tools/validate.py --check
+.venv/bin/python tools/security_check.py --check
+.venv/bin/python tools/docs_check.py --check
+.venv/bin/python tools/chaos_check.py
+.venv/bin/python tools/build_graph.py --check
+git diff --check
+```
+
+### Validation and Acceptance
+
+- `harness.py run --request ... --protocol-root ... --work-root ... --output-root ... --run-id ...` has no hidden cwd or root assumption and returns only schema-valid outcome JSON.
+- successful execution reaches fixed phases `PREFLIGHT`, `BOOTSTRAPPED`, `RUNNING`, `COMPLETING`, `BUILDING_HANDOFF`, `EXPORTING`, `PUBLISHING`, `COMPLETE`; output contains only the four declared top-level artifacts and every checksum verifies.
+- `INCOMPLETE`, `BLOCKED`, `WAITING_HUMAN`, worker, acceptance, handoff, and output-boundary failures leave no partial output and return a resumable named failure.
+- same request/worker/protocol/run fingerprint returns `ALREADY_PUBLISHED`; a different fingerprint never overwrites an existing project directory.
+- resume from a paused or interrupted work journal reaches the same published artifact hashes without rerunning durable completed effects; canonical protocol bytes, mtime, and status remain unchanged.
+- all unittest, validate, security, chaos, docs, graph, and handoff release gates pass.
+
+### Idempotence and Recovery
+
+The work-root run state is updated atomically by phase and stores hashes/IDs rather than project bodies. Output is built in a sibling staging directory; it is renamed into `<output-root>/<project-slug>/` only after project validation, handoff security scan, checksum generation, and schema validation. Existing output is accepted only when its manifest, checksums, request, worker, protocol, and artifact hashes match; otherwise `HARNESS-PUBLISH-CONFLICT` is returned without mutation.
+
+### Interfaces and Dependencies
+
+- CLI: `tools/harness.py run --request ...`; `tools/harness.py resume --run-id ...`
+- Python: `harness_e2e.run_request`, `harness_e2e.resume_request`
+- schemas: `harness-outcome.schema.json`, `harness-run.schema.json`
+- issue: `agentic-art-research#75`; dependencies: `HARNESS-001`, `HARNESS-006`; next task: `HARNESS-008` / Issue #76
+
+### Surprises & Discoveries
+
+- 固定clockをsupervisorだけへ注入すると、worker adapterが実時間で過去のdeadlineを判定してしまう。adapterにも同じclockを渡し、CLIの`--now`をworker deadlineまで一貫させた。
+- 既存のcritic acceptanceはschema上の`reviews`ではなく存在しない`past_works_considered` collection keyを参照していた。E2Eが全DAGを完走するため、正本schemaと一致する`reviews`へ修正した。
+- `completion_status` acceptance内のローカル変数`complete`が、importしたcompletion moduleをshadowしていた。validator taskだけが再試行を使い切るため、変数名を明示的な`complete_comparisons`へ変更した。
+
+### Decision Log
+
+- publish manifestはproject本文・handoff bundleとは別に、`research-project/`、`handoff/`内のfile hashだけを`checksums.json`へ記録する。metadata自身を含めると自己参照hashになるため、run manifestはoutcome hash、checksumsはartifact file setを相互に固定する。
+- resumeはCLI引数にworker設定を再要求せず、work journalに保存したadapter、argv、fixture mode、worker IDを再利用する。request、protocol commit、run ID、worker fingerprintの差分は`HARNESS-RESUME`または`HARNESS-PUBLISH-CONFLICT`で拒否する。
+- handoff workflowへの切替は全task・stopping・completion後に行う。worker acceptance段階の研究projectを一時的に`PRODUCTION_HANDOFF`へ変えて空handoffを要求しないため、handoff buildの失敗時はmanifestを元へ戻す。
+
+### Outcomes & Retrospective
+
+- 成功ケースは固定phase、task counts、completion status、handoff ID、artifact hashesをstdoutとpublished run manifestへ出し、同一fingerprint再実行を`ALREADY_PUBLISHED`として処理する。
+- human pause、worker failure、max bound、handoff failureはoutput rootを変更せず、named failureとresume commandを返す。残る確認は全release gate実行後にqueue/stateをDONEへ進めること。
 
 ## 実行規則
 

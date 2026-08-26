@@ -68,6 +68,21 @@ bootstrap後のworker実行は、`schemas/agent-attempt-request.schema.json`／`
 
 workerのファイル変更は`tools/attempt_workspace.py`を通す。`create_attempt_workspace`はrun/task/attempt単位のsnapshotをwork rootの`.harness/attempts/`へ作り、`inspect_attempt`はroleのworker write targetだけをchangesetとして認める。protocol、canonical project、別project、data、output、runtime namespaceへの変更、symlink/hard-link/path collision、secret/private/size違反はfail closedし、promotionはbaseline lock下の`promote_attempt`だけが行う。crashしたworkspaceは`.harness/quarantine/`へ移動して再取得できる。
 
+request受理から検証済みhandoffまでを連続運転する公開入口は`harness.py run --request`である。
+
+```bash
+python3 tools/harness.py run \
+  --request path/to/research-request.yaml \
+  --adapter fake \
+  --protocol-root . \
+  --work-root "$WORK_ROOT" \
+  --output-root /Users/masa/マイドライブ/AI-Agent-Pipeline/Agentic-Art-Output \
+  --run-id HR001 \
+  --now 2026-08-25T00:00:00+09:00
+```
+
+stdoutは`schemas/harness-outcome.schema.json`に適合する一つのoutcome JSONだけである。成功時は外部output rootの`<project-slug>/`へ`research-project/`、`handoff/`、`run-manifest.json`、`checksums.json`をatomicに配置する。失敗・human pause・中断時はpartial outputを作らず、outcomeの`resume_command`または`harness.py resume --run-id HR001`でwork journalから再開する。同一fingerprintの再実行は`ALREADY_PUBLISHED`、異なるrequest/worker/protocol/runまたはchecksum不一致は`HARNESS-PUBLISH-CONFLICT`で非破壊に停止する。
+
 ## ローカル実行
 
 プロトコル自体の検証は、このリポジトリで実行する。

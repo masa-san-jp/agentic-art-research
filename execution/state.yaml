@@ -1,8 +1,8 @@
 version: 1
 updated_at: "2026-08-26T00:00:00+09:00"
 current_milestone: G4
-next_task: HARNESS-007
-last_completed_task: HARNESS-006
+next_task: HARNESS-008
+last_completed_task: HARNESS-007
 terminal: false
 blocked_by: []
 resume_from:
@@ -38,8 +38,15 @@ resume_from:
     - tests/test_harness_supervisor.py
     - tools/worker_adapter.py
     - docs/agent-runtime-guide.md
-  action: Implement HARNESS-007 one-command request to verified handoff flow.
+    - tools/harness_e2e.py
+    - tests/test_harness_e2e.py
+    - schemas/harness-outcome.schema.json
+    - schemas/harness-checksums.schema.json
+    - schemas/harness-run.schema.json
+    - docs/operations.md
+    - README.md
+  action: Implement HARNESS-008 harness E2E fault matrix, observability, and release gate.
 last_verification:
   result: PASS
-  command: .venv/bin/python -m unittest discover -s tests -v; .venv/bin/python tools/validate.py --check; .venv/bin/python tools/security_check.py --check; .venv/bin/python tools/docs_check.py --check; .venv/bin/python tools/chaos_check.py; .venv/bin/python tools/build_graph.py --check; git diff --check
-  detail: 245 tests and all HARNESS-006 local gates passed. Supervisor run/resume CLI, strict hash-only journal, project/run lock, heartbeat callback, retry mapping/backoff, signal shutdown, human pause, bounded loop, durable result reuse, and acceptance transaction recovery are implemented. Next start is HARNESS-007.
+  command: .venv/bin/python -m unittest discover -s tests -v; .venv/bin/python tools/validate.py --check; .venv/bin/python tools/security_check.py --check; .venv/bin/python tools/docs_check.py --check; .venv/bin/python tools/chaos_check.py; .venv/bin/python tools/build_graph.py --check; .venv/bin/python tools/handoff_release_check.py --require-schema-snapshot; git diff --check
+  detail: 248 tests and all HARNESS-007 gates passed. One-command request to verified handoff reaches fixed phases, publishes exactly four atomic output entries with checksums, returns ALREADY_PUBLISHED for the same fingerprint, rejects conflicts without overwrite, and leaves output untouched for pause/failure. Next task is HARNESS-008.

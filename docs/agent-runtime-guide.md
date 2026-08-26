@@ -142,6 +142,43 @@ workerが停止した場合は期限切れleaseだけが再取得対象になる
 同じ失敗を反復しない。完了効果にはタスク単位の決定的な`effect_key`を使い、同じ
 効果の再送は既存結果を返し、異なる効果キーの二重適用は拒否する。
 
+### Request から verified handoff までの public CLI
+
+request受理からoutput publishまでを一つの入口で実行する場合は、requestと3つのrootを
+明示する。`--now`を渡すと全phaseとworker deadlineに同じRFC 3339 clockが使われる。
+
+```bash
+python3 tools/harness.py run \
+  --request path/to/research-request.yaml \
+  --adapter fake \
+  --protocol-root <protocol-root> \
+  --work-root <temporary-work-root> \
+  --output-root /Users/masa/マイドライブ/AI-Agent-Pipeline/Agentic-Art-Output \
+  --run-id HR001 \
+  --now 2026-08-25T00:00:00+09:00
+```
+
+成功時は`<output-root>/<project-slug>/`へ`research-project/`、`handoff/`,
+`run-manifest.json`、`checksums.json`だけがatomicに配置される。stdoutは
+`schemas/harness-outcome.schema.json`に適合する一つのJSONだけであり、公開manifestの
+`outcome_sha256`と一致する。canonical protocol root、別project、production repository
+へは書き込まない。
+
+`PAUSED`、worker failure、completion/handoff failureではoutputを作らず、次の形式で再開する。
+
+```bash
+python3 tools/harness.py resume \
+  --protocol-root <protocol-root> \
+  --work-root <temporary-work-root> \
+  --output-root <output-root> \
+  --run-id HR001
+```
+
+resumeはwork journalに保存したadapter設定とrequest identityを再利用する。同じ
+request・worker・protocol・runの既存outputは`ALREADY_PUBLISHED`になり、異なるfingerprintや
+一部だけ残ったoutputは`HARNESS-PUBLISH-CONFLICT`で上書きしない。phase、task counts、
+completion、handoff ID、artifact hashesはoutcomeとmanifestで照合できる。
+
 ## 停止規則と飽和
 
 質問ごとの `SEARCH_ATTEMPTED`、`SOURCE_REVIEWED`、`ANSWER_FOUND`、

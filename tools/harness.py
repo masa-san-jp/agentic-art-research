@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Bootstrap an isolated, resumable agent-harness run.
+"""Public entry point for isolated, resumable agent-harness runs.
 
-The command deliberately performs only initialization.  Worker execution,
-write-target enforcement, acceptance execution, and supervision are later
-harness milestones.  A successful bootstrap leaves project state in work_root
-and leaves output_root empty.
+``bootstrap`` remains the initialization-only API.  ``run --request`` composes
+the complete request-to-handoff flow; the legacy ``run project/<slug>`` form
+continues to expose the supervisor boundary for already bootstrapped runs.
 """
 
 from __future__ import annotations
@@ -71,8 +70,18 @@ def _git_head(protocol_root: Path) -> tuple[str, bool]:
             capture_output=True,
             text=True,
         ).stdout.strip()
-        status = subprocess.run(
-            ["git", "-C", str(protocol_root), "status", "--porcelain", "--untracked-files=all"],
+        tracked = subprocess.run(
+            ["git", "-C", str(protocol_root), "diff", "--quiet", "--no-ext-diff"],
+            capture_output=True,
+            text=True,
+        ).returncode
+        staged = subprocess.run(
+            ["git", "-C", str(protocol_root), "diff", "--cached", "--quiet", "--no-ext-diff"],
+            capture_output=True,
+            text=True,
+        ).returncode
+        untracked = subprocess.run(
+            ["git", "-C", str(protocol_root), "ls-files", "--others", "--exclude-standard"],
             check=True,
             capture_output=True,
             text=True,
@@ -84,7 +93,7 @@ def _git_head(protocol_root: Path) -> tuple[str, bool]:
         ) from exc
     if not re.fullmatch(r"[0-9a-f]{40}", head):
         raise HarnessError("HARNESS-PROTOCOL-PROVENANCE", "protocol HEAD is not a 40-character lowercase SHA")
-    return head, not bool(status.strip())
+    return head, tracked == 0 and staged == 0 and not bool(untracked.strip())
 
 
 def _optional_dependency(
@@ -197,7 +206,13 @@ def _validate_run_manifest(protocol_root: Path, value: dict[str, Any]) -> None:
     try:
         schema = load_json(protocol_root / "schemas" / "harness-run.schema.json")
         common = load_json(protocol_root / "schemas" / "common.schema.json")
-        registry = Registry().with_resource(common["$id"], Resource.from_contents(common))
+        resources = [(common["$id"], Resource.from_contents(common))]
+        for related in ("harness-outcome", "harness-run", "harness-checksums"):
+            related_path = protocol_root / "schemas" / f"{related}.schema.json"
+            if related_path.is_file():
+                related_schema = load_json(related_path)
+                resources.append((related_schema["$id"], Resource.from_contents(related_schema)))
+        registry = Registry().with_resources(resources)
         validator = Draft202012Validator(schema, registry=registry)
         errors = sorted(validator.iter_errors(value), key=lambda error: (tuple(error.absolute_path), error.message))
     except Exception as exc:
@@ -408,6 +423,7 @@ def main() -> int:
     parser.add_argument("--worker", default="supervisor")
     parser.add_argument("--adapter", default="fake")
     parser.add_argument("--command-json")
+    parser.add_argument("--worker-command", help="JSON argv array for the provider-neutral worker")
     parser.add_argument("--fixture-mode")
     parser.add_argument("--max-runtime-seconds", type=int)
     parser.add_argument("--max-tasks", type=int)
@@ -448,6 +464,44 @@ def main() -> int:
                     project_id=args.target,
                     response=load_json(args.response),
                 )
+        elif args.request is not None or (args.command == "resume" and args.target is None):
+            if args.command == "run" and args.slug is not None:
+                parser.error("one-command run accepts --request, not --slug")
+            if args.command == "resume" and args.request is not None:
+                parser.error("resume derives the request from the existing work root")
+            if not all((args.protocol_root, args.work_root, args.output_root, args.run_id)):
+                parser.error(f"{args.command} requires --protocol-root, --work-root, --output-root, and --run-id")
+            if args.command_json is not None and args.worker_command is not None:
+                parser.error("use only one of --command-json or --worker-command")
+            command_value = args.command_json if args.command_json is not None else args.worker_command
+            command = None
+            if command_value is not None:
+                try:
+                    command = json.loads(command_value)
+                except json.JSONDecodeError as exc:
+                    parser.error("worker command must be a JSON argv array: " + str(exc))
+                if not isinstance(command, list) or any(not isinstance(item, str) for item in command):
+                    parser.error("worker command must be a JSON argv array")
+            import harness_e2e
+
+            result = harness_e2e.run_request(
+                protocol_root=args.protocol_root,
+                work_root=args.work_root,
+                output_root=args.output_root,
+                run_id=args.run_id,
+                request_path=args.request,
+                adapter=args.adapter,
+                command=command,
+                worker_id=args.worker,
+                fixture_mode=args.fixture_mode,
+                now=args.now,
+                profiles_root=args.profiles_root,
+                art_history_root=args.art_history_root,
+                production_schema=args.production_schema,
+                max_runtime_seconds=args.max_runtime_seconds,
+                max_tasks=args.max_tasks,
+                resume=args.command == "resume",
+            )
         else:
             target = args.decision_command
             if not target or not target.startswith("project/"):
