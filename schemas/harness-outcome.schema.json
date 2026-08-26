@@ -51,6 +51,9 @@
     },
     "output_path": {"type": ["string", "null"], "minLength": 1},
     "resume_command": {"type": ["string", "null"], "minLength": 1},
+    "event_stream_sha256": {"anyOf": [{"$ref": "common.schema.json#/$defs/sha256"}, {"type": "null"}]},
+    "event_count": {"type": "integer", "minimum": 0},
+    "canonical_duration_seconds": {"type": "number", "minimum": 0},
     "paused": {
       "type": ["object", "null"],
       "additionalProperties": false,

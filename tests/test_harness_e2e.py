@@ -20,6 +20,7 @@ from build_handoff import build_handoff  # noqa: E402
 from canonical import canonical_sha256  # noqa: E402
 from harness import bootstrap  # noqa: E402
 from harness_e2e import run_request  # noqa: E402
+from harness_observability import replay_event_stream  # noqa: E402
 
 
 NOW = "2026-08-25T00:00:00+09:00"
@@ -189,9 +190,19 @@ class HarnessE2EContractTest(unittest.TestCase):
         self.assertEqual([], list(_schema(REPO_ROOT, "harness-outcome").iter_errors(result)))
         manifest = load_json(published / "run-manifest.json")
         self.assertEqual(result["outcome_sha256"], manifest["outcome_sha256"])
+        self.assertEqual("COMPLETE", manifest["final_status"])
         self.assertEqual([], list(_schema(REPO_ROOT, "harness-run").iter_errors(manifest)))
         checksums = load_json(published / "checksums.json")
         self.assertEqual([], list(_schema(REPO_ROOT, "harness-checksums").iter_errors(checksums)))
+        replay = replay_event_stream(REPO_ROOT, self.work / ".harness/events/HR701.jsonl")
+        self.assertEqual("COMPLETE", replay["phase"])
+        self.assertEqual(result["event_stream_sha256"], manifest["event_stream_sha256"])
+        self.assertGreater(manifest["event_count"], 0)
+        self.assertIn("config_hashes", manifest)
+        self.assertIn("schema_hashes", manifest)
+        self.assertIn("worker_adapter", manifest)
+        self.assertIn("task_attempts", manifest)
+        self.assertIn("budget", manifest)
         self.assertTrue((published / "handoff/manifest.yaml").is_file())
         self.assertEqual(self.protocol_before, self._snapshot(REPO_ROOT))
 
@@ -208,6 +219,7 @@ class HarnessE2EContractTest(unittest.TestCase):
         )
         self.assertEqual("ALREADY_PUBLISHED", repeated["status"])
         self.assertEqual(result["artifacts"], repeated["artifacts"])
+        self.assertEqual("ALREADY_PUBLISHED", load_json(published / "run-manifest.json")["final_status"])
         repeated_manifest = load_json(published / "run-manifest.json")
         self.assertEqual("ALREADY_PUBLISHED", repeated_manifest["status"])
         self.assertEqual(repeated["outcome_sha256"], repeated_manifest["outcome_sha256"])

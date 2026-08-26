@@ -66,6 +66,93 @@
     "handoff_id": {"type": ["string", "null"], "pattern": "^HO[0-9]{3,}$"},
     "artifacts": {"$ref": "harness-outcome.schema.json#/properties/artifacts"},
     "output_path": {"type": ["string", "null"], "minLength": 1},
-    "resume_command": {"type": ["string", "null"], "minLength": 1}
+    "resume_command": {"type": ["string", "null"], "minLength": 1},
+    "event_stream_path": {"type": ["string", "null"], "pattern": "^(\\.harness/)?events/HR[0-9]{3,}\\.jsonl$"},
+    "event_stream_sha256": {"anyOf": [{"$ref": "common.schema.json#/$defs/sha256"}, {"type": "null"}]},
+    "event_count": {"type": "integer", "minimum": 0},
+    "config_hashes": {"$ref": "#/$defs/hash_map"},
+    "schema_hashes": {"$ref": "#/$defs/hash_map"},
+    "worker_adapter": {"$ref": "#/$defs/worker_adapter"},
+    "project_sha256": {"anyOf": [{"$ref": "common.schema.json#/$defs/sha256"}, {"type": "null"}]},
+    "handoff_sha256": {"anyOf": [{"$ref": "common.schema.json#/$defs/sha256"}, {"type": "null"}]},
+    "output_sha256": {"anyOf": [{"$ref": "common.schema.json#/$defs/sha256"}, {"type": "null"}]},
+    "task_attempts": {"type": "array", "items": {"$ref": "#/$defs/task_attempt"}},
+    "retry_count": {"type": "integer", "minimum": 0},
+    "heartbeat_count": {"type": "integer", "minimum": 0},
+    "human_wait_count": {"type": "integer", "minimum": 0},
+    "duration": {"$ref": "#/$defs/duration"},
+    "budget": {"$ref": "#/$defs/budget"},
+    "final_status": {"enum": ["COMPLETE", "ALREADY_PUBLISHED", "PAUSED", "FAILED", "BLOCKED", "NO_TASK_READY"]}
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"status": {"enum": ["COMPLETE", "ALREADY_PUBLISHED"]}},
+        "required": ["status"]
+      },
+      "then": {
+        "required": [
+          "event_stream_path", "event_stream_sha256", "event_count",
+          "config_hashes", "schema_hashes", "worker_adapter",
+          "project_sha256", "handoff_sha256", "output_sha256",
+          "task_attempts", "retry_count", "heartbeat_count", "human_wait_count",
+          "duration", "budget", "final_status"
+        ]
+      }
+    }
+  ],
+  "$defs": {
+    "hash_map": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "stopping-policy.yaml": {"$ref": "common.schema.json#/$defs/sha256"},
+        "worker-adapters.yaml": {"$ref": "common.schema.json#/$defs/sha256"},
+        "task-roles.yaml": {"$ref": "common.schema.json#/$defs/sha256"},
+        "harness-event.schema.json": {"$ref": "common.schema.json#/$defs/sha256"},
+        "harness-outcome.schema.json": {"$ref": "common.schema.json#/$defs/sha256"},
+        "harness-run.schema.json": {"$ref": "common.schema.json#/$defs/sha256"}
+      }
+    },
+    "worker_adapter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "fingerprint"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[A-Za-z0-9._-]+$"},
+        "version": {"type": "string", "minLength": 1},
+        "fingerprint": {"$ref": "common.schema.json#/$defs/sha256"}
+      }
+    },
+    "task_attempt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["task_id", "attempts", "retries", "status"],
+      "properties": {
+        "task_id": {"type": "string", "pattern": "^[A-Z][A-Z0-9_-]{2,}$"},
+        "attempts": {"type": "integer", "minimum": 0},
+        "retries": {"type": "integer", "minimum": 0},
+        "status": {"enum": ["SUCCEEDED", "PENDING", "RUNNING", "WAITING_HUMAN", "FAILED", "BLOCKED"]}
+      }
+    },
+    "duration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["canonical_seconds"],
+      "properties": {
+        "canonical_seconds": {"type": "number", "minimum": 0},
+        "wall_clock_seconds": {"type": "number", "minimum": 0}
+      }
+    },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_runtime_seconds", "max_tasks", "processed_tasks"],
+      "properties": {
+        "max_runtime_seconds": {"type": "integer", "minimum": 1},
+        "max_tasks": {"type": "integer", "minimum": 1},
+        "processed_tasks": {"type": "integer", "minimum": 0}
+      }
+    }
   }
 }

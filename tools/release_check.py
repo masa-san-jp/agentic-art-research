@@ -17,6 +17,7 @@ from chaos_check import run_chaos_suite
 from docs_check import check_documentation
 from evaluate import evaluate_offline_fixture
 from impact import impact_report
+from harness_evaluate import HarnessEvaluationError, evaluate_scenarios
 from new_project import create_project
 from run_project import run_offline_fixture
 from security_check import scan_advanced_security
@@ -35,6 +36,11 @@ SCHEMA_NAMES = (
     "visual-language",
     "research-state",
     "completion-report",
+    "harness-event",
+    "harness-evaluation",
+    "harness-run",
+    "harness-outcome",
+    "harness-checksums",
 )
 SPEC_PATH = "docs/20260811-agentic-art-research-system-design-specification.md"
 EXPECTED_CI_RUNS = 3
@@ -179,6 +185,7 @@ def check_release(root: Path, fixture: Path, ci_evidence: Path) -> dict[str, Any
         not documentation_findings,
         [f"findings={len(documentation_findings)}"] + documentation_findings,
     )
+    harness_checks = _harness_checks(root)
     checks = [
         structure,
         schemas,
@@ -191,6 +198,7 @@ def check_release(root: Path, fixture: Path, ci_evidence: Path) -> dict[str, Any
         security_check,
         chaos_check,
         documentation_check,
+        *harness_checks,
     ]
     return {
         "schema": RELEASE_SCHEMA,
@@ -199,6 +207,34 @@ def check_release(root: Path, fixture: Path, ci_evidence: Path) -> dict[str, Any
         "checks": checks,
         "ci_evidence": ci_evidence.name,
     }
+
+
+def _harness_checks(root: Path) -> list[dict[str, Any]]:
+    """Run the deterministic harness matrix once and expose four release checks."""
+
+    try:
+        report = evaluate_scenarios(root, root / "tests/fixtures/harness/scenarios.yaml")
+        scenarios = report.get("scenarios", [])
+        expected_failure_ids = {"timeout", "unauthorized-write", "acceptance-fail", "secret-output", "output-conflict", "concurrent-supervisor"}
+        failure_rows = [row for row in scenarios if row.get("id") in expected_failure_ids]
+        boundary_passed = all(
+            row.get("actual", {}).get("output_mutated") is False
+            and row.get("actual", {}).get("work_mutated") is (row.get("id") != "output-conflict")
+            for row in failure_rows
+        )
+        observation_passed = all(
+            row.get("deterministic") is True
+            and (row.get("actual", {}).get("event_sha256") is not None or row.get("id") == "output-conflict")
+            for row in scenarios
+        )
+        return [
+            _check("harness_e2e", report.get("passed") is True, [f"scenarios={len(scenarios)}"]),
+            _check("harness_fault_recovery", all(row.get("passed") is True for row in failure_rows), [f"fault_scenarios={len(failure_rows)}"]),
+            _check("harness_output_boundary", boundary_passed, [f"checked={len(failure_rows)}"]),
+            _check("harness_observability", observation_passed, [f"event_scenarios={sum(row.get('actual', {}).get('event_sha256') is not None for row in scenarios)}"]),
+        ]
+    except (HarnessEvaluationError, OSError, ValueError) as exc:
+        return [_check(name, False, [str(exc)]) for name in ("harness_e2e", "harness_fault_recovery", "harness_output_boundary", "harness_observability")]
 
 
 def main() -> int:

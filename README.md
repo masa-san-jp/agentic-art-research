@@ -83,6 +83,19 @@ python3 tools/harness.py run \
 
 stdoutは`schemas/harness-outcome.schema.json`に適合する一つのoutcome JSONだけである。成功時は外部output rootの`<project-slug>/`へ`research-project/`、`handoff/`、`run-manifest.json`、`checksums.json`をatomicに配置する。失敗・human pause・中断時はpartial outputを作らず、outcomeの`resume_command`または`harness.py resume --run-id HR001`でwork journalから再開する。同一fingerprintの再実行は`ALREADY_PUBLISHED`、異なるrequest/worker/protocol/runまたはchecksum不一致は`HARNESS-PUBLISH-CONFLICT`で非破壊に停止する。
 
+実行の観測証跡はwork rootの`.harness/events/<run-id>.jsonl`へhash chain付きで追記される。eventはproject本文、prompt全文、credential、private dataを持たず、replay時にschema、重複ID、hash chain、phase regressionを検証できる。11ケースのreference fake worker matrixとrelease gateは次で実行する。
+
+```bash
+python3 tools/harness_evaluate.py \
+  --scenarios tests/fixtures/harness/scenarios.yaml \
+  --protocol-root .
+python3 tools/release_check.py \
+  --offline-fixture tests/fixtures/harmony \
+  --ci-evidence execution/ci-evidence.json
+```
+
+matrixは同じcaller clockとseedを使い、success、retry、timeout、human pause、phase resume、write/output boundary、secret、lockを独立temporary rootで検査する。CIのblocking workerはreference fake workerだけであり、任意providerは`harness.py conformance`で同じattempt request/result schemaをcredential非保存で確認する。
+
 ## ローカル実行
 
 プロトコル自体の検証は、このリポジトリで実行する。

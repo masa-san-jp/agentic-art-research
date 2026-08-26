@@ -1,4 +1,4 @@
-version: 17
+version: 18
 updated_at: "2026-08-26T00:00:00+09:00"
 selection_policy: lowest_id_ready_with_dependencies_done
 allowed_statuses: [BACKLOG, READY, IN_PROGRESS, BLOCKED, DONE]
@@ -383,10 +383,18 @@ tasks:
   - id: HARNESS-008
     milestone: G4
     title: Add harness E2E fault matrix observability and release gate
-    status: READY
+    status: DONE
     depends_on: [HARNESS-007]
     acceptance: Harness E2E, fault, privacy, recovery, and run observability checks are deterministic and included in the release gate.
     issue_refs: ["agentic-art-research#76"]
     checks:
-      - python3 -m unittest tests.test_harness_release
-      - python3 tools/release_check.py --help
+      - .venv/bin/python tools/harness_evaluate.py --scenarios tests/fixtures/harness/scenarios.yaml --protocol-root .
+      - .venv/bin/python -m unittest tests.test_harness_e2e tests.test_harness_release tests.test_chaos_check -v
+      - .venv/bin/python tools/release_check.py --offline-fixture tests/fixtures/harmony --ci-evidence execution/ci-evidence.json
+      - .venv/bin/python tools/validate.py --check
+      - .venv/bin/python tools/security_check.py --check
+      - .venv/bin/python tools/docs_check.py --check
+      - .venv/bin/python tools/chaos_check.py
+      - .venv/bin/python tools/build_graph.py --check
+      - .venv/bin/python tools/handoff_release_check.py --require-schema-snapshot
+      - git diff --check

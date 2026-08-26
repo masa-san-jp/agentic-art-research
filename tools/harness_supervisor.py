@@ -217,6 +217,7 @@ class Supervisor:
         now: Callable[[], str] | None = None,
         sleep: Callable[[float], None] | None = None,
         worker_runner: Callable[..., dict[str, Any]] | None = None,
+        event_callback: Callable[[dict[str, Any]], None] | None = None,
     ) -> None:
         if not project_id.startswith("project/") or project_id.count("/") != 1:
             raise SupervisorError("HARNESS-JOURNAL", "project_id must be project/<slug>")
@@ -239,6 +240,7 @@ class Supervisor:
         self.now = now or _now_text
         self.sleep = sleep or time.sleep
         self.worker_runner = worker_runner or worker_adapter.run_attempt
+        self.event_callback = event_callback
         self.shutdown_requested = False
         self._journal: dict[str, Any] | None = None
         self._current_attempt: AttemptWorkspace | None = None
@@ -296,6 +298,8 @@ class Supervisor:
             self._journal["status"] = status
         self._journal["events"].append(_event(self._journal, current, phase, **fields))
         self._save()
+        if self.event_callback is not None:
+            self.event_callback(self._journal["events"][-1])
 
     def _set_lease(self, lease: dict[str, Any] | None) -> None:
         self._journal["lease"] = None if lease is None else {

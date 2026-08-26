@@ -92,6 +92,8 @@ DOMAIN_SCHEMAS = (
     "human-decision-response",
     "human-decisions",
     "harness-journal",
+    "harness-event",
+    "harness-evaluation",
     "harness-outcome",
     "harness-run",
     "harness-checksums",

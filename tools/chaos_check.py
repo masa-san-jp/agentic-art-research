@@ -7,7 +7,7 @@ import tempfile
 from pathlib import Path
 from typing import Any, Callable
 
-from _common import ROOT, read_jsonl, stable_json
+from _common import ROOT, load_yaml, read_jsonl, stable_json
 from new_project import create_project
 from task_runtime import TaskRuntimeError, claim_next, complete, fail, initialize_runtime, load_runtime, resume
 from validate import validate_repository
@@ -137,7 +137,37 @@ def _duplicate_effect(repository_root: Path) -> dict[str, Any]:
         shutil.rmtree(root, ignore_errors=True)
 
 
-SCENARIOS: tuple[Callable[[Path], dict[str, Any]], ...] = (_api_stop, _broken_jsonl, _interrupted_lease, _duplicate_effect)
+def _harness_fault_matrix(repository_root: Path) -> dict[str, Any]:
+    path = repository_root / "tests/fixtures/harness/scenarios.yaml"
+    expected = {
+        "success",
+        "worker-crash-once",
+        "timeout",
+        "rate-limit-then-pass",
+        "unauthorized-write",
+        "acceptance-fail",
+        "human-pause-resume",
+        "kill-each-phase",
+        "output-conflict",
+        "secret-output",
+        "concurrent-supervisor",
+    }
+    try:
+        matrix = load_yaml(path)
+        scenarios = matrix.get("scenarios") if isinstance(matrix, dict) else None
+        ids = {item.get("id") for item in scenarios} if isinstance(scenarios, list) and all(isinstance(item, dict) for item in scenarios) else set()
+        valid = ids == expected and all(
+            isinstance(item.get("expected"), dict)
+            and {"status", "rule", "phase", "work_mutated", "output_mutated", "resume_supported"}.issubset(item["expected"])
+            for item in scenarios
+            if isinstance(item, dict)
+        )
+        return {"id": "harness-fault-matrix", "passed": valid, "scenario_count": len(ids), "expected_count": len(expected)}
+    except Exception as exc:
+        return {"id": "harness-fault-matrix", "passed": False, "error": str(exc)}
+
+
+SCENARIOS: tuple[Callable[[Path], dict[str, Any]], ...] = (_api_stop, _broken_jsonl, _interrupted_lease, _duplicate_effect, _harness_fault_matrix)
 
 
 def run_chaos_suite(repository_root: Path = ROOT) -> dict[str, Any]:

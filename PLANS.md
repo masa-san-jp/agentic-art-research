@@ -43,8 +43,9 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 - [x] (2026-08-25 JST) `HARNESS-005`: HUMAN_REQUIREDをtyped human decision requestへ永続化し、list/resolve、新lease resume、replay、stale/replay/option/stateのnamed ruleを実装。237 unittestと全ローカルgateが合格。次は`HARNESS-006`。
 - [x] (2026-08-26 JST) `HARNESS-006`: supervisorのheartbeat、retry、crash resume loop、run lock、shutdown、human pause、CLIを実装。245 unittestと全ローカルgateが合格。次は`HARNESS-007`。
 
-- [x] (2026-08-26 JST) `HARNESS-007`: request受理からsupervisor、completion、検証済みhandoffのatomic publishまでを1コマンドへ接続。固定phase、versioned outcome、checksums、冪等再実行、衝突拒否、pause/failure/resume、output boundaryを実装。248 unittest、handoff release gate、validator、security、docs、chaos、graph、diff gateが合格。次は`HARNESS-008`。
+- [x] (2026-08-26 JST) `HARNESS-007`: request受理からsupervisor、completion、検証済みhandoffのatomic publishまでを1コマンドへ接続。固定phase、versioned outcome、checksums、冪等再実行、衝突拒否、pause/failure/resume、output boundaryを実装。248 unittest、handoff release gate、validator、security、docs、chaos、graph、diff gateが合格し、HARNESS-008へ接続した。
 
+- [x] (2026-08-26 JST) `HARNESS-008`: 11 deterministic scenarioのE2E/fault matrix、hash付きappend-only event stream、run manifest observability、replay/fault/output boundary gate、provider conformance documentを追加する。
 チェックボックスとUTCまたはJST日時。未完了、部分完了、完了を正確に表す。
 
 ### Surprises & Discoveries
@@ -66,6 +67,7 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 - 2026-08-26: heartbeatがcanonical runtime state/logを更新するため、attemptのruntime-owned snapshotだけを同期してからchangeset検査する契約にした。worker write targetとの混同を避け、canonical projectへの直接変更は従来どおり拒否する。
 - 2026-08-26: HARNESS-007の公開成果物はmetadata自身をchecksum対象に含めず、`research-project/`と`handoff/`のfile setだけを固定した。これによりrun manifestのoutcome hashとchecksumsの自己参照を避けつつ、4項目のoutput boundaryを検証できる。
 
+- 2026-08-26: HARNESS-008では既存supervisor journalを正本として再利用し、公開観測streamはproject本文・prompt・credentialを持たないhash参照だけの派生監査記録にする。これによりworker境界とrun observabilityを分離する。
 実装中に判明した制約、失敗、想定との差を、短い証拠とともに記録する。
 
 ### Decision Log
@@ -887,6 +889,80 @@ The work-root run state is updated atomically by phase and stores hashes/IDs rat
 
 - 成功ケースは固定phase、task counts、completion status、handoff ID、artifact hashesをstdoutとpublished run manifestへ出し、同一fingerprint再実行を`ALREADY_PUBLISHED`として処理する。
 - human pause、worker failure、max bound、handoff failureはoutput rootを変更せず、named failureとresume commandを返す。残る確認は全release gate実行後にqueue/stateをDONEへ進めること。
+
+## HARNESS-008 ExecPlan
+
+### Purpose / Big Picture
+
+Issue #76の契約として、requestからpublished handoffまでの実行を、故障回復・出力境界・観測可能性まで含む決定的release gateで証明する。reference fake workerだけをCIのblocking依存とし、各scenarioは独立temporary rootで実行してcanonical repositoryと外部outputを変更しない。
+
+### Context and Orientation
+
+- public orchestration: `tools/harness_e2e.py`, `tools/harness.py`
+- supervisor journal: `tools/harness_supervisor.py`, `schemas/harness-journal.schema.json`
+- event and run contracts: `schemas/harness-event.schema.json`, `schemas/harness-run.schema.json`
+- evaluator and matrix: `tools/harness_evaluate.py`, `tests/fixtures/harness/scenarios.yaml`
+- release integration: `tools/release_check.py`, `tools/chaos_check.py`, `.github/workflows/validate.yml`
+
+### Progress
+
+- [x] hash-chained event schema, append-only writer, and replay validator
+- [x] deterministic fake-worker scenario matrix and evaluator CLI
+- [x] run manifest observability, fault/output/privacy checks, and provider conformance command
+- [x] release/CI/docs/test integration and all gates
+
+### Plan of Work
+
+1. Define strict event, evaluation, and final run-manifest fields. Validate event IDs, hash chain, duplicate detection, phase order, and secret/path exclusion without storing project bodies.
+2. Normalize public harness phases and supervisor journal events into an append-only `.harness/events/<run-id>.jsonl` stream, and attach deterministic hashes, task attempts, retry, heartbeat, human-wait, budget, and canonical duration to the final manifest.
+3. Add the 11-scenario YAML matrix and evaluator. Run each case in an isolated temporary root, compare expected status/rule/final phase/mutation/resume, replay the stream, and compare deterministic reports/artifacts for repeated seeds.
+4. Add release checks for E2E, fault recovery, output boundary, and observability; document provider conformance and invoke the harness release gate from CI.
+5. Add normal, failure, tamper, replay, collision, kill/resume, privacy, and determinism tests; then run the complete repository gate and update queue/state.
+
+### Concrete Steps
+
+```bash
+.venv/bin/python tools/harness_evaluate.py --scenarios tests/fixtures/harness/scenarios.yaml --protocol-root .
+.venv/bin/python -m unittest tests.test_harness_e2e tests.test_chaos_check tests.test_harness_release -v
+.venv/bin/python tools/release_check.py --offline-fixture tests/fixtures/harmony --ci-evidence execution/ci-evidence.json
+```
+
+### Validation and Acceptance
+
+- all 11 scenarios have machine-readable expected status/rule/final phase/work mutation/output mutation/resume fields and pass against the reference fake worker;
+- success publishes a handoff, retry/pause/fault cases remain resumable or terminal as declared, and unauthorized write/secret/conflict cases never mutate canonical or output roots;
+- clean and resumed kill-each-phase runs produce identical final artifact hashes;
+- event replay reconstructs task status, phase, and final status; unknown fields, duplicate IDs, hash mismatch, and phase regression fail with named rules;
+- release check contains `harness_e2e`, `harness_fault_recovery`, `harness_output_boundary`, and `harness_observability`, and CI runs the harness evaluator;
+- full unittest, validator, security, chaos, docs, graph, handoff release, harness release, and `git diff --check` gates pass.
+
+### Idempotence and Recovery
+
+Evaluation uses a fresh temporary root per scenario and writes no canonical project or external output. The event stream is append-only and hash chained; an interrupted run resumes from the existing supervisor journal without replacing prior events. Published output is subject to the existing atomic/idempotent/conflict contract.
+
+### Interfaces and Dependencies
+
+- CLI: `tools/harness_evaluate.py --scenarios ... --protocol-root ... [--output ...]`
+- provider conformance: `tools/harness.py conformance --request ... --adapter ... --protocol-root ...`
+- schemas: `harness-event.schema.json`, `harness-run.schema.json`, `harness-evaluation.schema.json`
+- issue: `agentic-art-research#76`; dependency: `HARNESS-007`
+
+### Surprises & Discoveries
+
+- supervisor journalがまだ存在しないPREFLIGHT/BOOTSTRAPPEDで中断したresumeは、supervisorを通常起動する必要がある。journalが存在する場合だけdurable resumeを指定するようにした。
+- EXPORTING/PUBLISHINGで中断したresumeは、handoff buildを再実行しても過去phaseのHANDOFF_BUILT eventを追記できない。既存eventを再利用し、phase orderを単調に保った。
+- kill-each-phaseは7つの非terminal public phaseを独立temporary rootで中断し、各resume artifact hashをclean referenceと比較することで、単なるcompleted-run再呼出しより強い契約にした。
+
+### Decision Log
+
+- 2026-08-26: 観測streamはwork rootの`.harness/events`へ保存し、published outputの4項目boundaryを拡張しない。run manifestにはstream hashと相対参照だけを記録する。
+
+### Outcomes & Retrospective
+
+- 11 scenarioが期待status/rule/phase/work-output mutation/resume契約に全件一致した。kill-each-phaseはPREFLIGHT、BOOTSTRAPPED、RUNNING、COMPLETING、BUILDING_HANDOFF、EXPORTING、PUBLISHINGの各中断をresumeし、clean artifact hash `sha256:153ed76ec367fa56254f6fe3f163cd0cbc40e3f02556584ecbe4d1c8621e9978`と一致した。
+- event replayはtask status、最終phase、final statusを再構成し、unknown field、duplicate/sequence fault、hash tamper、phase regressionをnamed ruleで拒否した。published manifestはconfig/schema/worker/request/project/handoff/output hash、task attempts、retry/heartbeat/human wait、duration/budget、final statusを持つ。
+- `harness_e2e`、`harness_fault_recovery`、`harness_output_boundary`、`harness_observability`をrelease checkへ接続し、CIでreference fake worker matrixをblocking実行するprovider conformance文書を追加した。
+- 次の開始点はない。queue/stateはHARNESS-008完了後のterminal状態へ更新する。
 
 ## 実行規則
 

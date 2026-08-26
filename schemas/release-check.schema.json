@@ -18,7 +18,7 @@
         "required": ["id", "passed", "details"],
         "additionalProperties": false,
         "properties": {
-          "id": {"enum": ["structure", "schemas", "new_project_and_validate", "graph_bundle_impact", "sample_terminal", "e2e_evaluation", "specification_mvp", "ci_three_runs", "advanced_security", "chaos_recovery", "operations_documentation"]},
+          "id": {"enum": ["structure", "schemas", "new_project_and_validate", "graph_bundle_impact", "sample_terminal", "e2e_evaluation", "specification_mvp", "ci_three_runs", "advanced_security", "chaos_recovery", "operations_documentation", "harness_e2e", "harness_fault_recovery", "harness_output_boundary", "harness_observability"]},
           "passed": {"type": "boolean"},
           "details": {"type": "array", "items": {"type": "string"}}
         }

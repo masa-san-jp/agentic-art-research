@@ -402,7 +402,7 @@ def record_attempt_result(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Bootstrap an isolated agent-harness run or manage human decisions.")
-    parser.add_argument("command", choices=["bootstrap", "decisions", "run", "resume"])
+    parser.add_argument("command", choices=["bootstrap", "decisions", "run", "resume", "conformance"])
     parser.add_argument("decision_command", nargs="?")
     parser.add_argument("target", nargs="?")
     source = parser.add_mutually_exclusive_group(required=False)
@@ -429,7 +429,41 @@ def main() -> int:
     parser.add_argument("--max-tasks", type=int)
     args = parser.parse_args()
     try:
-        if args.command == "bootstrap":
+        if args.command == "conformance":
+            if args.request is None or args.protocol_root is None:
+                parser.error("conformance requires --request and --protocol-root")
+            if args.command_json is not None and args.worker_command is not None:
+                parser.error("use only one of --command-json or --worker-command")
+            command_value = args.command_json if args.command_json is not None else args.worker_command
+            command = None
+            if command_value is not None:
+                try:
+                    command = json.loads(command_value)
+                except json.JSONDecodeError as exc:
+                    parser.error("worker command must be a JSON argv array: " + str(exc))
+                if not isinstance(command, list) or any(not isinstance(item, str) for item in command):
+                    parser.error("worker command must be a JSON argv array")
+            import hashlib
+            import worker_adapter
+
+            try:
+                worker_result = worker_adapter.run_attempt(
+                    args.request,
+                    adapter=args.adapter,
+                    protocol_root=args.protocol_root,
+                    command=command,
+                )
+                result = {
+                    "schema_version": "1.0.0",
+                    "status": "PASS" if worker_result.get("status") in {"SUCCEEDED", "HUMAN_REQUIRED"} else "FAIL",
+                    "adapter_id": args.adapter,
+                    "result_status": worker_result.get("status"),
+                    "failure_class": (worker_result.get("failure") or {}).get("class") if isinstance(worker_result.get("failure"), dict) else None,
+                    "result_sha256": "sha256:" + hashlib.sha256(stable_json(worker_result).encode("utf-8")).hexdigest(),
+                }
+            except worker_adapter.WorkerAdapterError as exc:
+                result = {"schema_version": "1.0.0", "status": "FAIL", "adapter_id": args.adapter, "result_status": "FAILED", "failure_class": exc.failure_class}
+        elif args.command == "bootstrap":
             if args.request is None and args.slug is None or args.request is not None and args.slug is not None:
                 parser.error("bootstrap requires exactly one of --request or --slug")
             if not all((args.protocol_root, args.work_root, args.output_root, args.run_id)):

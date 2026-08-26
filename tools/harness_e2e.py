@@ -25,6 +25,7 @@ import export_handoff
 import harness_supervisor
 import stopping_policy
 import task_runtime
+from harness_observability import EVENT_RELATIVE, EventStream
 from _common import atomic_write_text, load_json, load_yaml, stable_json
 from canonical import canonical_sha256
 from harness_paths import HarnessPathError, HarnessPaths
@@ -47,6 +48,14 @@ class HarnessE2EError(ValueError):
         self.rule = rule
         self.phase = phase
         super().__init__(f"{rule}: {message}")
+
+
+class HarnessProcessInterrupted(RuntimeError):
+    """Synthetic process interruption used by the offline phase-resume matrix."""
+
+    def __init__(self, phase: str) -> None:
+        self.phase = phase
+        super().__init__(f"synthetic process interruption after phase {phase}")
 
 
 def _schema_validator(protocol_root: Path, name: str) -> Draft202012Validator:
@@ -193,6 +202,84 @@ def _set_phase(state: dict[str, Any], work_root: Path, phase: str) -> None:
     _write_state(work_root, state)
 
 
+def _set_observed_phase(
+    state: dict[str, Any],
+    work_root: Path,
+    phase: str,
+    event_stream: EventStream | None,
+    *,
+    event_type: str = "PHASE_ENTERED",
+    status: str | None = None,
+    failure_class: str | None = None,
+    hashes: dict[str, str] | None = None,
+    phase_callback: Callable[[str], None] | None = None,
+) -> None:
+    _set_phase(state, work_root, phase)
+    if event_stream is None:
+        return
+    current = event_stream.events[-1]["phase"] if event_stream.events else None
+    if current is not None and event_stream.events and phase not in {current, "COMPLETE"}:
+        # A resumed run keeps its prior phase history.  Do not append a
+        # backwards phase marker; the supervisor events remain append-only.
+        from harness_observability import PHASE_INDEX
+
+        if PHASE_INDEX[phase] < PHASE_INDEX[current]:
+            return
+    event_stream.append(
+        phase=phase,
+        event_type=event_type,
+        status=status,
+        failure_class=failure_class,
+        hashes=hashes,
+    )
+    if phase_callback is not None:
+        phase_callback(phase)
+
+
+def _hash_files(root: Path, names: Sequence[str]) -> dict[str, str]:
+    return {name: _sha256_file(root / name) for name in names if (root / name).is_file()}
+
+
+def _schema_hashes(protocol_root: Path) -> dict[str, str]:
+    return _hash_files(
+        protocol_root / "schemas",
+        ("harness-event.schema.json", "harness-outcome.schema.json", "harness-run.schema.json"),
+    )
+
+
+def _config_hashes(protocol_root: Path) -> dict[str, str]:
+    return _hash_files(protocol_root / "config", ("stopping-policy.yaml", "worker-adapters.yaml", "task-roles.yaml"))
+
+
+def _task_attempts(work_root: Path, project_id: str) -> list[dict[str, Any]]:
+    try:
+        tasks = task_runtime.load_runtime(work_root, project_id).get("tasks") or {}
+    except Exception:
+        return []
+    result = []
+    for task_id in sorted(tasks):
+        task = tasks[task_id]
+        attempts = int(task.get("attempts", 0))
+        result.append(
+            {
+                "task_id": task_id,
+                "attempts": attempts,
+                "retries": max(0, attempts - 1),
+                "status": task.get("status", "PENDING"),
+            }
+        )
+    return result
+
+
+def _event_counts(event_stream: EventStream | None) -> dict[str, int]:
+    events = event_stream.events if event_stream is not None else []
+    return {
+        "retry_count": sum(event.get("event_type") == "RETRY_SCHEDULED" for event in events),
+        "heartbeat_count": sum(event.get("event_type") == "HEARTBEAT" for event in events),
+        "human_wait_count": sum(event.get("event_type") == "HUMAN_WAIT" for event in events),
+    }
+
+
 def _outcome_without_hash(value: dict[str, Any]) -> dict[str, Any]:
     return {key: item for key, item in value.items() if key != "outcome_sha256"}
 
@@ -226,11 +313,13 @@ def _base_outcome(
     handoff_id: str | None = None,
     handoff_sha256: str | None = None,
     artifacts: list[dict[str, Any]] | None = None,
+    event_stream_sha256: str | None = None,
+    event_count: int | None = None,
+    canonical_duration_seconds: float | None = None,
     paused: dict[str, Any] | None = None,
     failure: dict[str, str] | None = None,
 ) -> dict[str, Any]:
-    return _with_outcome_hash(
-        {
+    payload: dict[str, Any] = {
             "schema_version": "1.0.0",
             "outcome_sha256": "sha256:" + "0" * 64,
             "status": status,
@@ -249,8 +338,14 @@ def _base_outcome(
             "resume_command": resume_command,
             "paused": paused,
             "failure": failure,
-        }
-    )
+    }
+    if event_stream_sha256 is not None:
+        payload["event_stream_sha256"] = event_stream_sha256
+    if event_count is not None:
+        payload["event_count"] = event_count
+    if canonical_duration_seconds is not None:
+        payload["canonical_duration_seconds"] = canonical_duration_seconds
+    return _with_outcome_hash(payload)
 
 
 def _existing_output(
@@ -309,6 +404,7 @@ def _published_manifest(
     outcome: dict[str, Any],
     *,
     output_path: Path,
+    observability: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     manifest = dict(bootstrap_manifest)
     manifest.update(
@@ -327,6 +423,8 @@ def _published_manifest(
             "resume_command": outcome["resume_command"],
         }
     )
+    if observability:
+        manifest.update(observability)
     return manifest
 
 
@@ -337,6 +435,8 @@ def _publish(
     output_root: Path,
     bootstrap_manifest: dict[str, Any],
     outcome: dict[str, Any],
+    event_stream: EventStream | None = None,
+    observability: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     slug = outcome["project_id"].split("/", 1)[1]
     target = output_root / slug
@@ -363,8 +463,7 @@ def _publish(
         outcome["artifacts"] = entries
         handoff_file = staging / "research-project" / "05_production" / "production-handoff.yaml"
         outcome["handoff_sha256"] = _sha256_file(handoff_file)
-        outcome["phase"] = "COMPLETE"
-        outcome = _with_outcome_hash(outcome)
+        outcome["phase"] = "PUBLISHING"
         checksums = {
             "schema_version": "1.0.0",
             "project_id": outcome["project_id"],
@@ -374,7 +473,31 @@ def _publish(
         }
         _validate_schema(protocol_root, CHECKSUMS_SCHEMA, checksums)
         atomic_write_text(staging / "checksums.json", stable_json(checksums))
-        published = _published_manifest(bootstrap_manifest, outcome, output_path=target)
+        if event_stream is not None:
+            event_stream.append(
+                phase="PUBLISHING",
+                event_type="OUTPUT_PUBLISHED",
+                hashes={"handoff_sha256": outcome["handoff_sha256"], "output_sha256": checksums["file_set_sha256"]},
+            )
+            event_stream.append(phase="COMPLETE", event_type="RUN_TERMINAL", status="COMPLETE")
+            if observability is not None:
+                observability["event_stream_sha256"] = event_stream.sha256
+                observability["event_count"] = event_stream.event_count
+        if observability:
+            outcome["event_stream_sha256"] = observability.get("event_stream_sha256")
+            outcome["event_count"] = observability.get("event_count")
+            outcome["canonical_duration_seconds"] = observability.get("canonical_duration_seconds", 0)
+        outcome = _with_outcome_hash({**outcome, "phase": "COMPLETE"})
+        if observability is not None:
+            observability.update(
+                {
+                    "project_sha256": canonical_sha256(_prefixed_entries(staging, "research-project")),
+                    "handoff_sha256": outcome["handoff_sha256"],
+                    "output_sha256": checksums["file_set_sha256"],
+                    "final_status": outcome["status"],
+                }
+            )
+        published = _published_manifest(bootstrap_manifest, outcome, output_path=target, observability=observability)
         _validate_schema(protocol_root, RUN_SCHEMA, published)
         atomic_write_text(staging / "run-manifest.json", stable_json(published))
         top_level = {path.name for path in staging.iterdir()}
@@ -421,6 +544,11 @@ def _outcome_from_manifest(
         "artifacts": manifest.get("artifacts", []),
         "output_path": manifest.get("output_path"),
         "resume_command": manifest.get("resume_command"),
+        "event_stream_sha256": manifest.get("event_stream_sha256"),
+        "event_count": manifest.get("event_count", 0),
+        "canonical_duration_seconds": manifest.get("duration", {}).get("canonical_seconds", 0)
+        if isinstance(manifest.get("duration"), dict)
+        else 0,
         "paused": None,
         "failure": None,
     }
@@ -437,7 +565,7 @@ def _outcome_from_manifest(
     _validate_outcome(protocol_root, outcome)
     if status == "ALREADY_PUBLISHED":
         updated_manifest = dict(manifest)
-        updated_manifest.update({"status": status, "outcome_sha256": outcome["outcome_sha256"]})
+        updated_manifest.update({"status": status, "final_status": status, "outcome_sha256": outcome["outcome_sha256"]})
         _validate_schema(protocol_root, RUN_SCHEMA, updated_manifest)
         atomic_write_text(Path(str(manifest["output_path"])) / "run-manifest.json", stable_json(updated_manifest))
     return outcome
@@ -454,8 +582,9 @@ def _supervisor_failure(
     message: str,
     phase: str = "RUNNING",
 ) -> dict[str, Any]:
+    public_rule = rule if rule.startswith("HARNESS-") else f"HARNESS-WORKER-{rule}"
     project_id = manifest["project_id"]
-    status = "BLOCKED" if rule in {"HARNESS-RESUME", "HARNESS-NO-PROGRESS"} else "FAILED"
+    status = "BLOCKED" if rule in {"HARNESS-RESUME", "HARNESS-NO-PROGRESS", "HARNESS-RUN-LOCKED", "HARNESS-PUBLISH-CONFLICT", "HARNESS-OUTPUT-BOUNDARY"} else "FAILED"
     if journal and journal.get("status") == "NO_TASK_READY":
         status = "NO_TASK_READY"
     paused = journal.get("human_wait") if journal and journal.get("status") == "PAUSED" else None
@@ -474,7 +603,7 @@ def _supervisor_failure(
             output_path=None,
             resume_command=_resume_command(paths.protocol_root, paths.work_root, paths.output_root, manifest["run_id"]),
             paused=paused,
-            failure=None if paused else {"rule": rule, "message": _public_message(message, paths)},
+            failure=None if paused else {"rule": public_rule, "message": _public_message(message, paths)},
         )
     )
 
@@ -530,6 +659,7 @@ def run_request(
     max_runtime_seconds: int | None = None,
     max_tasks: int | None = None,
     worker_runner: Callable[..., dict[str, Any]] | None = None,
+    phase_callback: Callable[[str], None] | None = None,
     resume: bool = False,
 ) -> dict[str, Any]:
     """Run or resume one request and always return a versioned outcome."""
@@ -551,6 +681,8 @@ def run_request(
         worker_id = str(state_hint.get("worker_id", worker_id))
     timestamp = _timestamp(now, "2026-08-26T00:00:00+00:00")
     worker_fingerprint = _worker_fingerprint(adapter, command, fixture_mode)
+    event_stream: EventStream | None = None
+    observability: dict[str, Any] = {}
 
     try:
         if not resume and request_path is not None:
@@ -617,7 +749,41 @@ def run_request(
         )
         if state.get("request_sha256") != manifest.get("request_sha256") or state.get("worker_fingerprint") != worker_fingerprint:
             raise HarnessE2EError("HARNESS-RESUME", "resume fingerprint differs from the original run")
+        event_stream = EventStream(
+            protocol_root=protocol,
+            path=work / EVENT_RELATIVE / f"{run_id}.jsonl",
+            run_id=run_id,
+            project_id=manifest["project_id"],
+            now=lambda: timestamp,
+            request_sha256=manifest.get("request_sha256"),
+            worker_fingerprint=worker_fingerprint,
+        )
+        if not event_stream.events:
+            event_stream.append(
+                phase="PREFLIGHT",
+                event_type="RUN_STARTED",
+                hashes={"request_sha256": manifest["request_sha256"], "worker_fingerprint": worker_fingerprint},
+            )
+            if phase_callback is not None:
+                phase_callback("PREFLIGHT")
+            event_stream.append(phase="BOOTSTRAPPED", event_type="PHASE_ENTERED")
+            if phase_callback is not None:
+                phase_callback("BOOTSTRAPPED")
         _set_phase(state, work, "BOOTSTRAPPED")
+        observability = {
+            "event_stream_path": f".harness/events/{run_id}.jsonl",
+            "config_hashes": _config_hashes(protocol),
+            "schema_hashes": _schema_hashes(protocol),
+            "worker_adapter": {"id": adapter, "version": "1", "fingerprint": worker_fingerprint},
+            "duration": {"canonical_seconds": 0},
+            "budget": {
+                "max_runtime_seconds": int(max_runtime_seconds or harness_supervisor._supervisor_config(protocol)["max_runtime_seconds"]),
+                "max_tasks": int(max_tasks or harness_supervisor._supervisor_config(protocol)["max_tasks"]),
+                "processed_tasks": 0,
+            },
+        }
+        state["event_stream_path"] = observability["event_stream_path"]
+        _write_state(work, state)
 
         supervisor = harness_supervisor.Supervisor(
             protocol_root=protocol,
@@ -634,25 +800,54 @@ def run_request(
             now=lambda: timestamp,
             sleep=lambda _seconds: None,
             worker_runner=worker_runner,
+            event_callback=lambda event: event_stream.append_supervisor_event(event, phase=state.get("phase", "RUNNING")) if event_stream else None,
         )
-        _set_phase(state, work, "RUNNING")
-        supervisor_journal = supervisor.run(resume=resume or (work / ".harness/supervisor").exists())
+        _set_observed_phase(state, work, "RUNNING", event_stream, phase_callback=phase_callback)
+        # A phase interruption before the supervisor has created its journal
+        # must start the supervisor normally on resume.  Once the journal is
+        # present, the durable supervisor state controls crash recovery.
+        supervisor_journal = supervisor.run(resume=(work / ".harness/supervisor").exists())
         if supervisor_journal.get("status") != "SUCCEEDED":
+            events = supervisor_journal.get("events") or []
+            failure_class = next(
+                (str(event["failure_class"]) for event in reversed(events) if isinstance(event, dict) and event.get("failure_class")),
+                "HARNESS-SUPERVISOR",
+            )
             outcome = _supervisor_failure(
                 protocol_root=protocol,
                 paths=paths,
                 manifest=manifest,
                 worker_fingerprint=worker_fingerprint,
                 journal=supervisor_journal,
-                rule=str((supervisor_journal.get("events") or [{}])[-1].get("failure_class") or "HARNESS-SUPERVISOR"),
-                message=str((supervisor_journal.get("events") or [{}])[-1].get("failure_class") or "supervisor did not reach task completion"),
+                rule=failure_class,
+                message=failure_class or "supervisor did not reach task completion",
             )
+            if event_stream is not None:
+                status = outcome["status"]
+                event_stream.append(
+                    phase=event_stream.events[-1]["phase"] if event_stream.events else "RUNNING",
+                    event_type="RUN_PAUSED" if status == "PAUSED" else "RUN_FAILED",
+                    status=status,
+                    failure_class=outcome.get("failure", {}).get("rule") if outcome.get("failure") else None,
+                )
+                observability.update(_event_counts(event_stream))
+                observability["event_stream_sha256"] = event_stream.sha256
+                observability["event_count"] = event_stream.event_count
+                observability["budget"]["processed_tasks"] = int((supervisor_journal.get("limits") or {}).get("processed_tasks", 0))
+                outcome = _with_outcome_hash(
+                    {
+                        **outcome,
+                        "event_stream_sha256": event_stream.sha256,
+                        "event_count": event_stream.event_count,
+                        "canonical_duration_seconds": 0,
+                    }
+                )
             state["status"] = outcome["status"]
             _write_state(work, state)
             _validate_outcome(protocol, outcome)
             return outcome
 
-        _set_phase(state, work, "COMPLETING")
+        _set_observed_phase(state, work, "COMPLETING", event_stream, phase_callback=phase_callback)
         stopping_policy.apply_project(work, manifest["project_id"], evaluated_at=timestamp)
         findings = validate_repository(work, manifest["project_id"], protocol_root=protocol, work_root=work)
         if findings:
@@ -661,7 +856,7 @@ def run_request(
         if completion_report.get("status") in {"INCOMPLETE", "BLOCKED"}:
             raise HarnessE2EError("HARNESS-COMPLETION", f"completion status is {completion_report.get('status')}", phase="COMPLETING")
 
-        _set_phase(state, work, "BUILDING_HANDOFF")
+        _set_observed_phase(state, work, "BUILDING_HANDOFF", event_stream, phase_callback=phase_callback)
         project = work / "projects" / manifest["project_id"].split("/", 1)[1]
         before_manifest = _set_handoff_mode(project)
         try:
@@ -680,6 +875,12 @@ def run_request(
             atomic_write_text(project / "manifest.yaml", before_manifest.decode("utf-8"))
             raise HarnessE2EError("HARNESS-HANDOFF", "built handoff failed project validation", phase="BUILDING_HANDOFF")
         handoff = load_yaml(handoff_path) or {}
+        if event_stream is not None and not any(event.get("event_type") == "HANDOFF_BUILT" for event in event_stream.events):
+            event_stream.append(
+                phase="BUILDING_HANDOFF",
+                event_type="HANDOFF_BUILT",
+                hashes={"handoff_sha256": _sha256_file(handoff_path)},
+            )
         outcome = _base_outcome(
             status="COMPLETE",
             phase="EXPORTING",
@@ -694,14 +895,22 @@ def run_request(
             completion_status=completion_report.get("status"),
             handoff_id=handoff.get("handoff_id"),
         )
-        _set_phase(state, work, "EXPORTING")
+        _set_observed_phase(state, work, "EXPORTING", event_stream, phase_callback=phase_callback)
+        _set_observed_phase(state, work, "PUBLISHING", event_stream, phase_callback=phase_callback)
+        observability.update(_event_counts(event_stream))
+        observability["budget"]["processed_tasks"] = int((supervisor_journal.get("limits") or {}).get("processed_tasks", 0))
+        observability["task_attempts"] = _task_attempts(work, manifest["project_id"])
         outcome = _publish(
             protocol_root=protocol,
             work_root=work,
             output_root=output,
             bootstrap_manifest=manifest,
             outcome=outcome,
+            event_stream=event_stream,
+            observability=observability,
         )
+        if phase_callback is not None:
+            phase_callback("COMPLETE")
         _set_phase(state, work, "COMPLETE")
         state["status"] = outcome["status"]
         state["outcome_sha256"] = outcome["outcome_sha256"]
@@ -729,7 +938,7 @@ def run_request(
         project_id = manifest.get("project_id", "project/unknown")
         counts = _task_counts(work, project_id) if (work / "projects").is_dir() else {key: 0 for key in ("total", "succeeded", "pending", "running", "waiting_human", "failed", "blocked")}
         outcome = _base_outcome(
-            status="BLOCKED" if rule in {"HARNESS-RESUME", "HARNESS-OUTPUT-BOUNDARY", "HARNESS-NO-PROGRESS"} else "FAILED",
+            status="BLOCKED" if rule in {"HARNESS-RESUME", "HARNESS-OUTPUT-BOUNDARY", "HARNESS-PUBLISH-CONFLICT", "HARNESS-RUN-LOCKED", "HARNESS-NO-PROGRESS"} else "FAILED",
             phase=phase,
             run_id=run_id,
             project_id=project_id,
@@ -741,6 +950,22 @@ def run_request(
             resume_command=_resume_command(protocol, work, output, run_id),
             failure={"rule": rule if rule.startswith("HARNESS-") else "HARNESS-PHASE", "message": _public_message(str(exc), paths)},
         )
+        if event_stream is not None and event_stream.events:
+            event_phase = event_stream.events[-1]["phase"]
+            event_stream.append(
+                phase=event_phase,
+                event_type="RUN_PAUSED" if outcome["status"] == "PAUSED" else "RUN_FAILED",
+                status=outcome["status"],
+                failure_class=outcome["failure"]["rule"],
+            )
+            outcome = _with_outcome_hash(
+                {
+                    **outcome,
+                    "event_stream_sha256": event_stream.sha256,
+                    "event_count": event_stream.event_count,
+                    "canonical_duration_seconds": 0,
+                }
+            )
         if (work / "projects").is_dir():
             state = _load_state(work) or {"schema_version": "1.0.0", "run_id": run_id, "project_id": project_id}
             state.update({"phase": phase, "status": outcome["status"], "failure": outcome["failure"]})
@@ -755,4 +980,4 @@ def resume_request(**kwargs: Any) -> dict[str, Any]:
     return run_request(**kwargs)
 
 
-__all__ = ["HarnessE2EError", "resume_request", "run_request"]
+__all__ = ["HarnessE2EError", "HarnessProcessInterrupted", "resume_request", "run_request"]

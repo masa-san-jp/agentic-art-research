@@ -179,6 +179,21 @@ request・worker・protocol・runの既存outputは`ALREADY_PUBLISHED`になり�
 一部だけ残ったoutputは`HARNESS-PUBLISH-CONFLICT`で上書きしない。phase、task counts、
 completion、handoff ID、artifact hashesはoutcomeとmanifestで照合できる。
 
+### Provider conformance
+
+任意providerの実workerは、公開前に同じattempt request/result契約をofflineで確認できる。
+requestのworkspaceだけを使い、credentialやprompt本文を保存せず、結果はadapter ID・status・failure class・result hashだけを返す。
+
+```bash
+python3 tools/harness.py conformance \
+  --request <attempt-request.json> \
+  --adapter fake \
+  --protocol-root <protocol-root> \
+  --worker-command '["python3", "path/to/provider-worker.py"]'
+```
+
+CIのblocking workerはreference fake workerであり、provider conformanceは同じschema境界を満たすことだけを確認する。料金、model品質、外部telemetryは評価しない。
+
 ## 停止規則と飽和
 
 質問ごとの `SEARCH_ATTEMPTED`、`SOURCE_REVIEWED`、`ANSWER_FOUND`、

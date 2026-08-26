@@ -1,0 +1,38 @@
+version: 1
+schema: urn:agentic-art-research:harness-scenarios:v1
+seed: harness-2026-08-26
+clock: 2026-08-25T00:00:00+09:00
+scenarios:
+  - id: success
+    mode: success
+    expected: {status: COMPLETE, rule: null, phase: COMPLETE, work_mutated: true, output_mutated: true, resume_supported: false}
+  - id: worker-crash-once
+    mode: worker-crash-once
+    expected: {status: COMPLETE, rule: null, phase: COMPLETE, work_mutated: true, output_mutated: true, resume_supported: true}
+  - id: timeout
+    mode: timeout
+    expected: {status: FAILED, rule: HARNESS-RETRY-EXHAUSTED, phase: RUNNING, work_mutated: true, output_mutated: false, resume_supported: true}
+  - id: rate-limit-then-pass
+    mode: rate-limit-then-pass
+    expected: {status: COMPLETE, rule: null, phase: COMPLETE, work_mutated: true, output_mutated: true, resume_supported: true}
+  - id: unauthorized-write
+    mode: unauthorized-write
+    expected: {status: FAILED, rule: HARNESS-RETRY-EXHAUSTED, phase: RUNNING, work_mutated: true, output_mutated: false, resume_supported: true}
+  - id: acceptance-fail
+    mode: acceptance-fail
+    expected: {status: FAILED, rule: HARNESS-RETRY-EXHAUSTED, phase: RUNNING, work_mutated: true, output_mutated: false, resume_supported: true}
+  - id: human-pause-resume
+    mode: human-pause-resume
+    expected: {status: PAUSED, rule: null, phase: RUNNING, work_mutated: true, output_mutated: false, resume_supported: true}
+  - id: kill-each-phase
+    mode: kill-each-phase
+    expected: {status: COMPLETE, rule: null, phase: COMPLETE, work_mutated: true, output_mutated: true, resume_supported: true}
+  - id: output-conflict
+    mode: output-conflict
+    expected: {status: BLOCKED, rule: HARNESS-PUBLISH-CONFLICT, phase: PREFLIGHT, work_mutated: false, output_mutated: false, resume_supported: false}
+  - id: secret-output
+    mode: secret-output
+    expected: {status: FAILED, rule: HARNESS-WORKER-AUTHORIZATION, phase: RUNNING, work_mutated: true, output_mutated: false, resume_supported: false}
+  - id: concurrent-supervisor
+    mode: concurrent-supervisor
+    expected: {status: BLOCKED, rule: HARNESS-RUN-LOCKED, phase: RUNNING, work_mutated: true, output_mutated: false, resume_supported: true}

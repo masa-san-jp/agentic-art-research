@@ -84,6 +84,19 @@ python3 tools/harness.py resume \
 
 同一fingerprintの既存outputは`ALREADY_PUBLISHED`として再利用される。request、worker、protocol commit、run IDのいずれかが異なる場合やchecksumが一致しない場合は`HARNESS-PUBLISH-CONFLICT`で停止し、既存project directoryを上書きしない。作業rootを残す必要がなければ、成功後にだけ運用側で明示的に処分する。
 
+run observabilityはwork rootの`.harness/events/<run-id>.jsonl`へ、project本文・prompt・credentialを含まないhash-chained eventとして追記される。`harness-event.schema.json`、event ID、previous hash、phase orderをreplay時に検査し、最終run manifestにはevent/config/schema/worker/task/budget/durationの集計だけを残す。
+
+provider conformanceは次でattempt request/result境界をoffline確認する。credentialを保存せず、CIのblocking workerはreference fake workerのscenario matrixに限定する。
+
+```bash
+python3 tools/harness.py conformance \
+  --request <attempt-request.json> --adapter fake \
+  --protocol-root <protocol-root> \
+  --worker-command '["python3", "path/to/provider-worker.py"]'
+python3 tools/harness_evaluate.py \
+  --scenarios tests/fixtures/harness/scenarios.yaml --protocol-root .
+```
+
 実行開始後のtask入口もrootを明示する。
 
 ```bash

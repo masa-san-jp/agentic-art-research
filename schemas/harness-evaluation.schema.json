@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/harness-evaluation.schema.json",
+  "title": "Agent harness deterministic scenario evaluation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "version", "passed", "scenario_count", "scenarios"],
+  "properties": {
+    "schema": {"const": "urn:agentic-art-research:harness-evaluation:v1"},
+    "version": {"const": "1.0.0"},
+    "passed": {"type": "boolean"},
+    "scenario_count": {"type": "integer", "minimum": 1},
+    "scenarios": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "passed", "expected", "actual", "deterministic"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+          "passed": {"type": "boolean"},
+          "expected": {"$ref": "#/$defs/contract"},
+          "actual": {"$ref": "#/$defs/contract"},
+          "deterministic": {"type": "boolean"},
+          "details": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "rule", "phase", "work_mutated", "output_mutated", "resume_supported"],
+      "properties": {
+        "status": {"type": "string"},
+        "rule": {"type": ["string", "null"]},
+        "phase": {"type": "string"},
+        "work_mutated": {"type": "boolean"},
+        "output_mutated": {"type": "boolean"},
+        "resume_supported": {"type": "boolean"},
+        "artifact_sha256": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"},
+        "event_sha256": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"}
+      }
+    }
+  }
+}
