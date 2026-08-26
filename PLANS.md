@@ -964,6 +964,35 @@ Evaluation uses a fresh temporary root per scenario and writes no canonical proj
 - `harness_e2e`、`harness_fault_recovery`、`harness_output_boundary`、`harness_observability`をrelease checkへ接続し、CIでreference fake worker matrixをblocking実行するprovider conformance文書を追加した。
 - 次の開始点はない。queue/stateはHARNESS-008完了後のterminal状態へ更新する。
 
+## VIEWER-RESPONSE-001 ExecPlan
+
+### Purpose / Big Picture
+
+Productionの`test_results[*].viewer_response`を、自由文や個人情報を持たない
+`viewer-response-record/v1`へ変換し、明示された`viewer-response-notes`のledgerへ
+append-onlyで渡す。同じproduction resultを再実行してもResearch projectとviewer
+ledgerに重複効果を作らず、破損・不一致は全てfail closedにする。
+
+### Progress
+
+- [x] `tools/import_production_result.py`にclosed viewer record変換、dedup、provenance、privacy、aggregate count検証、明示`--viewer-root`、atomic append、rollbackを追加した。
+- [x] `tests/test_feedback_import.py`にviewer responseのdry-run、初回append、同一result再実行、root未指定拒否を追加した。
+- [x] README、schema reference、operations、task queueを更新した。
+
+### Decision Log
+
+- 2026-08-27: viewer repositoryの内部Python moduleをResearchへimportせず、child schemaの閉じた境界をResearch側で検証する。childのdedup canonicalizationはJSON compact UTF-8とsorted evidence refsに固定し、schema内部を複製しない。
+- 2026-08-27: `viewer_response`のない既存production resultは後方互換でproject-only importを許可する。一方、viewer responseがあるresultは`--viewer-root`なしで推測・破棄せず停止する。
+- 2026-08-27: 実測データを捏造しないため、実viewer ledgerへのappendは実在するproduction resultが提供された時だけ行い、合成fixtureはtemporary rootのテストに限定する。
+
+### Validation and Acceptance
+
+`tests.test_feedback_import`は8/8、同一resultの再実行は`ALREADY_APPLIED`となりviewer recordは1件のまま。親が提供するviewer gateでchild fixtureのschema、privacy、dedup、assessment境界も検証する。
+
+### Next READY task
+
+Production側のpush/draft PRとviewer-response-notes Issue #1作成後、Research branchをpushしてdraft PRを作成し、3repoの宣言gateと親release qualificationを再実行する。
+
 ## 実行規則
 
 1. 計画全体を読む。

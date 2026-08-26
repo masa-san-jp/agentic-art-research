@@ -178,8 +178,17 @@ snapshot取得後は、まず変更なしで確認し、承認可能な結果だ
 ```bash
 python3 tools/import_production_result.py path/to/production-result.yaml --dry-run
 python3 tools/import_production_result.py path/to/production-result.yaml --apply
+python3 tools/import_production_result.py path/to/production-result.yaml --apply \
+  --viewer-root /path/to/viewer-response-notes
 python3 tools/impact.py --production-result PR001
 ```
+
+When a production result carries an explicit aggregate `viewer_response`,
+`--viewer-root` is required. The importer maps only the closed
+`viewer-response-record/v1` boundary and appends one record per acceptance test
+to `records/viewer-response-records.jsonl`. Repeating the same result is
+idempotent; existing records are never rewritten. Results without
+`viewer_response` retain the legacy project-only import behavior.
 
 `--apply`はproduction resultをruntime JSONLへ保存し、観察・試験結果をevidence candidate、逸脱・incident・変更要求をgovernance recordとして追記する。同じresult IDとhashは冪等に成功し、同じIDの異なる内容は拒否する。raw assetや禁止情報はコピーしない。詳細なsnapshot provenanceの設定は[`schemas/external/README.md`](schemas/external/README.md)を参照する。
 

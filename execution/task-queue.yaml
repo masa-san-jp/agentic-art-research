@@ -398,3 +398,17 @@ tasks:
       - .venv/bin/python tools/build_graph.py --check
       - .venv/bin/python tools/handoff_release_check.py --require-schema-snapshot
       - git diff --check
+  - id: VIEWER-RESPONSE-001
+    milestone: G5
+    title: Import explicit aggregate viewer responses through an append-only boundary
+    status: IN_PROGRESS
+    depends_on: [HARNESS-008]
+    issue_refs: ["agentic-art-orchestration#98"]
+    acceptance: Production result viewer_response DTOs are mapped to closed aggregate viewer records, appended exactly once to an explicit viewer repository, and rejected on missing provenance, privacy, count, evidence, or idempotency violations.
+    checks:
+      - .venv/bin/python -m unittest tests.test_feedback_import -v
+      - .venv/bin/python tools/validate.py --check
+      - .venv/bin/python tools/security_check.py --check
+      - .venv/bin/python tools/docs_check.py --check
+      - .venv/bin/python tools/build_graph.py --check
+      - git diff --check

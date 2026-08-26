@@ -1,9 +1,9 @@
-version: 1
-updated_at: "2026-08-26T00:00:00+09:00"
-current_milestone: G4
-next_task: null
+version: 2
+updated_at: "2026-08-27T07:12:00+09:00"
+current_milestone: G5
+next_task: VIEWER-RESPONSE-001
 last_completed_task: HARNESS-008
-terminal: true
+terminal: false
 blocked_by: []
 resume_from:
   read:
@@ -50,8 +50,8 @@ resume_from:
     - tools/harness_observability.py
     - tools/harness_evaluate.py
     - tests/fixtures/harness/scenarios.yaml
-  action: Queue is complete; no next task remains.
+  action: Complete VIEWER-RESPONSE-001 gates, then record the commit and draft PR.
 last_verification:
-  result: PASS
-  command: .venv/bin/python tools/harness_evaluate.py --scenarios tests/fixtures/harness/scenarios.yaml --protocol-root .; .venv/bin/python -m unittest discover -s tests -v; .venv/bin/python tools/validate.py --check; .venv/bin/python tools/security_check.py --check; .venv/bin/python tools/docs_check.py --check; .venv/bin/python tools/chaos_check.py; .venv/bin/python tools/build_graph.py --check; .venv/bin/python tools/handoff_release_check.py --require-schema-snapshot; .venv/bin/python tools/release_check.py --offline-fixture tests/fixtures/harmony --ci-evidence execution/ci-evidence.json; git diff --check
-  detail: 251 unittestとHARNESS-008の11 scenarioが全件PASS。kill-each-phaseは7 public phaseの割り込み後resumeでclean artifact hashと一致し、event replay、privacy/output boundary、final manifest observability、provider conformance、release 4 checksを確認した。全queue taskはDONEで、次の開始点はない。
+  result: IN_PROGRESS
+  command: /private/tmp/aap-research-venv/bin/python -m unittest tests.test_feedback_import -v; /private/tmp/aap-research-venv/bin/python tools/validate.py --check; /private/tmp/aap-research-venv/bin/python tools/security_check.py --check; /private/tmp/aap-research-venv/bin/python tools/docs_check.py --check; /private/tmp/aap-research-venv/bin/python tools/build_graph.py --check; git diff --check
+  detail: Viewer response importer implementation is present; focused feedback-import tests pass. Full repository test is still running; validate must be rerun after this state update.

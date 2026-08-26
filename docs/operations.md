@@ -224,6 +224,16 @@ python3 tools/validate.py --check
 
 feedback signal exportはimport済みのresultと監査eventをread-onlyで参照する。受入試験・要件の解決、production-result schema、hash、PII/private境界を再検証してから、明示した出力先へatomicに2ファイルを作る。外部repository、Drive、APIへの配送は行わない。
 
+Production resultに明示的なaggregate-only viewer responseが含まれる場合は、Research projectのapplyと同時にviewer repositoryを明示する。
+
+```bash
+python3 tools/import_production_result.py path/to/production-result.yaml --apply \
+  --root "$WORK_ROOT" \
+  --viewer-root /path/to/viewer-response-notes
+```
+
+この経路はviewer repositoryの`records/viewer-response-records.jsonl`へ新規行だけをatomicに追記する。同一resultの再実行は既存行を増やさず、既存recordの内容を上書きしない。viewer rootが未指定、既存ledgerが不正、集計件数が`sample_size`と一致しない、external recordに測定値がある、またはprivacy/evidence境界に違反する場合は、Research projectもviewer ledgerも更新せず停止する。
+
 ## Incident response
 
 検証または安全検査が失敗した場合は、入力ファイルとエラーを保存し、原因を推測で補正しない。

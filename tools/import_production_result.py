@@ -26,6 +26,27 @@ from validate import validate_repository
 RESULT_ID_PATTERN = re.compile(r"^PR[0-9]{3,}$")
 SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 SHA256_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
+VIEWER_ID_PATTERN = re.compile(r"^VRR-[A-Z0-9][A-Z0-9._-]*$")
+VIEWER_IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]*$")
+VIEWER_TAG_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._-]*$")
+VIEWER_MODE_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
+VIEWER_RECORD_FIELDS = {
+    "record_id",
+    "work_id",
+    "requirement_id",
+    "source_kind",
+    "presentation_mode",
+    "requirement_tags",
+    "sample_size",
+    "outcome_counts",
+    "evidence_refs",
+    "certainty",
+    "consent_scope",
+    "source_commit",
+    "observed_at",
+    "dedup_key",
+}
+VIEWER_EVIDENCE_PREFIXES = ("https://", "doi:", "production-result:", "viewer-response:")
 IMPACT_LEVELS = ("NONE", "MINOR", "MAJOR", "CRITICAL")
 IMPACT_RANK = {value: index for index, value in enumerate(IMPACT_LEVELS)}
 PROHIBITED_CLASSIFICATION_PATTERN = re.compile(
@@ -479,6 +500,141 @@ def _change_records(result: dict[str, Any], sources: HandoffSources, impact_leve
     return records, [record["id"] for record in records]
 
 
+def _viewer_dedup_key(record: dict[str, Any]) -> str:
+    payload = [
+        record["work_id"],
+        record["requirement_id"],
+        record["presentation_mode"],
+        sorted(record["evidence_refs"]),
+    ]
+    encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return f"sha256:{hashlib.sha256(encoded).hexdigest()}"
+
+
+def _validate_viewer_record(record: Any, *, path: str) -> dict[str, Any]:
+    if not isinstance(record, dict):
+        raise ResultImportError("viewer response record must be an object", path=path, rule="FEEDBACK-VIEWER-CONTRACT")
+    unknown = sorted(set(record) - VIEWER_RECORD_FIELDS)
+    missing = sorted(VIEWER_RECORD_FIELDS - set(record))
+    if unknown or missing:
+        detail = []
+        if unknown:
+            detail.append(f"unknown field(s): {', '.join(unknown)}")
+        if missing:
+            detail.append(f"missing field(s): {', '.join(missing)}")
+        raise ResultImportError("; ".join(detail), path=path, rule="FEEDBACK-VIEWER-CONTRACT", remediation="Map only the closed viewer-response-record/v1 fields.")
+    for field, pattern in (("record_id", VIEWER_ID_PATTERN), ("work_id", VIEWER_IDENTIFIER_PATTERN), ("requirement_id", VIEWER_IDENTIFIER_PATTERN), ("presentation_mode", VIEWER_MODE_PATTERN)):
+        value = record[field]
+        if not isinstance(value, str) or not pattern.fullmatch(value):
+            raise ResultImportError(f"{field} has an invalid identifier", path=path, field=field, rule="FEEDBACK-VIEWER-CONTRACT")
+    tags = record["requirement_tags"]
+    if not isinstance(tags, list) or not tags or any(not isinstance(tag, str) or not VIEWER_TAG_PATTERN.fullmatch(tag) for tag in tags) or len(set(tags)) != len(tags) or tags != sorted(tags):
+        raise ResultImportError("requirement_tags must be non-empty, unique, and sorted safe tags", path=path, field="requirement_tags", rule="FEEDBACK-VIEWER-CONTRACT")
+    sample_size = record["sample_size"]
+    if isinstance(sample_size, bool) or not isinstance(sample_size, int) or sample_size < 0:
+        raise ResultImportError("sample_size must be a non-negative integer", path=path, field="sample_size", rule="FEEDBACK-VIEWER-CONTRACT")
+    counts = record["outcome_counts"]
+    if not isinstance(counts, dict) or set(counts) != {"pass", "fail", "unknown"}:
+        raise ResultImportError("outcome_counts must contain exactly pass/fail/unknown", path=path, field="outcome_counts", rule="FEEDBACK-VIEWER-CONTRACT")
+    if any(isinstance(value, bool) or not isinstance(value, int) or value < 0 for value in counts.values()) or sum(counts.values()) != sample_size:
+        raise ResultImportError("outcome counts must be non-negative and sum to sample_size", path=path, field="outcome_counts", rule="FEEDBACK-VIEWER-COUNTS")
+    refs = record["evidence_refs"]
+    if not isinstance(refs, list) or not refs or any(not isinstance(ref, str) or not ref or not any(ref.startswith(prefix) for prefix in VIEWER_EVIDENCE_PREFIXES) for ref in refs) or len(set(refs)) != len(refs) or refs != sorted(refs):
+        raise ResultImportError("evidence_refs must be non-empty, unique, sorted opaque references", path=path, field="evidence_refs", rule="FEEDBACK-VIEWER-EVIDENCE")
+    if record["source_kind"] not in {"measured", "external"}:
+        raise ResultImportError("source_kind must be measured or external", path=path, field="source_kind", rule="FEEDBACK-VIEWER-CONTRACT")
+    if record["source_kind"] == "external" and (sample_size != 0 or any(counts.values())):
+        raise ResultImportError("external viewer response cannot contain measured sample or outcome counts", path=path, field="source_kind", rule="FEEDBACK-VIEWER-EXTERNAL")
+    if record["certainty"] not in {"high", "medium", "low", "unknown"}:
+        raise ResultImportError("certainty is invalid", path=path, field="certainty", rule="FEEDBACK-VIEWER-CONTRACT")
+    if record["consent_scope"] != "aggregate-only":
+        raise ResultImportError("consent_scope must be aggregate-only", path=path, field="consent_scope", rule="FEEDBACK-VIEWER-PRIVACY")
+    if not isinstance(record["source_commit"], str) or not SHA_PATTERN.fullmatch(record["source_commit"]):
+        raise ResultImportError("source_commit must be a 40-character lowercase SHA", path=path, field="source_commit", rule="FEEDBACK-VIEWER-PROVENANCE")
+    _timestamp(record["observed_at"], path=path, field="observed_at")
+    if record["dedup_key"] != _viewer_dedup_key(record):
+        raise ResultImportError("dedup_key does not match canonical viewer record inputs", path=path, field="dedup_key", rule="FEEDBACK-VIEWER-DEDUP")
+    return record
+
+
+def _viewer_record(result: dict[str, Any], test: dict[str, Any], *, index: int) -> dict[str, Any] | None:
+    response = test.get("viewer_response")
+    if response is None:
+        return None
+    if not isinstance(response, dict):
+        raise ResultImportError("viewer_response must be an object", field=f"test_results[{index}].viewer_response", rule="FEEDBACK-VIEWER-CONTRACT")
+    test_id = test.get("acceptance_test_id")
+    requirement_id = response.get("requirement_id")
+    if not isinstance(test_id, str) or not test_id or not isinstance(requirement_id, str) or not requirement_id:
+        raise ResultImportError("viewer_response requires acceptance_test_id and requirement_id", field=f"test_results[{index}].viewer_response", rule="FEEDBACK-VIEWER-REFERENCE", remediation="Record the exact requirement evaluated by the aggregate response.")
+    raw_tags = response.get("requirement_tags")
+    raw_refs = response.get("evidence_refs")
+    record = {
+        "record_id": f"VRR-{result['result_id']}-{test_id}",
+        "work_id": result["production_project_id"],
+        "requirement_id": requirement_id,
+        "source_kind": response.get("source_kind"),
+        "presentation_mode": response.get("presentation_mode"),
+        "requirement_tags": sorted(raw_tags) if isinstance(raw_tags, list) and all(isinstance(tag, str) for tag in raw_tags) else raw_tags,
+        "sample_size": response.get("sample_size"),
+        "outcome_counts": response.get("outcome_counts"),
+        "evidence_refs": sorted(raw_refs) if isinstance(raw_refs, list) and all(isinstance(ref, str) for ref in raw_refs) else raw_refs,
+        "certainty": response.get("certainty"),
+        "consent_scope": response.get("consent_scope"),
+        "source_commit": result["production_commit"],
+        "observed_at": result["generated_at"],
+        "dedup_key": "",
+    }
+    record["dedup_key"] = _viewer_dedup_key(record) if isinstance(record["evidence_refs"], list) and all(isinstance(ref, str) for ref in record["evidence_refs"]) else None
+    _validate_viewer_record(record, path=f"test_results[{index}].viewer_response")
+    return record
+
+
+def _viewer_records(result: dict[str, Any]) -> list[dict[str, Any]]:
+    tests = result.get("test_results", [])
+    if not isinstance(tests, list):
+        raise ResultImportError("test_results must be a list", field="test_results", rule="FEEDBACK-INPUT")
+    records = [record for index, test in enumerate(tests) if isinstance(test, dict) and (record := _viewer_record(result, test, index=index)) is not None]
+    seen_ids: set[str] = set()
+    seen_keys: set[str] = set()
+    for record in records:
+        if record["record_id"] in seen_ids or record["dedup_key"] in seen_keys:
+            raise ResultImportError("viewer response records in one production result must be unique", field="test_results.viewer_response", rule="FEEDBACK-VIEWER-DUPLICATE", remediation="Use one aggregate record per requirement, presentation mode, and evidence reference set.")
+        seen_ids.add(record["record_id"])
+        seen_keys.add(record["dedup_key"])
+    return records
+
+
+def _viewer_output_state(viewer_root: Path, incoming: list[dict[str, Any]]) -> tuple[Path, list[dict[str, Any]], list[dict[str, Any]]]:
+    if not viewer_root.is_dir():
+        raise ResultImportError("viewer repository root must be an existing directory", path=str(viewer_root), rule="FEEDBACK-VIEWER-ROOT", remediation="Provide the checked-out viewer-response-notes repository root explicitly.")
+    output = viewer_root / "records" / "viewer-response-records.jsonl"
+    existing = _read_import_jsonl(output)
+    seen_ids: set[str] = set()
+    seen_keys: set[str] = set()
+    for index, record in enumerate(existing):
+        _validate_viewer_record(record, path=f"{output}:{index + 1}")
+        if record["record_id"] in seen_ids or record["dedup_key"] in seen_keys:
+            raise ResultImportError("viewer repository contains duplicate record_id or dedup_key", path=str(output), rule="FEEDBACK-VIEWER-DUPLICATE", remediation="Repair the viewer repository through its owner using an append-only correction.")
+        seen_ids.add(record["record_id"])
+        seen_keys.add(record["dedup_key"])
+    by_id = {record["record_id"]: record for record in existing}
+    by_key = {record["dedup_key"]: record for record in existing}
+    additions: list[dict[str, Any]] = []
+    for record in incoming:
+        prior_id = by_id.get(record["record_id"])
+        prior_key = by_key.get(record["dedup_key"])
+        if prior_id is not None and prior_id != record:
+            raise ResultImportError(f"viewer record {record['record_id']!r} already exists with different content", path=str(output), rule="FEEDBACK-VIEWER-IDEMPOTENCY", remediation="Use a new production result ID or new evidence reference; never overwrite an existing record.")
+        if prior_key is not None and prior_key != record:
+            raise ResultImportError("viewer deduplication key already exists with different content", path=str(output), rule="FEEDBACK-VIEWER-IDEMPOTENCY", remediation="Append a corrected record with a new evidence reference; never rewrite the ledger.")
+        if prior_id is None and prior_key is None:
+            additions.append(record)
+            by_id[record["record_id"]] = record
+            by_key[record["dedup_key"]] = record
+    return output, existing, additions
+
+
 def _impact_preview(root: Path, target: str, provenance: list[dict[str, Any]]) -> list[dict[str, Any]]:
     graph = build_graph(root)
     nodes: set[str] = set()
@@ -553,6 +709,8 @@ def _summary(
     impact: list[dict[str, Any]],
     reopened: bool,
     human_approval_required: bool,
+    viewer_record_ids: list[str],
+    viewer_records_added: int,
 ) -> dict[str, Any]:
     return {
         "status": status,
@@ -566,6 +724,8 @@ def _summary(
         "research_reopened": reopened,
         "human_approval_required": human_approval_required,
         "impact": impact,
+        "viewer_record_ids": viewer_record_ids,
+        "viewer_records_added": viewer_records_added,
     }
 
 
@@ -577,6 +737,7 @@ def import_production_result(
     apply: bool = False,
     project_target: str | None = None,
     schema_path: Path | None = None,
+    viewer_root: Path | None = None,
 ) -> dict[str, Any]:
     if dry_run == apply:
         raise ResultImportError("choose exactly one of dry_run or apply", rule="FEEDBACK-MODE", remediation="Use --dry-run for read-only inspection or --apply for the guarded write path.")
@@ -593,6 +754,20 @@ def import_production_result(
         raise ResultImportError("result_id must match PR followed by at least three digits", path=str(input_path), field="result_id", rule="FEEDBACK-REFERENCE")
     generated_at = _timestamp(result.get("generated_at"), path=str(input_path), field="generated_at")
     result["generated_at"] = generated_at
+    viewer_records = _viewer_records(result)
+    viewer_output: Path | None = None
+    viewer_existing: list[dict[str, Any]] = []
+    viewer_additions: list[dict[str, Any]] = []
+    if viewer_records and viewer_root is None:
+        raise ResultImportError(
+            "viewer response data requires an explicit viewer repository root",
+            path=str(input_path),
+            field="test_results.viewer_response",
+            rule="FEEDBACK-VIEWER-ROOT",
+            remediation="Provide --viewer-root pointing to the checked-out viewer-response-notes repository.",
+        )
+    if viewer_root is not None:
+        viewer_output, viewer_existing, viewer_additions = _viewer_output_state(viewer_root.resolve(), viewer_records)
     accepted = result.get("accepted_handoff") if isinstance(result.get("accepted_handoff"), dict) else {}
     target = project_target or accepted.get("research_project_id")
     if not isinstance(target, str) or not target.startswith("project/") or target.count("/") != 1:
@@ -636,6 +811,7 @@ def import_production_result(
         and existing_audit
         and set(existing_audit.get("evidence_candidate_ids", [])) <= existing_evidence_ids
         and set(existing_audit.get("change_request_ids", [])) <= existing_change_ids
+        and not viewer_additions
     )
     if complete_effect:
         return _summary(
@@ -648,6 +824,8 @@ def import_production_result(
             impact=impact,
             reopened=bool(existing_audit.get("research_reopened")),
             human_approval_required=bool(existing_audit.get("human_approval_required")),
+            viewer_record_ids=[record["record_id"] for record in viewer_records],
+            viewer_records_added=0,
         )
     if dry_run:
         return _summary(
@@ -660,6 +838,8 @@ def import_production_result(
             impact=impact,
             reopened=impact_level in {"MAJOR", "CRITICAL"},
             human_approval_required=human_approval_required,
+            viewer_record_ids=[record["record_id"] for record in viewer_records],
+            viewer_records_added=len(viewer_additions),
         )
 
     project = sources.project
@@ -669,6 +849,8 @@ def import_production_result(
     evidence_path = project / "02_evidence" / "evidence-ledger.jsonl"
     run_log_path = project / "07_runtime" / "run-log.jsonl"
     paths = [manifest_path, state_path, change_path, evidence_path, feedback_path, run_log_path]
+    if viewer_output is not None:
+        paths.append(viewer_output)
     before = _snapshot(paths)
     manifest = load_yaml(manifest_path) or {}
     state = load_json(state_path)
@@ -733,6 +915,8 @@ def import_production_result(
             atomic_write_text(change_path, yaml.safe_dump(change_document, sort_keys=False, allow_unicode=True))
         if not same_result_recorded:
             atomic_write_text(feedback_path, _append_jsonl(feedback_path, [result]))
+        if viewer_output is not None and viewer_additions:
+            atomic_write_text(viewer_output, _append_jsonl(viewer_output, viewer_additions))
         events_to_append = []
         if transition_event and not any(event.get("event_id") == transition_event["event_id"] for event in run_events):
             events_to_append.append(transition_event)
@@ -757,6 +941,8 @@ def import_production_result(
         impact=impact,
         reopened=transition_event is not None,
         human_approval_required=human_approval_required,
+        viewer_record_ids=[record["record_id"] for record in viewer_records],
+        viewer_records_added=len(viewer_additions),
     )
 
 
@@ -768,6 +954,7 @@ def main() -> int:
     mode.add_argument("--apply", action="store_true", help="apply the validated result exactly once")
     parser.add_argument("--project", help="override the project/<slug> target derived from accepted_handoff")
     parser.add_argument("--schema", type=Path, help="development-only schema path override; provenance policy is still required")
+    parser.add_argument("--viewer-root", type=Path, help="explicit checked-out viewer-response-notes repository root for append-only response records")
     parser.add_argument("--root", type=Path, default=ROOT)
     args = parser.parse_args()
     try:
@@ -778,6 +965,7 @@ def main() -> int:
             apply=args.apply,
             project_target=args.project,
             schema_path=args.schema,
+            viewer_root=args.viewer_root,
         )
     except (HandoffInputError, ResultImportError, OSError, ValueError) as exc:
         parser.error(str(exc))
