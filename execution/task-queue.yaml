@@ -401,7 +401,7 @@ tasks:
   - id: VIEWER-RESPONSE-001
     milestone: G5
     title: Import explicit aggregate viewer responses through an append-only boundary
-    status: IN_PROGRESS
+    status: DONE
     depends_on: [HARNESS-008]
     issue_refs: ["agentic-art-orchestration#98"]
     acceptance: Production result viewer_response DTOs are mapped to closed aggregate viewer records, appended exactly once to an explicit viewer repository, and rejected on missing provenance, privacy, count, evidence, or idempotency violations.

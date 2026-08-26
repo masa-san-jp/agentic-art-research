@@ -989,9 +989,14 @@ ledgerに重複効果を作らず、破損・不一致は全てfail closedにす
 
 `tests.test_feedback_import`は8/8、同一resultの再実行は`ALREADY_APPLIED`となりviewer recordは1件のまま。親が提供するviewer gateでchild fixtureのschema、privacy、dedup、assessment境界も検証する。
 
+### Completion record
+
+- 2026-08-27: Research branch `feat/viewer-response-import` was pushed at `fe2d9a9` and draft PR #78 was created. Production draft PR #50 and viewer child draft PR #1 were also observed, and the viewer requirement was recorded as Issue #2 because GitHub PR #1 already occupies number #1.
+- 2026-08-27: Focused feedback-import tests passed 9/9, the full Research suite passed 255/255, and validator, security, docs, graph, and diff gates passed. No synthetic record was appended to the real viewer ledger.
+
 ### Next READY task
 
-Production側のpush/draft PRとviewer-response-notes Issue #1作成後、Research branchをpushしてdraft PRを作成し、3repoの宣言gateと親release qualificationを再実行する。
+No task remains in the Research child queue. Merge, release, and any real viewer-ledger append remain human/data-input gated.
 
 ## 実行規則
 
