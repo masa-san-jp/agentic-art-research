@@ -46,6 +46,7 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 - [x] (2026-08-26 JST) `HARNESS-007`: request受理からsupervisor、completion、検証済みhandoffのatomic publishまでを1コマンドへ接続。固定phase、versioned outcome、checksums、冪等再実行、衝突拒否、pause/failure/resume、output boundaryを実装。248 unittest、handoff release gate、validator、security、docs、chaos、graph、diff gateが合格し、HARNESS-008へ接続した。
 
 - [x] (2026-08-26 JST) `HARNESS-008`: 11 deterministic scenarioのE2E/fault matrix、hash付きappend-only event stream、run manifest observability、replay/fault/output boundary gate、provider conformance documentを追加する。
+- [x] (2026-08-27 JST) `HARNESS-009`: #77のbytecode snapshot汚染と#79のGitなしimmutable archive provenance不整合を解消し、cold archive上の全quality gateを再検証する。255 unittest、cold archive、validator/security/docs/chaos/graph、release/handoff release gateが合格。
 チェックボックスとUTCまたはJST日時。未完了、部分完了、完了を正確に表す。
 
 ### Surprises & Discoveries
@@ -68,6 +69,10 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 - 2026-08-26: HARNESS-007の公開成果物はmetadata自身をchecksum対象に含めず、`research-project/`と`handoff/`のfile setだけを固定した。これによりrun manifestのoutcome hashとchecksumsの自己参照を避けつつ、4項目のoutput boundaryを検証できる。
 
 - 2026-08-26: HARNESS-008では既存supervisor journalを正本として再利用し、公開観測streamはproject本文・prompt・credentialを持たないhash参照だけの派生監査記録にする。これによりworker境界とrun observabilityを分離する。
+- 2026-08-27: 親のchild quality gateは`git archive`の展開先（`.git`なし）でResearchの全unittestを実行する。`harness.py`のGit checkout必須契約と衝突するため、archiveにGit export-substされたcommit markerを同梱し、Git checkoutとimmutable archiveのprovenance経路を分ける。
+- 2026-08-27: bootstrapの不変性snapshotはリポジトリ全体ではなくprotocol所有のディレクトリとトップレベル契約ファイルだけを対象にする。`.git`、`.venv`、`__pycache__`、bytecodeを比較対象に残す案は、bootstrapの境界ではない生成物を失敗原因にするため棄却した。
+- 2026-08-27: provenance修正後も、schema validatorの再構築と直列のkill-each-phaseがchild quality gateを300秒超へ押し上げた。schema treeの変更検知付きcache、独立scenario/phaseのcold subprocess並列化、handoff直後の重複validation除去で、cold archive full unittestを215秒へ短縮した。
+- 2026-08-27: 外側archive内で実archive markerテストを行うと、既に置換済みのSHAを内側repoへコピーしてしまう。テストfixtureは`.archive-commit`の`$Format:%H$` placeholderを明示的に再生成する必要があった。
 実装中に判明した制約、失敗、想定との差を、短い証拠とともに記録する。
 
 ### Decision Log
@@ -90,6 +95,9 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 - 2026-08-25: canonical checkoutの既存fileがfilesystem由来のhard-link countを持つため、source/protected baselineでは既存linkを読み取り、attempt copy後のworkspaceだけをhard-link拒否対象にした。これによりsnapshot hashは環境依存のinode情報を含まず、worker-created hard-linkはfail closedできる。
 - 2026-08-25: acceptance validationの一部 evaluatorはroot内のconfigを読むため、attempt projectだけでなくprotocol configをephemeral validation rootへコピーした。protocolのschema検証とGit正本は引き続き明示的なprotocol rootを参照する。
 - 2026-08-25: 人間判断のresponseはrequest hash、run/project/task/attempt identity、option IDをすべて照合し、異なるresponseの上書きを拒否する。APPROVE/REJECT/CANCELではselected_optionを許可しない。
+- 2026-08-27: immutable archiveのcommit provenanceは`.archive-commit`と`.gitattributes export-subst`で伝える。親からの環境変数だけに依存する案は、直接archive実行時の再現性が弱く、子repo単独の品質ゲート契約にならないため棄却した。
+- 2026-08-27: #77の修正はbytecode生成を禁止するのではなく、snapshot対象から生成物を除外する。Python importの通常動作を変えず、bootstrapがprotocol-owned fileを変更した場合の検出は維持するためである。
+- 2026-08-27: matrix並列化はProcessPoolではなく、bounded ThreadPoolが起動するcold subprocessを採用した。Supervisorのsignal handlerを各childのmain threadに保ち、multiprocessing semaphoreを禁止するsandboxでも同じ品質ゲートを動かせるためである。結果は入力順で回収し、並列化を決定性へ影響させない。
 
 決定、理由、代替案、影響、日付を記録する。
 
@@ -963,6 +971,65 @@ Evaluation uses a fresh temporary root per scenario and writes no canonical proj
 - event replayはtask status、最終phase、final statusを再構成し、unknown field、duplicate/sequence fault、hash tamper、phase regressionをnamed ruleで拒否した。published manifestはconfig/schema/worker/request/project/handoff/output hash、task attempts、retry/heartbeat/human wait、duration/budget、final statusを持つ。
 - `harness_e2e`、`harness_fault_recovery`、`harness_output_boundary`、`harness_observability`をrelease checkへ接続し、CIでreference fake worker matrixをblocking実行するprovider conformance文書を追加した。
 - 次の開始点はない。queue/stateはHARNESS-008完了後のterminal状態へ更新する。
+
+## HARNESS-009 ExecPlan
+
+### Purpose / Big Picture
+
+Issue #77/#79の品質ゲート障害を、生成bytecodeの有無やGit checkoutの有無に左右されない形へ修正する。bootstrapのprotocol不変性検査はprotocol-owned filesだけを比較し、親のchild quality gateが作る`.git`なしimmutable archiveではGit export-substされた`.archive-commit`から、通常checkoutではGitから、同じ`protocol_commit`を取得する。
+
+### Context and Orientation
+
+- archive provenance marker: `.archive-commit`, `.gitattributes`
+- provenance and bootstrap: `tools/harness.py`
+- snapshot regression: `tests/test_harness.py`
+- related gate: `tests/test_handoff_release_check.py`, `tools/handoff_release_check.py`
+- operations contract: `docs/agent-runtime-guide.md`, `docs/operations.md`
+- issues: `agentic-art-research#77`, `agentic-art-research#79`
+
+### Progress
+
+- [x] clean archive reproduction confirmed: `.git`なしで`HARNESS-PROTOCOL-PROVENANCE`が発生。
+- [x] `snapshot()`をprotocol-owned pathsのallowlistと生成物除外へ変更。
+- [x] `.archive-commit` fallback、Git export-subst設定、正常・失敗・実archive markerテストを追加。
+- [x] schema validator cache、重複handoff validation除去、独立scenario/phaseのcold subprocess並列化を追加し、通常checkoutの全unittestを300秒以内へ短縮。
+- [x] full unittest、cold archive full gate、validator/security/docs/chaos/graph/release gateを実行する。
+- [x] queue/stateを完了状態へ更新し、親Issueへhandoff可能な検証結果を残す。
+
+### Plan of Work
+
+1. `.archive-commit`を`export-subst`対象として追加し、通常checkoutのGit provenanceを変更せずarchiveのexact commitを利用できるようにする。
+2. `harness._git_head()`で`.git`なしの場合だけmarkerを検証し、欠落・symlink・不正SHAを`HARNESS-PROTOCOL-PROVENANCE`でfail closedする。
+3. bootstrap snapshotをprotocol-owned directories/top-level contract filesへ限定し、`.git`、`.venv`、`__pycache__`、`.pyc`の生成を無視しつつ実protocol mutationを検出する。
+4. normal checkout、手動archive相当、実`git archive`置換、invalid marker、snapshot mutation/noiseのテストを通す。
+5. fresh archiveで宣言済みunittestを実行し、全ローカルgateとrelease gateを実行してqueue/stateを更新する。
+
+### Validation and Acceptance
+
+- 通常Git checkoutでは`protocol_commit`と`protocol_tree_clean`が従来どおりGitから決まり、dirty/staged/untrackedはcleanではない。
+- `git archive <commit>`の展開先では`.archive-commit`が同じcommit SHAになり、bootstrapとhandoff release testがGitなしで実行できる。
+- markerの欠落、symlink、不正値はwork/outputを変更せずnamed provenance errorになる。
+- bytecode、`.git`、`.venv`の作成・更新だけではsnapshotは変化せず、protocol-owned fileの変更は検出される。
+- cold archiveで`python3 -m unittest discover -s tests -v`がwarm cache依存なしに完了し、全quality gateがPASSする。
+- `validate.py --check`、security、docs、chaos、graph、handoff release、offline release、`git diff --check`がPASSする。
+
+### Idempotence and Recovery
+
+archive markerはsource commitを記録するだけで、work/outputへコピーせず、通常のGit checkoutのdirty判定を緩めない。bootstrapの失敗はprovenance検証前にwork/outputへ書き込まず、snapshotは生成物のmtime/hashに依存しない。親のarchive runnerはmanifest pinとmarkerの一致を確認してからchild quality gateを実行する。
+
+### Decision Log
+
+- 2026-08-27: provenanceのarchive fallbackは環境変数ではなくGit export-subst markerを採用した。Research単体の`git archive`再現でもcommitを復元でき、親runnerの環境設定漏れで検査が弱くならないため。
+- 2026-08-27: snapshotは`git ls-files`のみにはしなかった。immutable archiveにはindexがなく、archiveでも同じテストを実行する必要があるため、protocol-owned path allowlistを採用した。
+- 2026-08-27: schema validator cacheはschema file内容のSHA-256をkeyにし、valid treeだけを最大16件保持する。壊れたschemaはcacheせず、schema変更時はkeyを変えて再構築するため、速度短縮で失敗検知を犠牲にしない。
+- 2026-08-27: `harness_evaluate`は独立rootのscenarioとkill phaseをcold subprocessで実行する。ProcessPoolの直接利用はrestricted sandboxでOperation not permittedとなるため棄却し、既存のsubprocess境界と決定的な入力順回収を使う。
+
+### Outcomes & Retrospective
+
+- 完了 (2026-08-27): `tools/harness.py`はGit checkoutと`.git`なしarchiveで同じ40桁commit provenanceを取得し、`.archive-commit`の欠落・symlink・不正値を`HARNESS-PROTOCOL-PROVENANCE`でfail closedする。bootstrap snapshotはprotocol-owned pathだけを対象にし、生成bytecode noiseを無視しつつprotocol mutationを検出する。
+- 完了 (2026-08-27): schema validatorの変更検知付きcache、handoff直後の重複validation除去、scenario/phaseのcold subprocess並列化を追加した。通常checkoutの255 unittestは231秒、最終cold archiveの`PYTHONDONTWRITEBYTECODE=1 ... unittest discover`は215秒で全件PASSした。
+- 完了 (2026-08-27): cold archive commit `da0316666dbb2e9fa19b34304139ccb5f4ac0f7a`から展開した`.git`なしrootで、validate/security/docs/chaos/graph、offline release（15 checks）、handoff release（schema snapshot ready）を全てPASSした。system `python3`は依存（yaml/jsonschema）不足のため失敗したが、依存を持つ`.venv/bin/python`で同一検証をPASSした。
+- 親側のchild quality gateは、archive作成元commitと`.archive-commit`の一致を確認してから宣言済みquality gateを実行する責務を持つ。親repoの変更はこのrepository boundary外であり、本タスクでは実装しない。次の開始点はない。
 
 ## 実行規則
 

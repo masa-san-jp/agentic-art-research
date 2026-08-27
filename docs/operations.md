@@ -47,6 +47,8 @@ python3 tools/harness.py bootstrap \
 
 `protocol_root`、`work_root`、`output_root`は同一root、相互の親子、symlink、filesystem/home直下の広すぎるrootを拒否する。bootstrapは一時stagingへmaterializeしてからwork rootへatomic publishするため、schema・security・runtime初期化の失敗時にwork/outputへ部分成果物を残さない。成功時もoutput rootは空のままである。
 
+品質ゲートをimmutable archiveで実行するときは、子repoをmanifestの`observed_commit`から`git archive`し、展開先の`.archive-commit`を変更せずに使う。Research harnessは`.git`がない場合にこのmarkerからprotocol commitを読み、markerの欠落・不正値を`HARNESS-PROTOCOL-PROVENANCE`として停止する。archiveのcommit pinとmarkerが一致することは、archiveを作成した親runnerの責任である。
+
 返却JSONとwork rootの`.harness/run.json`は`schemas/harness-run.schema.json`の正本である。`protocol_commit`と`protocol_tree_clean`はprotocol rootだけから取得し、work rootのdirty状態をsource provenanceとみなさない。`HARNESS-DEPENDENCY-PREFLIGHT`は、明示されたoptional dependencyのINVALID、またはmandatory dependencyのMISSING/INVALIDだけをblockingにする。
 
 同じrequest hash・run ID・rootで再実行した場合は既存run JSONをそのまま返す。異なるrequest、別run ID、既存の非空work/output、既存projectとの衝突は`HARNESS-BOOTSTRAP-CONFLICT`で停止し、既存ファイルを上書きしない。
@@ -96,6 +98,8 @@ python3 tools/harness.py conformance \
 python3 tools/harness_evaluate.py \
   --scenarios tests/fixtures/harness/scenarios.yaml --protocol-root .
 ```
+
+scenario matrixは各caseを独立したcold subprocessで実行し、phase中断・再開のcaseも並列化する。結果はfixture順に回収されるため、速度短縮後も実行rootの分離、Supervisorのsignal処理、決定的reportを維持する。
 
 実行開始後のtask入口もrootを明示する。
 

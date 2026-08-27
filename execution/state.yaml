@@ -1,8 +1,8 @@
 version: 1
-updated_at: "2026-08-26T00:00:00+09:00"
+updated_at: "2026-08-27T17:57:36+09:00"
 current_milestone: G4
 next_task: null
-last_completed_task: HARNESS-008
+last_completed_task: HARNESS-009
 terminal: true
 blocked_by: []
 resume_from:
@@ -50,8 +50,14 @@ resume_from:
     - tools/harness_observability.py
     - tools/harness_evaluate.py
     - tests/fixtures/harness/scenarios.yaml
-  action: Queue is complete; no next task remains.
+    - .gitattributes
+    - .archive-commit
+    - tools/harness.py
+    - tests/test_harness.py
+    - docs/agent-runtime-guide.md
+    - docs/operations.md
+  action: No task is ready. HARNESS-009 is complete; future work starts from a newly queued task.
 last_verification:
   result: PASS
-  command: .venv/bin/python tools/harness_evaluate.py --scenarios tests/fixtures/harness/scenarios.yaml --protocol-root .; .venv/bin/python -m unittest discover -s tests -v; .venv/bin/python tools/validate.py --check; .venv/bin/python tools/security_check.py --check; .venv/bin/python tools/docs_check.py --check; .venv/bin/python tools/chaos_check.py; .venv/bin/python tools/build_graph.py --check; .venv/bin/python tools/handoff_release_check.py --require-schema-snapshot; .venv/bin/python tools/release_check.py --offline-fixture tests/fixtures/harmony --ci-evidence execution/ci-evidence.json; git diff --check
-  detail: 251 unittestとHARNESS-008の11 scenarioが全件PASS。kill-each-phaseは7 public phaseの割り込み後resumeでclean artifact hashと一致し、event replay、privacy/output boundary、final manifest observability、provider conformance、release 4 checksを確認した。全queue taskはDONEで、次の開始点はない。
+  command: .venv/bin/python -m unittest discover -s tests -v; cold archive unittest; validate/security/docs/chaos/graph/release/handoff gates
+  detail: 現在checkout255件とcold archive255件がPASS。cold archiveは.gitなし、PYTHONDONTWRITEBYTECODE=1、release/handoffもPASS。system python3はyaml/jsonschema不足のため別途失敗。

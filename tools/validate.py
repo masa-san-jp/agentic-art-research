@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
+import hashlib
 import re
+from collections import OrderedDict
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -2038,7 +2040,43 @@ def _schema_findings(
     return findings
 
 
+_SCHEMA_VALIDATOR_CACHE_MAX = 16
+_SCHEMA_VALIDATOR_CACHE: OrderedDict[
+    tuple[str, tuple[tuple[str, str], ...]], dict[str, Draft202012Validator]
+] = OrderedDict()
+
+
+def _schema_cache_key(root: Path) -> tuple[str, tuple[tuple[str, str], ...]] | None:
+    """Return a content key for validators compiled from one schema tree.
+
+    Validation is called several times while one harness run promotes and
+    resumes an attempt. Recompiling the full Draft 2020-12 registry for every
+    call is both wasteful and, on Python 3.14, enough to push a cold archive
+    quality gate past its subprocess timeout. The key includes a digest for
+    every schema file so a test or operator mutation invalidates the cache;
+    malformed or unreadable trees are deliberately not cached.
+    """
+
+    schemas_root = root.resolve() / "schemas"
+    try:
+        entries = tuple(
+            (path.name, hashlib.sha256(path.read_bytes()).hexdigest())
+            for path in sorted(schemas_root.glob("*.json"))
+        )
+    except OSError:
+        return None
+    return str(schemas_root), entries
+
+
 def _load_schema_validators(root: Path, findings: list[Finding]) -> dict[str, Draft202012Validator]:
+    cache_key = _schema_cache_key(root)
+    if cache_key is not None:
+        cached = _SCHEMA_VALIDATOR_CACHE.get(cache_key)
+        if cached is not None:
+            _SCHEMA_VALIDATOR_CACHE.move_to_end(cache_key)
+            return cached
+
+    finding_count = len(findings)
     documents: dict[str, dict[str, Any]] = {}
     schemas_root = root / "schemas"
     for path in sorted(schemas_root.glob("*.json")):
@@ -2105,6 +2143,11 @@ def _load_schema_validators(root: Path, findings: list[Finding]) -> dict[str, Dr
                     remediation="Fix the schema reference or restore the referenced common definition.",
                 )
             )
+    if cache_key is not None and len(findings) == finding_count:
+        _SCHEMA_VALIDATOR_CACHE[cache_key] = validators
+        _SCHEMA_VALIDATOR_CACHE.move_to_end(cache_key)
+        while len(_SCHEMA_VALIDATOR_CACHE) > _SCHEMA_VALIDATOR_CACHE_MAX:
+            _SCHEMA_VALIDATOR_CACHE.popitem(last=False)
     return validators
 
 

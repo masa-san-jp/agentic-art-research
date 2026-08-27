@@ -85,6 +85,14 @@ runtime state、run-logを復元する。成功済みattemptの同じreport/chan
 `TASK-COMPLETE-WITHOUT-GATE`で拒否される。workerはruntime state/logを直接書かず、roleの
 `runtime_targets`はharness namespaceとして管理する。
 
+### Immutable archive provenance
+
+親の品質ゲートが子リポジトリを`git archive <observed-commit>`から実行する場合、展開先には`.git`がない。リポジトリルートの`.archive-commit`は`.gitattributes`の`export-subst`でarchive作成元のcommit SHAへ置換され、`harness.py`はGit metadataがない場合だけこのmarkerを読む。markerがない、symlinkである、または40桁の小文字SHAでないarchiveは`HARNESS-PROTOCOL-PROVENANCE`で拒否する。
+
+通常のGit checkoutでは従来どおり`git rev-parse HEAD`、working tree、index、untracked fileを検証する。archiveでは親runnerがmanifestの`observed_commit`からarchiveを作成し、markerの値とpinを照合する。`PYTHONDONTWRITEBYTECODE=1`やwarm cacheでこの経路を隠してはならず、cold archiveで宣言済みquality gateを実行する。
+
+reference matrixは各scenarioを独立したcold subprocessで実行し、`kill-each-phase`の各phaseも同じ方式で並列化する。結果はfixtureの順序で回収するためreportのbytesとscenario順は決定的であり、Supervisorのsignal handlerやプロセス間のmutable cacheを共有しない。
+
 ### Human decision request / resolve
 
 設計仕様§6.2の6分類に該当する場合だけ、adapterの`HUMAN_REQUIRED` resultを
