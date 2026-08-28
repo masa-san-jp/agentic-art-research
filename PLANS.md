@@ -47,6 +47,7 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 
 - [x] (2026-08-26 JST) `HARNESS-008`: 11 deterministic scenarioのE2E/fault matrix、hash付きappend-only event stream、run manifest observability、replay/fault/output boundary gate、provider conformance documentを追加する。
 - [x] (2026-08-27 JST) `HARNESS-009`: #77のbytecode snapshot汚染と#79のGitなしimmutable archive provenance不整合を解消し、cold archive上の全quality gateを再検証する。255 unittest、cold archive、validator/security/docs/chaos/graph、release/handoff release gateが合格。
+- [x] (2026-08-28 JST) `HARNESS-010`: #81のブランチ差分から、受理直後のtask runtime初期化とhandoff対象限定commitをprotocol側へ取り込む。実プロジェクトと生成graphのcanonical混入はoutput boundary違反のため保留する。
 チェックボックスとUTCまたはJST日時。未完了、部分完了、完了を正確に表す。
 
 ### Surprises & Discoveries
@@ -73,6 +74,7 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 - 2026-08-27: bootstrapの不変性snapshotはリポジトリ全体ではなくprotocol所有のディレクトリとトップレベル契約ファイルだけを対象にする。`.git`、`.venv`、`__pycache__`、bytecodeを比較対象に残す案は、bootstrapの境界ではない生成物を失敗原因にするため棄却した。
 - 2026-08-27: provenance修正後も、schema validatorの再構築と直列のkill-each-phaseがchild quality gateを300秒超へ押し上げた。schema treeの変更検知付きcache、独立scenario/phaseのcold subprocess並列化、handoff直後の重複validation除去で、cold archive full unittestを215秒へ短縮した。
 - 2026-08-27: 外側archive内で実archive markerテストを行うと、既に置換済みのSHAを内側repoへコピーしてしまう。テストfixtureは`.archive-commit`の`$Format:%H$` placeholderを明示的に再生成する必要があった。
+- 2026-08-28: #81の3 branchはnon-ancestorで、現行mainのschema追加後に直接mergeするとproject validatorが旧schema差分を18件返した。生成handoff/graphの手動解決は採用せず、protocol変更とproject migrationを別作業に分離した。
 実装中に判明した制約、失敗、想定との差を、短い証拠とともに記録する。
 
 ### Decision Log
@@ -1030,6 +1032,29 @@ archive markerはsource commitを記録するだけで、work/outputへコピー
 - 完了 (2026-08-27): schema validatorの変更検知付きcache、handoff直後の重複validation除去、scenario/phaseのcold subprocess並列化を追加した。通常checkoutの255 unittestは231秒、最終cold archiveの`PYTHONDONTWRITEBYTECODE=1 ... unittest discover`は215秒で全件PASSした。
 - 完了 (2026-08-27): cold archive commit `da0316666dbb2e9fa19b34304139ccb5f4ac0f7a`から展開した`.git`なしrootで、validate/security/docs/chaos/graph、offline release（15 checks）、handoff release（schema snapshot ready）を全てPASSした。system `python3`は依存（yaml/jsonschema）不足のため失敗したが、依存を持つ`.venv/bin/python`で同一検証をPASSした。
 - 親側のchild quality gateは、archive作成元commitと`.archive-commit`の一致を確認してから宣言済みquality gateを実行する責務を持つ。親repoの変更はこのrepository boundary外であり、本タスクでは実装しない。次の開始点はない。
+
+## HARNESS-010 ExecPlan
+
+### Purpose / Big Picture
+
+受理した研究依頼を、runtime未初期化のまま返さず、直後の`next_action.py`へ接続する。また、handoff生成時に必要な相対パスだけを冪等にcommitできるようにし、export前のprovenance確認を自動化する。
+
+### Progress
+
+- [x] 受理時にtask定義の存在を確認し、`task_runtime`を初期化した。
+- [x] 空task計画の失敗系と、再受理でruntimeを変更しない冪等性をテストした。
+- [x] `build_handoff.py --commit`を追加し、handoff以外の変更をcommitしない正常・失敗境界をテストした。
+- [x] README、operations、handoff仕様、decision logを更新した。
+- [ ] #81のharmony-proof実プロジェクトをcanonicalへ戻す。
+
+### Decision Log
+
+- 2026-08-28: #81の成果物取り込みは`AGENTS.md`のrepository/output boundaryと衝突するため、本ExecPlanでは実施しない。現行schemaへの移行と外部output rootでのmaterializationが別途必要である。
+
+### Outcomes & Remaining Work
+
+- protocol側の自律実行入口とhandoff commit境界は実装・検証対象とする。
+- #81は、実プロジェクトをどの外部output rootへ、どの移行手順でmaterializeするかが確定するまでOPENとする。canonical `projects/`と`data/`へ成果物を追加しない。
 
 ## 実行規則
 

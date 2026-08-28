@@ -44,7 +44,7 @@ python3 tools/accept_research_request.py path/to/research-request.yaml --apply -
 python3 tools/validate.py --project project/<slug> --check --root "$WORK_ROOT"
 ```
 
-受理されたprojectは必ず `RESEARCH_ONLY` で開始する。同じ依頼の再実行はreceiptのcanonical SHA-256で `ALREADY_APPLIED` になり、既存projectを変更しない。productionへの引き渡しは、研究・判断・試作計画を完了した後に「制作引き渡し（PRODUCTION_HANDOFF）」の手順へ進む。入力契約と拒否境界の詳細は `docs/20260812-agentic-art-research-inbound-request-extension-specification.md` を参照する。
+受理されたprojectは必ず `RESEARCH_ONLY` で開始し、同時に `07_runtime/research-state.json.task_runtime` を初期化するため、受理直後から `next_action.py` で最初のタスクをclaimできる。同じ依頼の再実行はreceiptのcanonical SHA-256で `ALREADY_APPLIED` になり、既存projectとruntimeを変更しない。productionへの引き渡しは、研究・判断・試作計画を完了した後に「制作引き渡し（PRODUCTION_HANDOFF）」の手順へ進む。入力契約と拒否境界の詳細は `docs/20260812-agentic-art-research-inbound-request-extension-specification.md` を参照する。
 
 ## Isolated agent harness bootstrap
 
@@ -144,12 +144,12 @@ python3 tools/next_action.py project/<project-id> \
 制作引き渡しを使うプロジェクトでは、`manifest.yaml` の `workflow_mode` を `PRODUCTION_HANDOFF` にし、仮説、比較、Prototype Plan、要件、受入試験を正本として整える。次でhandoffを決定的に生成・検証・exportできる。
 
 ```bash
-python3 tools/build_handoff.py project/<project-id>
+python3 tools/build_handoff.py project/<project-id> --root "$WORK_ROOT" --protocol-root . --commit
 python3 tools/validate.py --project <project-id> --check
 python3 tools/build_graph.py
 python3 tools/impact.py --handoff HO001
 python3 tools/bundle.py project/<project-id> --audience production-agent
-# review and commit the generated canonical handoff before a clean export
+# --commit stages and commits only the generated canonical handoff
 python3 tools/export_handoff.py project/<project-id> --output data/handoffs/<project-id>
 ```
 

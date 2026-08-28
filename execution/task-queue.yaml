@@ -1,5 +1,5 @@
-version: 20
-updated_at: "2026-08-27T17:57:36+09:00"
+version: 21
+updated_at: "2026-08-28T09:58:00+09:00"
 selection_policy: lowest_id_ready_with_dependencies_done
 allowed_statuses: [BACKLOG, READY, IN_PROGRESS, BLOCKED, DONE]
 tasks:
@@ -415,4 +415,16 @@ tasks:
       - .venv/bin/python tools/build_graph.py --check
       - .venv/bin/python tools/handoff_release_check.py --require-schema-snapshot
       - .venv/bin/python tools/release_check.py --offline-fixture tests/fixtures/harmony --ci-evidence execution/ci-evidence.json
+      - git diff --check
+  - id: HARNESS-010
+    milestone: G4
+    title: Make accepted projects resumable and handoff commits scoped
+    status: DONE
+    depends_on: [HARNESS-009]
+    acceptance: Accepted projects initialize task runtime before returning, empty plans fail closed, and optional handoff commits include only the generated handoff without sweeping unrelated changes.
+    issue_refs: ["agentic-art-research#81"]
+    checks:
+      - .venv/bin/python -m unittest tests.test_research_request tests.test_handoff_build -v
+      - .venv/bin/python tools/validate.py --check
+      - .venv/bin/python tools/docs_check.py --check
       - git diff --check

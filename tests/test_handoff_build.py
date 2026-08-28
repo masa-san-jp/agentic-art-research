@@ -238,3 +238,60 @@ class HandoffBuildContractTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class HandoffCommitsItsOwnOutputTest(HandoffBuildContractTest):
+    """A generated handoff can be committed without sweeping in other edits."""
+
+    def _git(self, root: Path, *args: str) -> str:
+        import subprocess
+
+        result = subprocess.run(
+            ["git", "-c", "user.email=t@t", "-c", "user.name=test", *args],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return result.stdout.strip()
+
+    def _repository(self) -> tuple[Path, Path]:
+        root, project = self.make_project()
+        self._git(root, "init", "-q")
+        self._git(root, "add", ".")
+        self._git(root, "commit", "-q", "-m", "sources")
+        return root, project
+
+    def test_committing_leaves_the_tree_clean_for_export(self) -> None:
+        root, _ = self._repository()
+
+        build_handoff(root, "project/handoff-build", generated_at=self.generated_at, research_commit=self.commit, commit=True)
+
+        self.assertEqual("", self._git(root, "status", "--porcelain"))
+
+    def test_without_the_flag_nothing_is_committed(self) -> None:
+        root, _ = self._repository()
+
+        build_handoff(root, "project/handoff-build", generated_at=self.generated_at, research_commit=self.commit)
+
+        self.assertIn("production-handoff.yaml", self._git(root, "status", "--porcelain"))
+
+    def test_an_unchanged_handoff_does_not_make_an_empty_commit(self) -> None:
+        root, _ = self._repository()
+        build_handoff(root, "project/handoff-build", generated_at=self.generated_at, research_commit=self.commit, commit=True)
+        before = self._git(root, "rev-parse", "HEAD")
+
+        build_handoff(root, "project/handoff-build", generated_at=self.generated_at, research_commit=self.commit, commit=True)
+
+        self.assertEqual(before, self._git(root, "rev-parse", "HEAD"))
+
+    def test_unrelated_changes_are_not_swept_into_the_commit(self) -> None:
+        root, project = self._repository()
+        stray = project / "00_intake" / "constraints.yaml"
+        stray.write_text(stray.read_text(encoding="utf-8") + "\n# edited by someone else\n", encoding="utf-8")
+
+        build_handoff(root, "project/handoff-build", generated_at=self.generated_at, research_commit=self.commit, commit=True)
+
+        remaining = self._git(root, "status", "--porcelain")
+        self.assertIn("constraints.yaml", remaining)
+        self.assertNotIn("production-handoff.yaml", remaining)

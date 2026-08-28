@@ -392,6 +392,7 @@ def build_handoff(
     supersedes: str | None = None,
     protocol_root: Path | None = None,
     work_root: Path | None = None,
+    commit: bool = False,
 ) -> Path:
     work = (work_root or root).resolve()
     sources = load_handoff_sources(work, target, protocol_root=protocol_root)
@@ -423,7 +424,48 @@ def build_handoff(
             atomic_write_text(path, previous_text)
         rendered = "\n".join(finding.render() for finding in findings)
         raise HandoffBuildError(f"generated handoff failed repository validation:\n{rendered}")
+    if commit:
+        _commit_handoff(sources.root, path)
     return path
+
+
+def _commit_handoff(root: Path, path: Path) -> None:
+    """Commit only the generated handoff so export can prove its source commit."""
+
+    relative = path.relative_to(root)
+    git = ["git", "-C", str(root)]
+    status = subprocess.run(
+        [*git, "status", "--porcelain", "--", str(relative)],
+        capture_output=True,
+        text=True,
+    )
+    if status.returncode != 0:
+        raise HandoffBuildError(
+            f"could not inspect the generated handoff: {(status.stderr or status.stdout).strip()}"
+        )
+    if not status.stdout.strip():
+        return
+    for command in (
+        [*git, "add", "--", str(relative)],
+        [
+            *git,
+            "-c",
+            "user.email=handoff@agentic-art",
+            "-c",
+            "user.name=build_handoff",
+            "commit",
+            "-q",
+            "-m",
+            f"Generate {relative.as_posix()}",
+            "--",
+            str(relative),
+        ],
+    ):
+        result = subprocess.run(command, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise HandoffBuildError(
+                f"could not commit the generated handoff: {(result.stderr or result.stdout).strip()}"
+            )
 
 
 def main() -> int:
@@ -437,6 +479,7 @@ def main() -> int:
     parser.add_argument("--handoff-id")
     parser.add_argument("--revision", type=int)
     parser.add_argument("--supersedes")
+    parser.add_argument("--commit", action="store_true", help="commit only the generated handoff")
     args = parser.parse_args()
     work_root = args.work_root or args.root
     try:
@@ -449,6 +492,7 @@ def main() -> int:
             revision=args.revision,
             supersedes=args.supersedes,
             protocol_root=args.protocol_root.resolve() if args.protocol_root else None,
+            commit=args.commit,
         )
     except (HandoffInputError, HandoffBuildError, OSError) as exc:
         parser.error(str(exc))

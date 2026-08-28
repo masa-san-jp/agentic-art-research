@@ -199,6 +199,17 @@ python3 tools/export_feedback_signals.py project/<slug> \
   --root "$WORK_ROOT"
 ```
 
+`--apply` は受理receiptだけでなく `07_runtime/research-state.json.task_runtime` も初期化する。
+そのため受理後は `next_action.py` のdry-runで最初のtask contextを確認し、そのままlive claimへ進める。
+task定義が空のprojectは `PLAN-WITHOUT-TASKS` で受理しない。
+
+制作引き渡しの生成物をGitで管理する一時cloneでは、handoffだけを対象にコミットできる。
+他の作業ツリー変更はコミットされない。
+
+```bash
+python3 tools/build_handoff.py project/<slug> --root "$WORK_ROOT" --commit
+```
+
 Knowledge records are project-local and profile instances are external. Keep real profile
 data outside the protocol repository and pass its root explicitly when validating or
 building the graph:

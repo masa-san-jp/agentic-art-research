@@ -1,8 +1,8 @@
 version: 1
-updated_at: "2026-08-27T17:57:36+09:00"
+updated_at: "2026-08-28T09:58:00+09:00"
 current_milestone: G4
 next_task: null
-last_completed_task: HARNESS-009
+last_completed_task: HARNESS-010
 terminal: true
 blocked_by: []
 resume_from:
@@ -56,8 +56,8 @@ resume_from:
     - tests/test_harness.py
     - docs/agent-runtime-guide.md
     - docs/operations.md
-  action: No task is ready. HARNESS-009 is complete; future work starts from a newly queued task.
+  action: No protocol task is ready. HARNESS-010 is complete; #81 remains open for an external project migration that cannot be placed in the canonical protocol repository.
 last_verification:
-  result: PASS
-  command: .venv/bin/python -m unittest discover -s tests -v; cold archive unittest; validate/security/docs/chaos/graph/release/handoff gates
-  detail: 現在checkout255件とcold archive255件がPASS。cold archiveは.gitなし、PYTHONDONTWRITEBYTECODE=1、release/handoffもPASS。system python3はyaml/jsonschema不足のため別途失敗。
+  result: PASS_WITH_ENVIRONMENT_NOTE
+  command: .venv/bin/python -m unittest discover -s tests -v; validate/security/docs/chaos/graph/release/handoff gates; bare python3 commands
+  detail: .venvで277 tests PASS。validate/security/docs/graph/chaos/release/handoff gatesもPASS。bare python3はPyYAML/jsonschema未導入のためunittest 41 import errors、validateはModuleNotFoundError(jsonschema)。HARNESS-009のcold archive255件PASS記録は維持する。
