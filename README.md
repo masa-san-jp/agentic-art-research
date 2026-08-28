@@ -2,6 +2,19 @@
 
 AIエージェントがアート制作のための調査を、計画、証拠収集、分析、制作判断、制作要件、試作検証まで一貫して実行するリサーチ基盤。
 
+## 利用者向けの最短ルート
+
+このリポジトリは、研究プロトコルと検証器を提供するruntimeです。実プロジェクトの本文や会話全文を常設するデータ置き場ではありません。
+
+| したいこと | 入口 |
+| --- | --- |
+| 新しい調査を始める | [`schemas/research-request.schema.json`](schemas/research-request.schema.json) と [`tools/harness.py`](tools/harness.py) |
+| 依頼を受理して実行する | [`tools/harness.py run`](tools/harness.py)、[`docs/operations.md`](docs/operations.md) |
+| 制作へ引き渡す | [`docs/20260811-agentic-art-research-production-handoff-extension-specification.md`](docs/20260811-agentic-art-research-production-handoff-extension-specification.md) |
+| エージェントとして作業する | [`AGENTS.md`](AGENTS.md)、[`execution/task-queue.yaml`](execution/task-queue.yaml) |
+
+研究成果は明示した外部output rootへプロジェクト単位で出力します。`PRIVATE_RAW`、`RESTRICTED`、認証情報、原assetは保存・exportせず、根拠とsource commitを追跡できる範囲だけを後続工程へ渡します。モデルAPIや常駐Agentは検証の前提ではありません。
+
 ## 現在地
 
 - 設計仕様: [`docs/20260811-agentic-art-research-system-design-specification.md`](docs/20260811-agentic-art-research-system-design-specification.md)
