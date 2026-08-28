@@ -47,7 +47,7 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 
 - [x] (2026-08-26 JST) `HARNESS-008`: 11 deterministic scenarioのE2E/fault matrix、hash付きappend-only event stream、run manifest observability、replay/fault/output boundary gate、provider conformance documentを追加する。
 - [x] (2026-08-27 JST) `HARNESS-009`: #77のbytecode snapshot汚染と#79のGitなしimmutable archive provenance不整合を解消し、cold archive上の全quality gateを再検証する。255 unittest、cold archive、validator/security/docs/chaos/graph、release/handoff release gateが合格。
-- [x] (2026-08-28 JST) `HARNESS-010`: #81のブランチ差分から、受理直後のtask runtime初期化とhandoff対象限定commitをprotocol側へ取り込んだ。harmony-proofは現行schemaへ移行し、実プロジェクトと原版TIFFをcanonicalへ戻さず外部output rootへmaterializeした。実寸観察は未実施のためIssue #81はOPENのままにする。
+- [x] (2026-08-28 JST) `HARNESS-010`: #81のブランチ差分から、受理直後のtask runtime初期化とhandoff対象限定commitをprotocol側へ取り込んだ。harmony-proofは現行schemaへ移行し、実プロジェクトと原版TIFFをcanonicalへ戻さず外部output rootへmaterializeした。canonicalへの実プロジェクト復帰はrepository missionに反するため、Issue #81はnot plannedで閉じる。
 チェックボックスとUTCまたはJST日時。未完了、部分完了、完了を正確に表す。
 
 ### Surprises & Discoveries
@@ -1046,16 +1046,16 @@ archive markerはsource commitを記録するだけで、work/outputへコピー
 - [x] 空task計画の失敗系と、再受理でruntimeを変更しない冪等性をテストした。
 - [x] `build_handoff.py --commit`を追加し、handoff以外の変更をcommitしない正常・失敗境界をテストした。
 - [x] README、operations、handoff仕様、decision logを更新した。
-- [x] #81のharmony-proof実プロジェクトはcanonicalへ戻さず、現行schemaへ移行したHO016・graph・contextと原版TIFFを外部output rootへmaterializeした。実寸観察のacceptanceは未実施で、IssueはOPENのまま。
+- [x] #81のharmony-proof実プロジェクトはcanonicalへ戻さず、現行schemaへ移行したHO016・graph・contextと原版TIFFを外部output rootへmaterializeした。canonicalへの復帰要求はrepository boundaryと両立しないため、Issueはnot plannedで閉じる。
 
 ### Decision Log
 
-- 2026-08-28: #81の成果物はcanonical `projects/`/`data/`へ取り込まず、HO016と生成contextを含む移行済みプロジェクトを`/Users/masa/マイドライブ/AI-Agent-Pipeline/Agentic-Art-Output/harmony-proof/`へmaterializeする。外部rootへの配置はoutput boundaryに適合するが、NOT_RUNのacceptanceをPASSへ補正しない。
+- 2026-08-28: #81の成果物はcanonical `projects/`/`data/`へ取り込まず、HO016と生成contextを含む移行済みプロジェクトを`/Users/masa/マイドライブ/AI-Agent-Pipeline/Agentic-Art-Output/harmony-proof/`へmaterializeした。外部rootへの配置はoutput boundaryに適合し、canonical復帰要求はnot plannedとして扱う。NOT_RUNのacceptanceはPASSへ補正しない。
 
 ### Outcomes & Remaining Work
 
 - protocol側の自律実行入口とhandoff commit境界は実装・検証対象とし、278 unittestと全ローカルgateで再確認する。
-- #81は`/Users/masa/マイドライブ/AI-Agent-Pipeline/Agentic-Art-Output/harmony-proof/`へのmaterializeまで完了したが、AT001/AT002/AT003/AT005が`NOT_RUN`のためOPENとする。canonical `projects/`と`data/`へ成果物は追加しない。
+- #81の外部output materializationは完了した。canonical `projects/`と`data/`へ実プロジェクトを戻す要求はrepository missionと両立しないため、Issueをnot plannedで閉じ、protocol repositoryの未完了タスクには数えない。
 
 ## 実行規則
 

@@ -1,5 +1,5 @@
 version: 2
-updated_at: "2026-08-28T10:36:53+09:00"
+updated_at: "2026-08-28T12:08:19+09:00"
 current_milestone: G4
 next_task: null
 last_completed_task: HARNESS-010
@@ -56,8 +56,8 @@ resume_from:
     - tests/test_harness.py
     - docs/agent-runtime-guide.md
     - docs/operations.md
-  action: No protocol task is ready. HARNESS-010 is complete; #81 is materialized under the external output root, but production acceptance AT001/AT002/AT003/AT005 remains NOT_RUN, so the Issue stays OPEN.
+  action: No protocol task is ready. All 53 protocol tasks are DONE; #81 is an external project-placement request that conflicts with the canonical output boundary and is not a repository task.
 last_verification:
   result: PASS_WITH_ENVIRONMENT_NOTE
   command: .venv/bin/python -m unittest discover -s tests -v; validate/security/docs/chaos/graph/release/handoff gates; bare python3 commands
-  detail: .venvで278 tests PASS。validate/security/docs/graph/chaos/release/handoff gatesとoffline release gateもPASS。一時rootのharmony-proof移行はproject validator、graph current、handoff release gateをPASSし、外部output rootへ原版TIFFとともにmaterializeした。bare python3はPyYAML/jsonschema未導入のためunittest 41 import errors、validateはModuleNotFoundError(jsonschema)。HARNESS-009のcold archive255件PASS記録は維持する。
+  detail: .venvで278 tests PASS。validate/security/docs/graph/chaos/release/handoff gatesとoffline release gateもPASS。一時rootのharmony-proof移行はproject validator、graph current、handoff release gateをPASSし、外部output rootへ原版TIFFとともにmaterializeした。protocol queueは全53 taskがDONE、next_taskはnull。bare python3はPyYAML/jsonschema未導入のためunittest 41 import errors、validateはModuleNotFoundError(jsonschema)。HARNESS-009のcold archive255件PASS記録は維持する。
