@@ -1,5 +1,8 @@
 # Agent runtime guide
 
+最短の利用開始手順は [README](../README.md) を参照する。この文書は、projectを実行するagentとprovider adapterが守るruntime契約の詳細である。
+このrepositoryのAIはリサーチと検証を扱い、作品を制作しない。protocol rootは読み取り専用、project/runtimeはwork root、検証済み出力はprotocol repository外のoutput rootに分離する。
+
 ## 対象
 
 ファイル編集、コマンド実行、Git差分確認が可能なGPT-5.6 LunaまたはClaude Sonnet級のコーディングエージェント。モデル識別子、認証、推論設定は実行環境側で設定し、リポジトリへ固定しない。
@@ -12,19 +15,35 @@
 `07_runtime/run-log.jsonl`へ記録する。
 
 ```bash
-python3 tools/task_runtime.py project/example init --now 2026-08-11T00:00:00+09:00
-python3 tools/task_runtime.py project/example claim --worker-id worker-a
-python3 tools/task_runtime.py project/example resume --now 2026-08-11T00:10:00+09:00
+PYTHON=".venv/bin/python"
+PROTOCOL_ROOT="$(pwd)"
+WORK_ROOT="/path/to/work-root"
+PROJECT_ID="project/example"
+
+"$PYTHON" "$PROTOCOL_ROOT/tools/task_runtime.py" "$PROJECT_ID" init \
+  --now 2026-08-11T00:00:00+09:00 --root "$WORK_ROOT"
+"$PYTHON" "$PROTOCOL_ROOT/tools/task_runtime.py" "$PROJECT_ID" claim \
+  --worker-id worker-a --root "$WORK_ROOT"
+"$PYTHON" "$PROTOCOL_ROOT/tools/task_runtime.py" "$PROJECT_ID" resume \
+  --now 2026-08-11T00:10:00+09:00 --root "$WORK_ROOT"
 ```
 
-作業開始前に次のtaskを確認するだけなら、`next_action.py --dry-run`を使う。これはleaseをclaimせず、`research-state.json`や`run-log.jsonl`も変更しない。
+作業開始前に次のtaskを確認するだけなら、`next_action.py --dry-run`を使う。これはleaseをclaimせず、`research-state.json`や`run-log.jsonl`も変更しない。agentはtaskを自分で選ばず、この入口が返すtask・context・write targets・acceptanceを使う。
 
 ```bash
-python3 tools/next_action.py project/example \
+PYTHON=".venv/bin/python"
+PROTOCOL_ROOT="$(pwd)"
+WORK_ROOT="/path/to/work-root"
+OUTPUT_ROOT="/path/to/output-root"
+PROJECT_ID="project/example"
+
+"$PYTHON" tools/next_action.py "$PROJECT_ID" \
   --worker worker-a \
   --now 2026-08-25T00:00:00+09:00 \
   --dry-run \
-  --root <temporary-root>
+  --protocol-root "$PROTOCOL_ROOT" \
+  --work-root "$WORK_ROOT" \
+  --output-root "$OUTPUT_ROOT"
 ```
 
 未claim taskは`TASK_PREVIEWED`（`lease: null`）、同じworkerが保持中のtaskは`TASK_RESUME_PREVIEW`、予算超過は`BUDGET_EXCEEDED`、ready taskなしは`NO_TASK_READY`になる。previewと同じworker・時刻でliveを実行した場合、task ID、role、context、write targets、acceptanceは一致する。
@@ -34,10 +53,12 @@ python3 tools/next_action.py project/example \
 taskを実行するproviderはrepositoryへ固定しない。supervisorは、claim済みtaskから`schemas/agent-attempt-request.schema.json`に適合するrequestを作り、次のadapter入口へ渡す。
 
 ```bash
-python3 tools/worker_adapter.py run \
-  --request <attempt-request.json> \
+ATTEMPT_REQUEST="$WORK_ROOT/.harness/attempts/HR001/TASK001/AT001/request.json"
+
+"$PYTHON" tools/worker_adapter.py run \
+  --request "$ATTEMPT_REQUEST" \
   --adapter fake \
-  --protocol-root <protocol-root>
+  --protocol-root "$PROTOCOL_ROOT"
 ```
 
 adapter設定は`config/worker-adapters.yaml`のargv、capability、environment allowlist、timeout、stdout/stderr上限だけを読み取る。commandはshell文字列ではなくargv配列であり、shell interpreterとmetacharacterを拒否する。workerのstdoutは一つのresult JSON、stderrはbounded diagnosticとし、`agent-attempt-result.schema.json`に適合しない出力、timeout、exit/signal、output limit、secret、未許可capabilityは名前付き`WORKER-*` failure resultになる。
@@ -100,11 +121,12 @@ reference matrixは各scenarioを独立したcold subprocessで実行し、`kill
 taskは`WAITING_HUMAN`へ移る。leaseは解放され、attempt回数は消費せず、依存taskはBLOCKEDにしない。
 
 ```bash
-python3 tools/harness.py decisions list project/example \
-  --protocol-root <protocol-root> --work-root <work-root>
-python3 tools/harness.py decisions resolve project/example \
-  --protocol-root <protocol-root> --work-root <work-root> \
-  --response <human-decision-response.json>
+RESPONSE="/path/to/human-decision-response.json"
+"$PYTHON" tools/harness.py decisions list "$PROJECT_ID" \
+  --protocol-root "$PROTOCOL_ROOT" --work-root "$WORK_ROOT"
+"$PYTHON" tools/harness.py decisions resolve "$PROJECT_ID" \
+  --protocol-root "$PROTOCOL_ROOT" --work-root "$WORK_ROOT" \
+  --response "$RESPONSE"
 ```
 
 request/responseは`human-decision-request.schema.json`と
@@ -117,19 +139,19 @@ actionだけを含める。承認に書かれていない制作判断は推測�
 
 ### Project supervisor
 
-個別のclaim、worker、heartbeat、acceptance、completeを手で連結せず、1 runをbounded loopで運転する場合はsupervisorを使う。
+個別のclaim、worker、heartbeat、acceptance、completeを手で連結せず、1 runをbounded loopで運転する場合はsupervisorを使う。既にbootstrap済みのprojectを対象にする互換入口であり、新規requestは次の「public CLI」の`--request`形式を使う。
 
 ```bash
-python3 tools/harness.py run project/example \
-  --protocol-root <protocol-root> \
-  --work-root <work-root> \
-  --output-root <output-root> \
+"$PYTHON" tools/harness.py run "$PROJECT_ID" \
+  --protocol-root "$PROTOCOL_ROOT" \
+  --work-root "$WORK_ROOT" \
+  --output-root "$OUTPUT_ROOT" \
   --run-id HR001 --worker supervisor-a --adapter fake
 
-python3 tools/harness.py resume project/example \
-  --protocol-root <protocol-root> \
-  --work-root <work-root> \
-  --output-root <output-root> \
+"$PYTHON" tools/harness.py resume "$PROJECT_ID" \
+  --protocol-root "$PROTOCOL_ROOT" \
+  --work-root "$WORK_ROOT" \
+  --output-root "$OUTPUT_ROOT" \
   --run-id HR001 --worker supervisor-a --adapter fake
 ```
 
@@ -140,7 +162,7 @@ worker実行中は設定された間隔でheartbeatを送り、失敗時はworke
 queue/stateの実行順序はrepository rootの`execution/task-queue.yaml`と`execution/state.yaml`が正本である。次のtaskを手で推測せず、次で矛盾を検査する。
 
 ```bash
-python3 tools/validate.py --check
+"$PYTHON" tools/validate.py --check
 ```
 
 validatorは未知dependency、循環、依存未完了taskのREADY化、複数IN_PROGRESS、誤った`next_task`、全task完了前の`terminal: true`をblockingにする。
@@ -154,14 +176,20 @@ workerが停止した場合は期限切れleaseだけが再取得対象になる
 
 request受理からoutput publishまでを一つの入口で実行する場合は、requestと3つのrootを
 明示する。`--now`を渡すと全phaseとworker deadlineに同じRFC 3339 clockが使われる。
+`fake` はreference fixture用で、任意のrequestを完了させるworkerではない。
 
 ```bash
-python3 tools/harness.py run \
-  --request path/to/research-request.yaml \
-  --adapter fake \
-  --protocol-root <protocol-root> \
-  --work-root <temporary-work-root> \
-  --output-root /Users/masa/マイドライブ/AI-Agent-Pipeline/Agentic-Art-Output \
+REQUEST="./research-request.yaml"
+ADAPTER="your-configured-adapter"
+WORK_ROOT="$(mktemp -d /tmp/agentic-art-work.XXXXXX)"
+OUTPUT_ROOT="$(mktemp -d /tmp/agentic-art-output.XXXXXX)"
+
+"$PYTHON" tools/harness.py run \
+  --request "$REQUEST" \
+  --adapter "$ADAPTER" \
+  --protocol-root "$PROTOCOL_ROOT" \
+  --work-root "$WORK_ROOT" \
+  --output-root "$OUTPUT_ROOT" \
   --run-id HR001 \
   --now 2026-08-25T00:00:00+09:00
 ```
@@ -175,10 +203,10 @@ python3 tools/harness.py run \
 `PAUSED`、worker failure、completion/handoff failureではoutputを作らず、次の形式で再開する。
 
 ```bash
-python3 tools/harness.py resume \
-  --protocol-root <protocol-root> \
-  --work-root <temporary-work-root> \
-  --output-root <output-root> \
+"$PYTHON" tools/harness.py resume \
+  --protocol-root "$PROTOCOL_ROOT" \
+  --work-root "$WORK_ROOT" \
+  --output-root "$OUTPUT_ROOT" \
   --run-id HR001
 ```
 
@@ -193,10 +221,12 @@ completion、handoff ID、artifact hashesはoutcomeとmanifestで照合できる
 requestのworkspaceだけを使い、credentialやprompt本文を保存せず、結果はadapter ID・status・failure class・result hashだけを返す。
 
 ```bash
-python3 tools/harness.py conformance \
-  --request <attempt-request.json> \
+ATTEMPT_REQUEST="$WORK_ROOT/.harness/attempts/HR001/TASK001/AT001/request.json"
+
+"$PYTHON" tools/harness.py conformance \
+  --request "$ATTEMPT_REQUEST" \
   --adapter fake \
-  --protocol-root <protocol-root> \
+  --protocol-root "$PROTOCOL_ROOT" \
   --worker-command '["python3", "path/to/provider-worker.py"]'
 ```
 
@@ -208,8 +238,8 @@ CIのblocking workerはreference fake workerであり、provider conformanceは�
 `EVIDENCE_ROUND`、`SEARCH_FAILED` を `run-log.jsonl`へ記録し、次で評価・適用する。
 
 ```bash
-python3 tools/stopping_policy.py project/example evaluate
-python3 tools/stopping_policy.py project/example apply --evaluated-at 2026-08-11T00:20:00+09:00
+"$PYTHON" tools/stopping_policy.py "$PROJECT_ID" evaluate
+"$PYTHON" tools/stopping_policy.py "$PROJECT_ID" apply --evaluated-at 2026-08-11T00:20:00+09:00
 ```
 
 `ANSWER_FOUND` が十分数に達した場合は `ANSWERED` を優先する。それ以外は検索戦略、
@@ -223,8 +253,8 @@ workerへはプロジェクト全体を渡さず、task、role固有の宣言済
 含む最小packを生成する。
 
 ```bash
-python3 tools/context_pack.py project/example TASK001 --role planner
-python3 tools/context_pack.py project/example TASK002 --role production-translator -o /tmp/context.json
+"$PYTHON" tools/context_pack.py "$PROJECT_ID" TASK001 --role planner
+"$PYTHON" tools/context_pack.py "$PROJECT_ID" TASK002 --role production-translator -o /tmp/context.json
 ```
 
 未知のrole、存在しないtask、欠損source、プロジェクト外へ解決されるsourceは失敗する。
@@ -235,10 +265,10 @@ packは生成物であり、正本の代わりに編集してはならない。
 offline fixtureはcanonical rootを書き換えず、一時領域で正確性、追跡性、終端性、再開性、安全性を評価する。
 
 ```bash
-python3 tools/evaluate.py --offline-fixture tests/fixtures/harmony
-python3 tools/security_check.py --check
-python3 tools/chaos_check.py
-python3 tools/docs_check.py --check
+"$PYTHON" tools/evaluate.py --offline-fixture tests/fixtures/harmony
+"$PYTHON" tools/security_check.py --check
+"$PYTHON" tools/chaos_check.py
+"$PYTHON" tools/docs_check.py --check
 ```
 
 ## 共通起動プロンプト

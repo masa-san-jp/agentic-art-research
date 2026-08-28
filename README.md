@@ -52,6 +52,14 @@ PYTHON=".venv/bin/python"
 
 実際にclaimするときは `--dry-run` を外します。同じworkerが既にtaskを持つ場合は、そのtaskが再開されます。`NO_TASK_READY` は「勝手に新しいtaskを作る」という意味ではなく、queue上に開始可能なtaskがないという終端状態です。
 
+ハーネス自体の成功・失敗・resume・境界をofflineで確認するだけなら、reference matrixを実行します。
+
+```bash
+"$PYTHON" tools/harness_evaluate.py \
+  --scenarios tests/fixtures/harness/scenarios.yaml \
+  --protocol-root "$(pwd)"
+```
+
 fixtureではなく実際の依頼を使う場合は、schemaに適合するYAML/JSONを用意し、次の順で受理します。
 
 ```bash
@@ -88,17 +96,18 @@ WORK_ROOT="${WORK_ROOT:-$(mktemp -d /tmp/agentic-art-work.XXXXXX)}"
 
 3つのrootを同じ場所、親子関係、symlink、広すぎるfilesystem直下にしないでください。`harness.py` はprotocolをwork rootへatomicに展開し、失敗時にpartial outputを残しません。
 
-request受理から検証済みhandoffまでを一度に実行する入口は次です。
+実運転でrequest受理から検証済みhandoffまでを一度に接続する入口は次です。`ADAPTER` には `config/worker-adapters.yaml` に定義したadapter名を指定します。
 
 ```bash
 PYTHON=".venv/bin/python"
 REQUEST="./research-request.yaml"
+ADAPTER="your-adapter"
 WORK_ROOT="$(mktemp -d /tmp/agentic-art-work.XXXXXX)"
 OUTPUT_ROOT="$(mktemp -d /tmp/agentic-art-output.XXXXXX)"
 
 "$PYTHON" tools/harness.py run \
   --request "$REQUEST" \
-  --adapter fake \
+  --adapter "$ADAPTER" \
   --protocol-root "$(pwd)" \
   --work-root "$WORK_ROOT" \
   --output-root "$OUTPUT_ROOT" \
@@ -106,7 +115,7 @@ OUTPUT_ROOT="$(mktemp -d /tmp/agentic-art-output.XXXXXX)"
   --now 2026-08-29T00:00:00+09:00
 ```
 
-`fake` adapterはfixture・offline検証用です。作品を制作するモデルではありません。実providerを接続する場合は、argv形式のworker adapter、attempt request/result schema、capability、timeout、secret redactionの契約に適合させます。
+`fake` adapterはfixture・offline検証用で、任意の研究依頼を完了させるworkerではありません。作品を制作するモデルでもありません。実providerを接続する場合は、argv形式のworker adapter、attempt request/result schema、capability、timeout、secret redactionの契約に適合させます。adapterが未設定のままでは `WORKER-ADAPTER` 系の名前付き失敗になります。
 
 workerはattempt workspaceの許可された `write_targets` だけを書き換えます。canonical project、protocol、別project、`data/`、output root、runtime namespaceを直接変更できません。workerの変更はacceptance executorの検証後にだけpromoteされます。
 
