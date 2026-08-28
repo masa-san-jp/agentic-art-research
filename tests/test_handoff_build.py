@@ -295,3 +295,18 @@ class HandoffCommitsItsOwnOutputTest(HandoffBuildContractTest):
         remaining = self._git(root, "status", "--porcelain")
         self.assertIn("constraints.yaml", remaining)
         self.assertNotIn("production-handoff.yaml", remaining)
+
+    def test_ignored_handoff_is_force_added_without_sweeping_other_files(self) -> None:
+        root, project = self._repository()
+        gitignore = root / ".gitignore"
+        gitignore.write_text("projects/handoff-build/05_production/production-handoff.yaml\n", encoding="utf-8")
+
+        build_handoff(root, "project/handoff-build", generated_at=self.generated_at, research_commit=self.commit, commit=True)
+
+        remaining = self._git(root, "status", "--porcelain")
+        self.assertIn(".gitignore", remaining)
+        self.assertNotIn("production-handoff.yaml", remaining)
+        self.assertIn(
+            "production-handoff.yaml",
+            self._git(root, "ls-tree", "-r", "--name-only", "HEAD"),
+        )

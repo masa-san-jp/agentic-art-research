@@ -435,7 +435,7 @@ def _commit_handoff(root: Path, path: Path) -> None:
     relative = path.relative_to(root)
     git = ["git", "-C", str(root)]
     status = subprocess.run(
-        [*git, "status", "--porcelain", "--", str(relative)],
+        [*git, "status", "--porcelain", "--untracked-files=all", "--ignored=matching", "--", str(relative)],
         capture_output=True,
         text=True,
     )
@@ -446,7 +446,7 @@ def _commit_handoff(root: Path, path: Path) -> None:
     if not status.stdout.strip():
         return
     for command in (
-        [*git, "add", "--", str(relative)],
+        [*git, "add", "-f", "--", str(relative)],
         [
             *git,
             "-c",

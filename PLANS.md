@@ -47,7 +47,7 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 
 - [x] (2026-08-26 JST) `HARNESS-008`: 11 deterministic scenarioのE2E/fault matrix、hash付きappend-only event stream、run manifest observability、replay/fault/output boundary gate、provider conformance documentを追加する。
 - [x] (2026-08-27 JST) `HARNESS-009`: #77のbytecode snapshot汚染と#79のGitなしimmutable archive provenance不整合を解消し、cold archive上の全quality gateを再検証する。255 unittest、cold archive、validator/security/docs/chaos/graph、release/handoff release gateが合格。
-- [x] (2026-08-28 JST) `HARNESS-010`: #81のブランチ差分から、受理直後のtask runtime初期化とhandoff対象限定commitをprotocol側へ取り込む。実プロジェクトと生成graphのcanonical混入はoutput boundary違反のため保留する。
+- [x] (2026-08-28 JST) `HARNESS-010`: #81のブランチ差分から、受理直後のtask runtime初期化とhandoff対象限定commitをprotocol側へ取り込んだ。harmony-proofは現行schemaへ移行し、実プロジェクトと原版TIFFをcanonicalへ戻さず外部output rootへmaterializeした。実寸観察は未実施のためIssue #81はOPENのままにする。
 チェックボックスとUTCまたはJST日時。未完了、部分完了、完了を正確に表す。
 
 ### Surprises & Discoveries
@@ -75,6 +75,7 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 - 2026-08-27: provenance修正後も、schema validatorの再構築と直列のkill-each-phaseがchild quality gateを300秒超へ押し上げた。schema treeの変更検知付きcache、独立scenario/phaseのcold subprocess並列化、handoff直後の重複validation除去で、cold archive full unittestを215秒へ短縮した。
 - 2026-08-27: 外側archive内で実archive markerテストを行うと、既に置換済みのSHAを内側repoへコピーしてしまう。テストfixtureは`.archive-commit`の`$Format:%H$` placeholderを明示的に再生成する必要があった。
 - 2026-08-28: #81の3 branchはnon-ancestorで、現行mainのschema追加後に直接mergeするとproject validatorが旧schema差分を18件返した。生成handoff/graphの手動解決は採用せず、protocol変更とproject migrationを別作業に分離した。
+- 2026-08-28: #81の原版TIFFはcanonicalではなく既存の`Agentic-Art-Output/20260823-必要な後退/`に存在し、18046×12026px・300dpiだった。現行schemaへ移行したharmony-proofと同一SHAの原版を`AI-Agent-Pipeline/Agentic-Art-Output/harmony-proof/production-input/`へmaterializeしたが、AT001/AT002/AT003/AT005は実寸制作・観察が未実施である。
 実装中に判明した制約、失敗、想定との差を、短い証拠とともに記録する。
 
 ### Decision Log
@@ -1045,16 +1046,16 @@ archive markerはsource commitを記録するだけで、work/outputへコピー
 - [x] 空task計画の失敗系と、再受理でruntimeを変更しない冪等性をテストした。
 - [x] `build_handoff.py --commit`を追加し、handoff以外の変更をcommitしない正常・失敗境界をテストした。
 - [x] README、operations、handoff仕様、decision logを更新した。
-- [ ] #81のharmony-proof実プロジェクトをcanonicalへ戻す。
+- [x] #81のharmony-proof実プロジェクトはcanonicalへ戻さず、現行schemaへ移行したHO016・graph・contextと原版TIFFを外部output rootへmaterializeした。実寸観察のacceptanceは未実施で、IssueはOPENのまま。
 
 ### Decision Log
 
-- 2026-08-28: #81の成果物取り込みは`AGENTS.md`のrepository/output boundaryと衝突するため、本ExecPlanでは実施しない。現行schemaへの移行と外部output rootでのmaterializationが別途必要である。
+- 2026-08-28: #81の成果物はcanonical `projects/`/`data/`へ取り込まず、HO016と生成contextを含む移行済みプロジェクトを`/Users/masa/マイドライブ/AI-Agent-Pipeline/Agentic-Art-Output/harmony-proof/`へmaterializeする。外部rootへの配置はoutput boundaryに適合するが、NOT_RUNのacceptanceをPASSへ補正しない。
 
 ### Outcomes & Remaining Work
 
-- protocol側の自律実行入口とhandoff commit境界は実装・検証対象とする。
-- #81は、実プロジェクトをどの外部output rootへ、どの移行手順でmaterializeするかが確定するまでOPENとする。canonical `projects/`と`data/`へ成果物を追加しない。
+- protocol側の自律実行入口とhandoff commit境界は実装・検証対象とし、278 unittestと全ローカルgateで再確認する。
+- #81は`/Users/masa/マイドライブ/AI-Agent-Pipeline/Agentic-Art-Output/harmony-proof/`へのmaterializeまで完了したが、AT001/AT002/AT003/AT005が`NOT_RUN`のためOPENとする。canonical `projects/`と`data/`へ成果物は追加しない。
 
 ## 実行規則
 
