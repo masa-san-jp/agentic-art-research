@@ -13,6 +13,31 @@
 
 2026-08-28の最終検証では、protocol queueの53 task、unittest 278件、validator・security・docs・chaos・graph・release gateがすべて通過しています。実行には依存関係を入れた `.venv` を使用してください。
 
+## 兄弟リポジトリとの関係
+
+このrepositoryは、兄弟repositoryのデータを一つにコピーする場所ではありません。各repositoryの正本をsource commit・schema・opaque referenceで参照し、境界で必要な入力またはhandoffへ変換します。
+
+```text
+self-model-notes ───────┐
+art-history-notes ───────┼─ pinned reference / normalized signal ─→ agentic-art-research
+marketing-trends-notes ─┘                                             │
+                                                                       └─ production-handoff ─→ agentic-art-production
+
+agentic-art-orchestration ─ cross-repository routing・pin・workspace・監査
+viewer-response-notes ───── feedback / assessment（契約に適合した派生情報）
+```
+
+| repository | 役割 | 本repositoryとの関係 |
+| --- | --- | --- |
+| [agentic-art-orchestration](https://github.com/masa-san-jp/agentic-art-orchestration) | 複数repositoryを横断するcontrol plane | repositoryの発見、source pin、workspace、境界契約、品質状態を横断管理します。研究・制作データの正本をここへ集約しません。 |
+| [self-model-notes](https://github.com/masa-san-jp/self-model-notes) | 制作者本人のself-model知識源 | 承認済みの派生signalだけを入力候補として扱います。個人の原文・`PRIVATE_RAW`・`RESTRICTED`は本repositoryへ渡しません。 |
+| [art-history-notes](https://github.com/masa-san-jp/art-history-notes) | 一般美術史の知識源 | `tools/art_history_adapter.py`でsource commitを固定したread-only参照を行います。entity本文を本repositoryへ複製しません。 |
+| [marketing-trends-notes](https://github.com/masa-san-jp/marketing-trends-notes) | 市場・トレンド・practiceの知識源 | freshnessと出典を持つnormalized signalとして、必要な場合に横断入力へ接続します。trend本文を本repositoryの正本にしません。 |
+| [agentic-art-production](https://github.com/masa-san-jp/agentic-art-production) | 制作計画、試作、本制作、結果記録 | 本repositoryが生成するversioned production handoffを受け取る下流repoです。本repositoryはproduction repoへ直接書き込みません。 |
+| [viewer-response-notes](https://github.com/masa-san-jp/viewer-response-notes) | viewer反応とassessmentの知識源 | 契約に適合したfeedback・assessmentだけを扱い、会話本文や個人情報をresearch projectへコピーしません。 |
+
+矢印はrepository間の責任分界とversioned contractを示し、常時同期や相互の作業ツリー参照を意味しません。兄弟repositoryを使わないresearchは、該当する外部依存を省略したままofflineで実行できます。
+
 ## 60秒で動作確認する
 
 前提は Python 3.11 以上と Git です。リポジトリのルートで実行します。
