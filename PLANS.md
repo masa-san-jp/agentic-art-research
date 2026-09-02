@@ -1066,3 +1066,32 @@ archive markerはsource commitを記録するだけで、work/outputへコピー
 5. 発見と決定を即時に計画へ戻す。
 6. 受入条件を満たすまで「完了」としない。
 7. 終了時に次の正確な開始点を残す。
+
+## SELF-REPETITION-001 ExecPlan
+
+### Purpose / Big Picture
+
+Issue #83の未実装だった横断検索を、明示された候補projectと履歴rootの間で再現可能に実行する。入力artifact本文をreportへ複製せず、project ID・相対source reference・source commit・測定scoreだけを残す。
+
+### Progress
+
+- [x] claim/hypothesisを含むResearch/Production artifactの読み取り対象を定義した。
+- [x] deterministic similarity scan、LOW/MEDIUM/HIGH判定、schema、fixtureを追加した。
+- [x] scan結果を`05_production/creative-direction.md`へatomic/idempotentに反映する`--apply`を追加した。
+- [x] validator、security、docs、chaos、graph、handoff release、full unittestを実行した。
+
+### Validation and Acceptance
+
+- 4つのfixture project（`close-but-cannot-reach`、`harmony-proof`、`auto-auto-plan-repository-202`、`余白の呼吸`）をproject-relative reference付きで検出し、`HIGH`を返す。
+- 履歴が空でも走査済みの`LOW`を返し、`UNKNOWN`を結果の既定値にしない。
+- `--apply`は既存のcreative directionを上書きせず、scan markerをatomic/idempotentに置換する。
+- scan reportは`self-repetition-scan/v1` schemaへ適合し、claim本文と絶対パスを含まない。
+
+### Decision Log
+
+- 2026-09-03: Drive直接アクセスや会話本文の収集は実装しない。利用側が承認済みのmetadata-only history exportを明示的にmaterializeし、そのrootとsource commitを渡す方式に限定した。
+
+### Outcomes & Retrospective
+
+- `tests.test_self_repetition` 3/3、schemaを含むfocused test 11/11、child full unittest 281/281、validator/security/docs/chaos/graph/handoff release gateがPASSした。
+- 実制作outputは変更せず、4件のsynthetic completed-project fixtureでIssue #83の検出条件を再現した。

@@ -1,0 +1,21 @@
+{
+  "contract_version": "self-repetition-scan/v1",
+  "repository": "masa-san-jp/agentic-art-research",
+  "source_commit": "ce7e214f22e25c277c8f7277d83cd8cd85a3a8c1",
+  "candidate_project_id": "project/new-candidate",
+  "scanned_at": "2026-09-03T01:00:00Z",
+  "scanned_project_count": 4,
+  "scanned_signal_count": 4,
+  "candidate_signal_count": 1,
+  "risk_level": "HIGH",
+  "matches": [
+    {
+      "candidate_signal_ref": "project/new-candidate::05_production/creative-direction.md#paragraph-2@paragraph-2",
+      "prior_signal_ref": "production/close-but-cannot-reach-a::05_production/creative-direction.md#paragraph-2@paragraph-2",
+      "score": 0.9,
+      "matched_terms": ["close-but-cannot-reach"]
+    }
+  ],
+  "assessment": "Four prior projects contain a similar signal.",
+  "mitigation": "Document the difference before handoff."
+}
