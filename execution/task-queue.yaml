@@ -1,5 +1,5 @@
-version: 21
-updated_at: "2026-08-28T09:58:00+09:00"
+version: 22
+updated_at: "2026-09-03T10:00:00+09:00"
 selection_policy: lowest_id_ready_with_dependencies_done
 allowed_statuses: [BACKLOG, READY, IN_PROGRESS, BLOCKED, DONE]
 tasks:
@@ -428,3 +428,21 @@ tasks:
       - .venv/bin/python tools/validate.py --check
       - .venv/bin/python tools/docs_check.py --check
       - git diff --check
+  - id: SELF-REPETITION-001
+    milestone: G5
+    title: Scan prior production claims before handoff
+    status: DONE
+    depends_on: [HARNESS-010]
+    acceptance: An explicit history-root scan compares candidate claims and hypotheses by metadata-only project references, reports measured LOW/MEDIUM/HIGH risk without UNKNOWN fallback, and can idempotently reflect the result into 05_production/creative-direction.md.
+    issue_refs: ["agentic-art-research#83"]
+    checks:
+      - python3 -m unittest tests.test_self_repetition tests.test_schemas -v
+      - python3 tools/self_repetition.py --candidate tests/fixtures/self-repetition/candidate --history-root tests/fixtures/self-repetition/history --repository masa-san-jp/agentic-art-research --source-commit ce7e214f22e25c277c8f7277d83cd8cd85a3a8c1 --now 2026-09-03T10:00:00+09:00 --check
+      - python3 tools/validate.py --check
+      - python3 tools/security_check.py --check
+      - python3 tools/docs_check.py --check
+      - python3 tools/chaos_check.py
+      - python3 tools/build_graph.py --check
+      - python3 tools/handoff_release_check.py --require-schema-snapshot
+      - git diff --check
+    completion: Four named fixture projects (close-but-cannot-reach, harmony-proof, auto-auto-plan-repository-202, and 余白の呼吸) are detected through project-relative references at HIGH risk; apply is atomic and idempotent, and full child gates pass.

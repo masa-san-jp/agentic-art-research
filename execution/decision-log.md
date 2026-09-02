@@ -31,3 +31,4 @@
 | 2026-08-12 | ED-025 | v1.2.0はPR #38の検証済みsquash merge commit `a11d14b22323bdb7173839889b7b5a64754919f7`へ固定して公開する | upstream→research受理契約の公開対象と実装commitを一致させ、後から再現可能にするため | GitHub Release `v1.2.0` |
 | 2026-08-28 | ED-026 | upstream requestの受理時にproject runtimeを初期化し、handoff生成の`--commit`は生成ファイルだけを対象にする | 自律実行の入口で最初のtaskをclaim可能にしつつ、未関係の作業をhandoff commitへ混入させないため | `tools/accept_research_request.py`、`tools/build_handoff.py` |
 | 2026-08-28 | ED-027 | #81の実プロジェクトと生成graphはcanonical repositoryへ戻さず、protocol改善と外部project migrationを分離する | `AGENTS.md`のprotocol-only/output-boundaryと#81のmain取り込み条件が衝突し、現行schemaへの移行なしの直接mergeも検証不能なため | #81はOPENのまま。protocol側の安全な改善だけをmainへ反映 |
+| 2026-09-03 | ED-028 | self-repetition scanは明示されたhistory rootとsource commitを入力にし、出力はproject-relative signal referenceだけに限定する | Driveや実制作物をcanonicalへ複製せず、走査結果を再現可能なhandoff判断へ接続するため | `tools/self_repetition.py`、`schemas/self-repetition-scan.schema.json`、Issue #83 |

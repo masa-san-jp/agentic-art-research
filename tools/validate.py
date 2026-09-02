@@ -86,6 +86,7 @@ DOMAIN_SCHEMAS = (
     "research-plan",
     "prior-art",
     "self-repetition-review",
+    "self-repetition-scan",
     "run-log-event",
     "acceptance-gate",
     "acceptance-report",

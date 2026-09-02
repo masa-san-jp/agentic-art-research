@@ -1,0 +1,14 @@
+{
+  "contract_version": "self-repetition-scan/v1",
+  "repository": "masa-san-jp/agentic-art-research",
+  "source_commit": "ce7e214f22e25c277c8f7277d83cd8cd85a3a8c1",
+  "candidate_project_id": "project/new-candidate",
+  "scanned_at": "2026-09-03T01:00:00Z",
+  "scanned_project_count": 4,
+  "scanned_signal_count": 4,
+  "candidate_signal_count": 1,
+  "risk_level": "SEVERE",
+  "matches": [],
+  "assessment": "The scan needs review.",
+  "mitigation": "Document the difference before handoff."
+}
