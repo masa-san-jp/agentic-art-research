@@ -136,6 +136,11 @@ SCHEMA_CASES = {
         "invalid": "self-repetition-review-invalid-risk.yaml",
         "rule": "enum",
     },
+    "self-repetition-scan": {
+        "valid": "self-repetition-scan.json",
+        "invalid": "self-repetition-scan-invalid-risk.json",
+        "rule": "enum",
+    },
     "research-state": {
         "valid": "research-state.json",
         "invalid": "research-state-invalid-task-status.json",

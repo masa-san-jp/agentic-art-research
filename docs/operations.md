@@ -1,30 +1,34 @@
 # Operations
 
 この文書は、リポジトリを安全に導入・運用し、障害から再開するための手順を定義する。
-正本は `config/`、`schemas/`、`projects/`、`profiles/` にあり、`data/` は生成物として扱う。
+最短の導入手順と境界の説明は [README](../README.md) にある。ここでは、READMEの手順を分解して運用時の判断点まで示す。
+正本はprotocol repositoryの `config/`、`schemas/`、`templates/`、`tools/` であり、`data/` は生成物として扱う。
+実プロジェクトの正本は一時work rootに置き、検証済みの出力だけをprotocol repository外のoutput rootへ保存する。
 外部送信、公開、応募、購入、契約、削除は自動化しない。設計仕様書 §6.2 に該当する人間確認だけを停止条件とする。
 
 ## Onboarding
 
-最初に `AGENTS.md`、設計仕様書、実行計画、`PLANS.md`、`execution/task-queue.yaml` の順に読む。
+人間利用者はREADMEの「60秒で動作確認する」から始め、必要な運用だけをこの文書で確認する。repositoryを変更するagentは `AGENTS.md` の指定どおり、設計仕様書、実行計画、`PLANS.md`、`execution/task-queue.yaml` の順に読む。
 Python 3.11 以上の仮想環境を作成し、依存関係をインストールする。
 
 ```bash
 python3 -m venv .venv
-. .venv/bin/activate
-python3 -m pip install -r requirements.txt
+.venv/bin/python -m pip install -r requirements.txt
+PYTHON=".venv/bin/python"
 ```
 
 安全境界と正本を確認する。
 
 ```bash
-python3 -m compileall -q tools tests
-python3 tools/security_check.py --check
-python3 tools/validate.py --check
-python3 -m unittest discover -s tests -v
-python3 tools/build_graph.py --check
-python3 tools/evaluate.py --offline-fixture tests/fixtures/harmony
-python3 tools/docs_check.py --check
+PYTHON=".venv/bin/python"
+
+"$PYTHON" -m compileall -q tools tests
+"$PYTHON" tools/security_check.py --check
+"$PYTHON" tools/validate.py --check
+"$PYTHON" -m unittest discover -s tests -v
+"$PYTHON" tools/build_graph.py --check
+"$PYTHON" tools/evaluate.py --offline-fixture tests/fixtures/harmony
+"$PYTHON" tools/docs_check.py --check
 ```
 
 ## Normal run
@@ -34,9 +38,10 @@ python3 tools/docs_check.py --check
 実行rootを一つにまとめず、protocolを読み取り専用のsource、workをproject/runtimeの作業領域、outputを検証済み成果物の出力先として扱う。通常の入口は次の一つである。
 
 ```bash
-WORK_ROOT="$(mktemp -d)"
-OUTPUT_ROOT="$(mktemp -d)"
-python3 tools/harness.py bootstrap \
+PYTHON=".venv/bin/python"
+WORK_ROOT="$(mktemp -d /tmp/agentic-art-work.XXXXXX)"
+OUTPUT_ROOT="$(mktemp -d /tmp/agentic-art-output.XXXXXX)"
+"$PYTHON" tools/harness.py bootstrap \
   --request tests/fixtures/harness/request.yaml \
   --protocol-root "$(pwd)" \
   --work-root "$WORK_ROOT" \
@@ -47,22 +52,27 @@ python3 tools/harness.py bootstrap \
 
 `protocol_root`、`work_root`、`output_root`は同一root、相互の親子、symlink、filesystem/home直下の広すぎるrootを拒否する。bootstrapは一時stagingへmaterializeしてからwork rootへatomic publishするため、schema・security・runtime初期化の失敗時にwork/outputへ部分成果物を残さない。成功時もoutput rootは空のままである。
 
+品質ゲートをimmutable archiveで実行するときは、子repoをmanifestの`observed_commit`から`git archive`し、展開先の`.archive-commit`を変更せずに使う。Research harnessは`.git`がない場合にこのmarkerからprotocol commitを読み、markerの欠落・不正値を`HARNESS-PROTOCOL-PROVENANCE`として停止する。archiveのcommit pinとmarkerが一致することは、archiveを作成した親runnerの責任である。
+
 返却JSONとwork rootの`.harness/run.json`は`schemas/harness-run.schema.json`の正本である。`protocol_commit`と`protocol_tree_clean`はprotocol rootだけから取得し、work rootのdirty状態をsource provenanceとみなさない。`HARNESS-DEPENDENCY-PREFLIGHT`は、明示されたoptional dependencyのINVALID、またはmandatory dependencyのMISSING/INVALIDだけをblockingにする。
 
 同じrequest hash・run ID・rootで再実行した場合は既存run JSONをそのまま返す。異なるrequest、別run ID、既存の非空work/output、既存projectとの衝突は`HARNESS-BOOTSTRAP-CONFLICT`で停止し、既存ファイルを上書きしない。
 
 ### One-command verified handoff
 
-requestから検証済みhandoffまでを運転する通常入口は`harness.py run --request`である。
-worker adapter、protocol/work/output root、run IDを省略せず、実際のproject outputはcanonical
-repository外のoutput rootへ出す。
+requestから検証済みhandoffまでを運転する通常入口は `harness.py run --request` である。
+adapter、protocol/work/output root、run IDを省略せず、実際のproject outputはcanonical
+repository外のoutput rootへ出す。`fake` はfixture・offline検証専用で、任意のrequestを完了させるworkerではない。
 
 ```bash
-WORK_ROOT="$(mktemp -d)"
-OUTPUT_ROOT="$(mktemp -d)"
-python3 tools/harness.py run \
-  --request path/to/research-request.yaml \
-  --adapter fake \
+PYTHON=".venv/bin/python"
+REQUEST="./research-request.yaml"
+ADAPTER="your-configured-adapter"
+WORK_ROOT="$(mktemp -d /tmp/agentic-art-work.XXXXXX)"
+OUTPUT_ROOT="$(mktemp -d /tmp/agentic-art-output.XXXXXX)"
+"$PYTHON" tools/harness.py run \
+  --request "$REQUEST" \
+  --adapter "$ADAPTER" \
   --protocol-root "$(pwd)" \
   --work-root "$WORK_ROOT" \
   --output-root "$OUTPUT_ROOT" \
@@ -75,7 +85,7 @@ phaseは`PREFLIGHT → BOOTSTRAPPED → RUNNING → COMPLETING → BUILDING_HAND
 中断・human pauseからはwork rootを保持したまま、outcomeの`resume_command`または次で再開する。
 
 ```bash
-python3 tools/harness.py resume \
+"$PYTHON" tools/harness.py resume \
   --protocol-root "$(pwd)" \
   --work-root "$WORK_ROOT" \
   --output-root "$OUTPUT_ROOT" \
@@ -89,24 +99,33 @@ run observabilityはwork rootの`.harness/events/<run-id>.jsonl`へ、project本
 provider conformanceは次でattempt request/result境界をoffline確認する。credentialを保存せず、CIのblocking workerはreference fake workerのscenario matrixに限定する。
 
 ```bash
-python3 tools/harness.py conformance \
-  --request <attempt-request.json> --adapter fake \
-  --protocol-root <protocol-root> \
+ATTEMPT_REQUEST="$WORK_ROOT/.harness/attempts/HR001/TASK001/AT001/request.json"
+PROTOCOL_ROOT="$(pwd)"
+
+"$PYTHON" tools/harness.py conformance \
+  --request "$ATTEMPT_REQUEST" --adapter fake \
+  --protocol-root "$PROTOCOL_ROOT" \
   --worker-command '["python3", "path/to/provider-worker.py"]'
-python3 tools/harness_evaluate.py \
-  --scenarios tests/fixtures/harness/scenarios.yaml --protocol-root .
+"$PYTHON" tools/harness_evaluate.py \
+  --scenarios tests/fixtures/harness/scenarios.yaml --protocol-root "$PROTOCOL_ROOT"
 ```
+
+scenario matrixは各caseを独立したcold subprocessで実行し、phase中断・再開のcaseも並列化する。結果はfixture順に回収されるため、速度短縮後も実行rootの分離、Supervisorのsignal処理、決定的reportを維持する。
 
 実行開始後のtask入口もrootを明示する。
 
 ```bash
-python3 tools/next_action.py project/<project-id> \
-  --worker <worker-id> \
+PROJECT_ID="project/example"
+WORKER_ID="worker-a"
+PROTOCOL_ROOT="$(pwd)"
+
+"$PYTHON" tools/next_action.py "$PROJECT_ID" \
+  --worker "$WORKER_ID" \
   --now 2026-08-25T00:00:00+09:00 \
   --dry-run \
-  --protocol-root <protocol-root> \
-  --work-root <work-root> \
-  --output-root <output-root>
+  --protocol-root "$PROTOCOL_ROOT" \
+  --work-root "$WORK_ROOT" \
+  --output-root "$OUTPUT_ROOT"
 ```
 
 返るacceptanceとnext stepは、protocol toolの絶対パスとwork/output rootの明示引数を持つ。`--root`は既存projectの互換shimであり、新しいharness内部のroot契約では使わない。
@@ -116,11 +135,14 @@ python3 tools/next_action.py project/<project-id> \
 taskのclaim後、実行providerは`config/worker-adapters.yaml`の名前で選択し、provider固有SDKやcredentialをprotocolへ追加せず、typed requestを作ってadapterへ渡す。
 
 ```bash
-python3 tools/worker_adapter.py run \
-  --request <work-root>/attempts/AT001/request.json \
+ATTEMPT_REQUEST="$WORK_ROOT/.harness/attempts/HR001/TASK001/AT001/request.json"
+ATTEMPT_RESULT="$WORK_ROOT/.harness/attempts/HR001/TASK001/AT001/result.json"
+
+"$PYTHON" tools/worker_adapter.py run \
+  --request "$ATTEMPT_REQUEST" \
   --adapter fake \
-  --protocol-root <protocol-root> \
-  --output <work-root>/attempts/AT001/result.json
+  --protocol-root "$PROTOCOL_ROOT" \
+  --output "$ATTEMPT_RESULT"
 ```
 
 requestは`agent-attempt-request.schema.json`、resultは`agent-attempt-result.schema.json`で検証する。commandはargv配列で、shell interpreter、shell metacharacter、未設定capabilityを拒否する。stdoutは一つのJSON object、stderrは上限付き診断であり、timeout、exit/signal、invalid/unknown JSON、stdout/stderr超過、secret/credential、lease token、absolute pathを検出した場合は名前付き`WORKER-*` failureになる。`HUMAN_REQUIRED`はhuman decision requestとして返る。
@@ -160,18 +182,19 @@ manifestはrelative path、file type、mode、size、SHA-256を持ち、symlink�
 ```bash
 WORK_ROOT="$(mktemp -d /tmp/agentic-art-project.XXXXXX)"
 git clone --local --no-hardlinks . "$WORK_ROOT"
-python3 "$WORK_ROOT/tools/new_project.py" example-project --title "Example Project" --root "$WORK_ROOT"
-python3 "$WORK_ROOT/tools/task_runtime.py" project/example-project init --now 2026-08-11T00:00:00+09:00 --root "$WORK_ROOT"
-python3 "$WORK_ROOT/tools/next_action.py" project/example-project \
+PYTHON=".venv/bin/python"
+"$PYTHON" "$WORK_ROOT/tools/new_project.py" example-project --title "Example Project" --root "$WORK_ROOT"
+"$PYTHON" "$WORK_ROOT/tools/task_runtime.py" project/example-project init --now 2026-08-11T00:00:00+09:00 --root "$WORK_ROOT"
+"$PYTHON" "$WORK_ROOT/tools/next_action.py" project/example-project \
   --worker worker-a \
   --now 2026-08-11T00:00:00+09:00 \
   --dry-run \
   --root "$WORK_ROOT"
-python3 "$WORK_ROOT/tools/task_runtime.py" project/example-project claim --worker-id worker-a --root "$WORK_ROOT"
-python3 "$WORK_ROOT/tools/executive_brief.py" project/example-project --root "$WORK_ROOT"
-python3 "$WORK_ROOT/tools/build_graph.py" --root "$WORK_ROOT"
-python3 "$WORK_ROOT/tools/bundle.py" project/example-project --audience human --root "$WORK_ROOT"
-python3 "$WORK_ROOT/tools/audit.py" --root "$WORK_ROOT"
+"$PYTHON" "$WORK_ROOT/tools/task_runtime.py" project/example-project claim --worker-id worker-a --root "$WORK_ROOT"
+"$PYTHON" "$WORK_ROOT/tools/executive_brief.py" project/example-project --root "$WORK_ROOT"
+"$PYTHON" "$WORK_ROOT/tools/build_graph.py" --root "$WORK_ROOT"
+"$PYTHON" "$WORK_ROOT/tools/bundle.py" project/example-project --audience human --root "$WORK_ROOT"
+"$PYTHON" "$WORK_ROOT/tools/audit.py" --root "$WORK_ROOT"
 ```
 
 タスクは `execution/task-queue.yaml` の依存関係とID順に従い、1件ずつ claim する。
@@ -185,14 +208,30 @@ claim前のpreviewはread-onlyであり、previewのJSONは作業開始のcontex
 上流セッションまたは別リポジトリから依頼を受ける場合は、まずschema適合と衝突だけをdry-runで確認する。
 
 ```bash
-python3 tools/accept_research_request.py path/to/research-request.yaml --dry-run --root "$WORK_ROOT"
-python3 tools/accept_research_request.py path/to/research-request.yaml --apply \
-  --accepted-at 2026-08-12T09:00:00+09:00 --root "$WORK_ROOT"
-python3 tools/validate.py --project project/<slug> --check --root "$WORK_ROOT"
-python3 tools/export_feedback_signals.py project/<slug> \
+REQUEST="./research-request.yaml"
+PROJECT_ID="project/example-project"
+"$PYTHON" tools/accept_research_request.py "$REQUEST" --dry-run \
+  --protocol-root "$(pwd)" --work-root "$WORK_ROOT"
+"$PYTHON" tools/accept_research_request.py "$REQUEST" --apply \
+  --protocol-root "$(pwd)" --work-root "$WORK_ROOT" \
+  --accepted-at 2026-08-12T09:00:00+09:00
+"$PYTHON" tools/validate.py --project "$PROJECT_ID" --check --root "$WORK_ROOT"
+"$PYTHON" tools/export_feedback_signals.py "$PROJECT_ID" \
   --result-id PR001 \
   --output /tmp/agentic-art-signal-bundle \
   --root "$WORK_ROOT"
+```
+
+`--apply` は受理receiptだけでなく `07_runtime/research-state.json.task_runtime` も初期化する。
+そのため受理後は `next_action.py` のdry-runで最初のtask contextを確認し、そのままlive claimへ進める。
+task定義が空のprojectは `PLAN-WITHOUT-TASKS` で受理しない。
+
+制作引き渡しの生成物をGitで管理する一時cloneでは、handoffだけを対象にコミットできる。
+他の作業ツリー変更はコミットされない。
+
+```bash
+"$PYTHON" tools/build_handoff.py "$PROJECT_ID" \
+  --root "$WORK_ROOT" --protocol-root "$(pwd)" --commit
 ```
 
 Knowledge records are project-local and profile instances are external. Keep real profile
@@ -200,9 +239,10 @@ data outside the protocol repository and pass its root explicitly when validatin
 building the graph:
 
 ```bash
-python3 tools/validate.py --root "$WORK_ROOT" --profiles-root /path/to/profile-root --check
-python3 tools/build_graph.py --root "$WORK_ROOT" --profiles-root /path/to/profile-root
-python3 tools/impact.py --root "$WORK_ROOT" --profiles-root /path/to/profile-root --node profile/<creator-id>::AS001
+PROFILE_ROOT="/path/to/profile-root"
+"$PYTHON" tools/validate.py --root "$WORK_ROOT" --profiles-root "$PROFILE_ROOT" --check
+"$PYTHON" tools/build_graph.py --root "$WORK_ROOT" --profiles-root "$PROFILE_ROOT"
+"$PYTHON" tools/impact.py --root "$WORK_ROOT" --profiles-root "$PROFILE_ROOT" --node "profile/creator-id::AS001"
 ```
 
 The profile root contains `aesthetic-signals.yaml` with a `signals` list. Each signal must
@@ -217,7 +257,7 @@ production handoffのbundleには同artifactと`visual-language.schema.json`のs
 repositoryのqueue/stateを更新した後は、実行順序のSSOT検査を必ず通す。`next_task`は、IN_PROGRESSがなければ依存完了済みの最小ID READY taskでなければならない。
 
 ```bash
-python3 tools/validate.py --check
+"$PYTHON" tools/validate.py --check
 ```
 
 受理CLIは外部sourceを取得せず、production repoへ書き込まず、`RESEARCH_ONLY` projectとcanonical SHA-256 receiptだけを作る。同一依頼の再実行は `ALREADY_APPLIED` になり、異なる内容の同一IDや既存projectは拒否する。入力契約は `docs/20260812-agentic-art-research-inbound-request-extension-specification.md` にある。
@@ -247,7 +287,7 @@ JSONLの破損や重複効果は行番号・タスクID・effect keyを確認す
 決定的な再現確認は次で行う。
 
 ```bash
-python3 tools/chaos_check.py
+"$PYTHON" tools/chaos_check.py
 ```
 
 ## Model startup prompt

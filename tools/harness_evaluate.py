@@ -5,8 +5,12 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import subprocess
 import tempfile
+import sys
+from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
+from itertools import repeat
 from pathlib import Path
 from typing import Any, Callable
 
@@ -211,30 +215,83 @@ def _run_killed_phase(protocol_root: Path, request_path: Path, run_id: str, phas
         }
 
 
+def _run_killed_phase_report(protocol_root: Path, request_path: Path, run_id: str, phase: str) -> dict[str, Any]:
+    """Reduce one phase-resume case to the JSON needed by its parent."""
+
+    case = _run_killed_phase(protocol_root, request_path, run_id, phase)
+    result = case["result"]
+    return {
+        "phase": phase,
+        "result": result,
+        "actual": _contract(
+            result,
+            work_before=case["work_before"],
+            work_after=case["work_after"],
+            output_before=case["output_before"],
+            output_after=case["output_after"],
+            event_sha256=case["event_sha256"],
+        ),
+        "artifact_sha256": canonical_sha256(result.get("artifacts", [])),
+        "replay_phase": case["replay"].get("phase"),
+        "replay_status": case["replay"].get("status"),
+    }
+
+
+def _run_killed_phase_subprocess(protocol_root: Path, request_path: Path, run_id: str, phase: str) -> dict[str, Any]:
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(Path(__file__).resolve()),
+            "--protocol-root",
+            str(protocol_root),
+            "--run-id",
+            run_id,
+            "--kill-phase",
+            phase,
+        ],
+        cwd=protocol_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    try:
+        value = json.loads(completed.stdout)
+    except (json.JSONDecodeError, TypeError) as exc:
+        detail = completed.stderr.strip() or f"child exited with status {completed.returncode}"
+        raise HarnessEvaluationError("HARNESS-E2E-EXPECTED", f"kill phase {phase} child output is invalid: {detail}") from exc
+    if not isinstance(value, dict) or value.get("phase") != phase:
+        raise HarnessEvaluationError("HARNESS-E2E-EXPECTED", f"kill phase {phase} child output is not a phase result")
+    return value
+
+
 def _run_kill_scenario(protocol_root: Path, request_path: Path, scenario: dict[str, Any], index: int) -> dict[str, Any]:
     scenario_id = str(scenario["id"])
     expected = dict(scenario["expected"])
     run_id = f"HR8{index:02d}"
     clean_artifact_sha256 = _run_clean_reference(protocol_root, request_path, run_id)
-    cases = [_run_killed_phase(protocol_root, request_path, run_id, phase) for phase in KILL_PHASES]
+    # Every phase case owns its own roots and has no dependency on the other
+    # interruptions. The subprocess boundary keeps each Supervisor in a main
+    # thread (it installs signal handlers), while the coordinator preserves
+    # the public phase order in the collected list.
+    with ThreadPoolExecutor(max_workers=len(KILL_PHASES)) as executor:
+        cases = list(executor.map(
+            _run_killed_phase_subprocess,
+            repeat(protocol_root),
+            repeat(request_path),
+            repeat(run_id),
+            KILL_PHASES,
+        ))
     if any(case["result"].get("status") != "COMPLETE" for case in cases):
         raise HarnessEvaluationError("HARNESS-E2E-EXPECTED", "a killed phase did not resume to COMPLETE")
-    if any(canonical_sha256(case["result"].get("artifacts", [])) != clean_artifact_sha256 for case in cases):
+    if any(case["artifact_sha256"] != clean_artifact_sha256 for case in cases):
         raise HarnessEvaluationError("HARNESS-E2E-EXPECTED", "resumed phase artifacts differ from the clean reference")
     case = cases[-1]
     result = case["result"]
-    actual = _contract(
-        result,
-        work_before=case["work_before"],
-        work_after=case["work_after"],
-        output_before=case["output_before"],
-        output_after=case["output_after"],
-        event_sha256=case["event_sha256"],
-    )
+    actual = case["actual"]
     actual["resume_supported"] = True
     details = [f"clean_artifact_sha256={clean_artifact_sha256}", f"resumed_phases={','.join(KILL_PHASES)}"]
     passed = all(actual.get(key) == value for key, value in expected.items())
-    passed = passed and case["replay"].get("phase") == "COMPLETE" and case["replay"].get("status") == "COMPLETE"
+    passed = passed and case["replay_phase"] == "COMPLETE" and case["replay_status"] == "COMPLETE"
     return {
         "id": scenario_id,
         "passed": bool(passed),
@@ -316,13 +373,59 @@ def _run_scenario(protocol_root: Path, scenario: dict[str, Any], index: int) -> 
         return {"id": scenario_id, "passed": bool(passed), "expected": expected | {"artifact_sha256": None, "event_sha256": None}, "actual": actual, "deterministic": True, "details": details}
 
 
+def _run_scenario_subprocess(protocol_root: Path, scenarios_path: Path, index: int) -> dict[str, Any]:
+    """Run one matrix row in a cold child without sharing mutable state."""
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(Path(__file__).resolve()),
+            "--protocol-root",
+            str(protocol_root),
+            "--scenarios",
+            str(scenarios_path),
+            "--scenario-index",
+            str(index),
+        ],
+        cwd=protocol_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    try:
+        value = json.loads(completed.stdout)
+    except (json.JSONDecodeError, TypeError) as exc:
+        detail = completed.stderr.strip() or f"child exited with status {completed.returncode}"
+        raise HarnessEvaluationError("HARNESS-E2E-EXPECTED", f"scenario#{index} child output is invalid: {detail}") from exc
+    if not isinstance(value, dict) or not isinstance(value.get("id"), str) or not isinstance(value.get("passed"), bool):
+        raise HarnessEvaluationError("HARNESS-E2E-EXPECTED", f"scenario#{index} child output is not a scenario result")
+    return value
+
+
+def _scenario_matrix(path: Path) -> list[dict[str, Any]]:
+    matrix = load_yaml(path.resolve())
+    if not isinstance(matrix, dict) or matrix.get("version") != 1 or not isinstance(matrix.get("scenarios"), list):
+        raise HarnessEvaluationError("HARNESS-E2E-EXPECTED", "scenario matrix must be version 1 with a scenarios list")
+    if any(not isinstance(scenario, dict) for scenario in matrix["scenarios"]):
+        raise HarnessEvaluationError("HARNESS-E2E-EXPECTED", "scenario matrix entries must be objects")
+    return matrix["scenarios"]
+
+
 @lru_cache(maxsize=4)
 def evaluate_scenarios(protocol_root: Path, scenarios_path: Path = DEFAULT_SCENARIOS) -> dict[str, Any]:
     protocol_root = protocol_root.resolve()
-    matrix = load_yaml(scenarios_path.resolve())
-    if not isinstance(matrix, dict) or matrix.get("version") != 1 or not isinstance(matrix.get("scenarios"), list):
-        raise HarnessEvaluationError("HARNESS-E2E-EXPECTED", "scenario matrix must be version 1 with a scenarios list")
-    scenarios = [_run_scenario(protocol_root, scenario, index) for index, scenario in enumerate(matrix["scenarios"], 1)]
+    scenarios_path = scenarios_path.resolve()
+    scenario_values = _scenario_matrix(scenarios_path)
+    # Each scenario owns an independent temporary work/output root. Run the
+    # cases in bounded cold subprocesses so Supervisor can keep its signal
+    # handling in the child process and the parent remains portable to
+    # restricted environments that disallow multiprocessing semaphores.
+    # ThreadPoolExecutor only coordinates child I/O; scenario code never runs
+    # in the coordinator threads. map() returns input order, preserving the
+    # deterministic report contract.
+    worker_count = min(4, len(scenario_values))
+    with ThreadPoolExecutor(max_workers=worker_count) as executor:
+        scenarios = list(executor.map(_run_scenario_subprocess, repeat(protocol_root), repeat(scenarios_path), range(1, len(scenario_values) + 1)))
     report = {"schema": EVALUATION_SCHEMA, "version": "1.0.0", "passed": all(item["passed"] for item in scenarios), "scenario_count": len(scenarios), "scenarios": scenarios}
     _validate_report(protocol_root, report)
     return report
@@ -333,9 +436,29 @@ def main() -> int:
     parser.add_argument("--scenarios", type=Path, default=DEFAULT_SCENARIOS)
     parser.add_argument("--protocol-root", type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--scenario-index", type=int, help=argparse.SUPPRESS)
+    parser.add_argument("--run-id", help=argparse.SUPPRESS)
+    parser.add_argument("--kill-phase", choices=KILL_PHASES, help=argparse.SUPPRESS)
     args = parser.parse_args()
     try:
-        report = evaluate_scenarios(args.protocol_root, args.scenarios)
+        if args.kill_phase is not None:
+            if not isinstance(args.run_id, str) or not args.run_id:
+                parser.error("--run-id is required with --kill-phase")
+            result = _run_killed_phase_report(
+                args.protocol_root.resolve(),
+                args.protocol_root.resolve() / "tests/fixtures/harness/request.yaml",
+                args.run_id,
+                args.kill_phase,
+            )
+            print(stable_json(result), end="")
+            return 0
+        if args.scenario_index is not None:
+            scenario_values = _scenario_matrix(args.scenarios)
+            if not 1 <= args.scenario_index <= len(scenario_values):
+                parser.error(f"scenario index must be between 1 and {len(scenario_values)}")
+            report = _run_scenario(args.protocol_root.resolve(), scenario_values[args.scenario_index - 1], args.scenario_index)
+        else:
+            report = evaluate_scenarios(args.protocol_root, args.scenarios)
     except (HarnessEvaluationError, HarnessEventError, OSError, ValueError) as exc:
         parser.error(str(exc))
     content = stable_json(report)

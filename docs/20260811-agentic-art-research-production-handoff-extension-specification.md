@@ -422,7 +422,7 @@ source resultのproduction-owned schema、import log、import audit hash、accep
 実装後の公開インターフェースを次に固定する。
 
 ```bash
-python3 tools/build_handoff.py project/harmony-study
+python3 tools/build_handoff.py project/harmony-study --root <work-root> --protocol-root <protocol-root> --commit
 python3 tools/validate.py --project harmony-study --check
 python3 tools/export_handoff.py project/harmony-study --output data/handoffs/harmony-study
 python3 tools/import_production_result.py path/to/production-result.yaml --dry-run
@@ -431,7 +431,7 @@ python3 tools/impact.py --production-result PR001
 python3 tools/export_feedback_signals.py project/<slug> --result-id PR001 --output <signal-bundle-directory> --root <working-root>
 ```
 
-- `build_handoff.py` は正本から決定的にhandoffを生成する。
+- `build_handoff.py` は正本から決定的にhandoffを生成する。`--commit` を指定した場合だけ、生成したhandoffの相対パスだけを対象に冪等コミットする。他の作業ツリー変更は取り込まない。
 - `export_handoff.py` はhandoff、schema、必要な公開可能参照だけを含むbundleを生成する。
 - `import_production_result.py --dry-run` は変更せず検証・影響だけを表示する。
 - `--apply` は検証済み結果だけを台帳、証拠候補、監査ログへ追記する。

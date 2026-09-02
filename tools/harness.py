@@ -36,8 +36,10 @@ from validate import validate_repository
 
 
 RUN_MANIFEST = Path(".harness/run.json")
+ARCHIVE_PROVENANCE_FILE = Path(".archive-commit")
 RUN_ID = re.compile(r"^HR[0-9]{3,}$")
 TIMESTAMP = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$")
+COMMIT_SHA = re.compile(r"^[0-9a-f]{40}$")
 
 
 class HarnessError(ValueError):
@@ -63,6 +65,30 @@ def _timestamp(value: str | None) -> str:
 
 
 def _git_head(protocol_root: Path) -> tuple[str, bool]:
+    git_metadata = protocol_root / ".git"
+    if not git_metadata.exists():
+        marker = protocol_root / ARCHIVE_PROVENANCE_FILE
+        if marker.is_symlink() or not marker.is_file():
+            raise HarnessError(
+                "HARNESS-PROTOCOL-PROVENANCE",
+                "protocol_root must be a Git checkout or an immutable archive containing .archive-commit",
+            )
+        try:
+            commit = marker.read_text(encoding="utf-8").strip()
+        except (OSError, UnicodeError) as exc:
+            raise HarnessError(
+                "HARNESS-PROTOCOL-PROVENANCE",
+                "immutable archive provenance marker cannot be read",
+            ) from exc
+        if not COMMIT_SHA.fullmatch(commit):
+            raise HarnessError(
+                "HARNESS-PROTOCOL-PROVENANCE",
+                "immutable archive .archive-commit must contain a 40-character lowercase SHA",
+            )
+        # git archive substitutes .archive-commit from the exact object used to
+        # create the archive. An archive has no mutable index or worktree, so it
+        # is clean by construction; the parent archive runner owns pinning it.
+        return commit, True
     try:
         head = subprocess.run(
             ["git", "-C", str(protocol_root), "rev-parse", "HEAD"],
@@ -91,7 +117,7 @@ def _git_head(protocol_root: Path) -> tuple[str, bool]:
             "HARNESS-PROTOCOL-PROVENANCE",
             "protocol_root must be a Git checkout with a readable HEAD",
         ) from exc
-    if not re.fullmatch(r"[0-9a-f]{40}", head):
+    if not COMMIT_SHA.fullmatch(head):
         raise HarnessError("HARNESS-PROTOCOL-PROVENANCE", "protocol HEAD is not a 40-character lowercase SHA")
     return head, tracked == 0 and staged == 0 and not bool(untracked.strip())
 

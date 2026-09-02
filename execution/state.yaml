@@ -1,8 +1,8 @@
 version: 3
-updated_at: "2026-08-27T07:53:00+09:00"
+updated_at: "2026-09-03T10:00:00+09:00"
 current_milestone: G5
 next_task: null
-last_completed_task: VIEWER-RESPONSE-001
+last_completed_task: SELF-REPETITION-001
 terminal: true
 blocked_by: []
 resume_from:
@@ -46,12 +46,23 @@ resume_from:
     - schemas/harness-event.schema.json
     - schemas/harness-evaluation.schema.json
     - docs/operations.md
+    - schemas/self-repetition-scan.schema.json
+    - tools/self_repetition.py
+    - tests/test_self_repetition.py
+    - docs/self-repetition-scan.md
+    - https://github.com/masa-san-jp/agentic-art-research/issues/83
     - README.md
     - tools/harness_observability.py
     - tools/harness_evaluate.py
     - tests/fixtures/harness/scenarios.yaml
-  action: No task remains in this child queue; retain the viewer-response draft PR for human review and merge approval.
+    - .gitattributes
+    - .archive-commit
+    - tools/harness.py
+    - tests/test_harness.py
+    - docs/agent-runtime-guide.md
+    - docs/operations.md
+  action: No protocol task is ready. All 54 protocol tasks are DONE; self-repetition scan #83 is complete and the queue is terminal.
 last_verification:
-  result: PASS
-  command: .venv/bin/python -m unittest discover -s tests -v; .venv/bin/python tools/validate.py --check; .venv/bin/python tools/security_check.py --check; .venv/bin/python tools/docs_check.py --check; .venv/bin/python tools/build_graph.py --check; git diff --check
-  detail: Viewer response importer focused tests 9/9 and full repository tests 255/255 pass; validator, security, docs, graph, and diff gates pass. The real viewer ledger remains unchanged because no real production result was supplied.
+  result: PASS_WITH_ENVIRONMENT_NOTE
+  command: .venv/bin/python -m unittest discover -s tests -v; validate/security/docs/chaos/graph/release/handoff gates; bare python3 commands
+  detail: .venvで281 tests PASS。self-repetition scan fixtureは4 projectをHIGHとして検出し、validator/security/docs/chaos/graph/handoff release gatesもPASS。一時rootのharmony-proof移行はproject validator、graph current、handoff release gateをPASSし、外部output rootへ原版TIFFとともにmaterializeした。protocol queueは全54 taskがDONE、next_taskはnull。bare python3はPyYAML/jsonschema未導入のため依存環境差がある。

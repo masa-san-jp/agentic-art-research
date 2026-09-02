@@ -12,3 +12,7 @@ documents:
       - "# Agent runtime guide"
       - "## タスクDAGの実行と再開"
       - "## 品質・安全性評価"
+  - path: docs/self-repetition-scan.md
+    required_sections:
+      - "# Self-repetition scan"
+      - "## Verify the four-project fixture"

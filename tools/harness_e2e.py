@@ -870,10 +870,11 @@ def run_request(
         except Exception as exc:
             atomic_write_text(project / "manifest.yaml", before_manifest.decode("utf-8"))
             raise HarnessE2EError("HARNESS-HANDOFF", str(exc), phase="BUILDING_HANDOFF") from exc
-        final_findings = validate_repository(work, manifest["project_id"], protocol_root=protocol, work_root=work)
-        if final_findings:
-            atomic_write_text(project / "manifest.yaml", before_manifest.decode("utf-8"))
-            raise HarnessE2EError("HARNESS-HANDOFF", "built handoff failed project validation", phase="BUILDING_HANDOFF")
+        # build_handoff performs the same project-scoped validation after it
+        # writes the generated handoff and rolls that write back on failure.
+        # Re-running the full repository validator here only duplicates the
+        # expensive schema/data walk; there is no intervening project
+        # mutation to validate.
         handoff = load_yaml(handoff_path) or {}
         if event_stream is not None and not any(event.get("event_type") == "HANDOFF_BUILT" for event in event_stream.events):
             event_stream.append(

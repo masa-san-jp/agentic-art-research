@@ -106,6 +106,51 @@ class ResearchRequestAcceptanceTest(unittest.TestCase):
         with self.assertRaisesRegex(RequestAcceptanceError, "REQUEST-SECURITY"):
             accept_research_request(root, request, dry_run=True)
 
+    def test_empty_plan_is_rejected_before_acceptance(self) -> None:
+        root = self.make_root()
+        request = self.copy_fixture(root)
+        plan_path = root / "templates" / "project" / "01_planning" / "research-plan.yaml"
+        plan = yaml.safe_load(plan_path.read_text(encoding="utf-8"))
+        plan["tasks"] = []
+        plan_path.write_text(yaml.safe_dump(plan, sort_keys=False), encoding="utf-8")
+
+        with self.assertRaisesRegex(RequestAcceptanceError, "PLAN-WITHOUT-TASKS"):
+            accept_research_request(root, request, apply=True, accepted_at="2026-08-12T09:05:00+09:00")
+
+        self.assertFalse((root / "projects" / "harmony-study").exists())
+
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AcceptedProjectIsReadyToWorkTest(ResearchRequestAcceptanceTest):
+    """An accepted project has a runtime ready for the first orchestration step."""
+
+    def test_accepted_project_can_claim_its_first_task(self) -> None:
+        root = self.make_root()
+        request = self.copy_fixture(root)
+
+        accept_research_request(root, request, apply=True, accepted_at="2026-08-12T09:05:00+09:00")
+
+        import json
+
+        from task_runtime import claim_next
+
+        state = json.loads((root / "projects" / "harmony-study" / "07_runtime" / "research-state.json").read_text(encoding="utf-8"))
+        self.assertIn("task_runtime", state)
+        self.assertTrue(state["task_runtime"]["tasks"])
+
+        claimed = claim_next(root, "project/harmony-study", "tester", now="2026-08-12T09:10:00+09:00")
+        self.assertTrue(claimed["task_id"])
+
+    def test_reaccepting_does_not_disturb_the_runtime(self) -> None:
+        root = self.make_root()
+        request = self.copy_fixture(root)
+        accept_research_request(root, request, apply=True, accepted_at="2026-08-12T09:05:00+09:00")
+        state_path = root / "projects" / "harmony-study" / "07_runtime" / "research-state.json"
+        before = state_path.read_bytes()
+
+        accept_research_request(root, request, apply=True, accepted_at="2026-08-12T10:05:00+09:00")
+
+        self.assertEqual(before, state_path.read_bytes())

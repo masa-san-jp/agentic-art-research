@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import shutil
+import subprocess
 import sys
+import tarfile
 import tempfile
 import unittest
 from pathlib import Path
@@ -15,7 +18,7 @@ from referencing import Registry, Resource
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "tools"))
 
-from harness import HarnessError, bootstrap  # noqa: E402
+from harness import ARCHIVE_PROVENANCE_FILE, HarnessError, _git_head, bootstrap  # noqa: E402
 from harness_paths import HarnessPathError, HarnessPaths  # noqa: E402
 from next_action import build_next_action  # noqa: E402
 
@@ -23,15 +26,35 @@ from next_action import build_next_action  # noqa: E402
 NOW = "2026-08-25T00:00:00+09:00"
 
 
+SNAPSHOT_DIRECTORIES = ("config", "docs", "profiles", "schemas", "templates", "tools")
+SNAPSHOT_FILES = (".archive-commit", ".gitattributes", ".gitignore", "AGENTS.md", "PLANS.md", "README.md")
+SNAPSHOT_IGNORED_PARTS = {".git", ".venv", "__pycache__", ".pytest_cache"}
+SNAPSHOT_IGNORED_SUFFIXES = {".pyc", ".pyo"}
+
+
 def snapshot(root: Path) -> tuple[tuple[str, str, int], ...]:
-    return tuple(
-        (
-            path.relative_to(root).as_posix(),
-            hashlib.sha256(path.read_bytes()).hexdigest(),
-            path.stat().st_mtime_ns,
+    candidates = [root / name for name in SNAPSHOT_FILES]
+    for name in SNAPSHOT_DIRECTORIES:
+        directory = root / name
+        if directory.is_dir():
+            candidates.extend(directory.rglob("*"))
+    entries = []
+    for path in sorted(candidates):
+        relative = path.relative_to(root)
+        if (
+            not path.is_file()
+            or SNAPSHOT_IGNORED_PARTS.intersection(relative.parts)
+            or path.suffix.lower() in SNAPSHOT_IGNORED_SUFFIXES
+        ):
+            continue
+        entries.append(
+            (
+                relative.as_posix(),
+                hashlib.sha256(path.read_bytes()).hexdigest(),
+                path.stat().st_mtime_ns,
+            )
         )
-        for path in sorted(path for path in root.rglob("*") if path.is_file())
-    )
+    return tuple(entries)
 
 
 class HarnessBootstrapContractTest(unittest.TestCase):
@@ -41,6 +64,105 @@ class HarnessBootstrapContractTest(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.work, True)
         self.addCleanup(shutil.rmtree, self.output, True)
         self.request = REPO_ROOT / "tests/fixtures/harness/request.yaml"
+
+    def _archive_protocol(self, commit: str = "a" * 40) -> Path:
+        archive = self.work.parent / "protocol-archive"
+        shutil.copytree(
+            REPO_ROOT,
+            archive,
+            ignore=shutil.ignore_patterns(".git", ".venv", "__pycache__", "*.pyc", "*.pyo"),
+        )
+        (archive / ARCHIVE_PROVENANCE_FILE).write_text(commit + "\n", encoding="utf-8")
+        self.addCleanup(shutil.rmtree, archive, True)
+        return archive
+
+    def test_snapshot_ignores_generated_noise_but_detects_protocol_mutation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "tools").mkdir()
+            (root / "tools" / "owned.txt").write_text("before\n", encoding="utf-8")
+            (root / "__pycache__").mkdir()
+            (root / "__pycache__" / "noise.pyc").write_bytes(b"before")
+            (root / ".venv" / "bin").mkdir(parents=True)
+            (root / ".venv" / "bin" / "noise").write_bytes(b"before")
+            (root / ".git" / "objects").mkdir(parents=True)
+            (root / ".git" / "objects" / "noise").write_bytes(b"before")
+
+            before = snapshot(root)
+            self.assertTrue(before)
+            (root / "__pycache__" / "noise.pyc").write_bytes(b"after")
+            (root / ".venv" / "bin" / "noise").write_bytes(b"after")
+            self.assertEqual(before, snapshot(root))
+
+            (root / "tools" / "owned.txt").write_text("after\n", encoding="utf-8")
+            self.assertNotEqual(before, snapshot(root))
+
+    def test_immutable_archive_uses_export_subst_commit_marker(self) -> None:
+        archive = self._archive_protocol()
+        result = bootstrap(
+            protocol_root=archive,
+            work_root=self.work,
+            output_root=self.output,
+            run_id="HR006",
+            now=NOW,
+            request_path=archive / "tests/fixtures/harness/request.yaml",
+        )
+
+        self.assertEqual("a" * 40, result["protocol_commit"])
+        self.assertTrue(result["protocol_tree_clean"])
+        self.assertEqual([], list(self.output.iterdir()))
+
+    def test_git_archive_embeds_the_exact_commit_in_the_provenance_marker(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary) / "source"
+            source.mkdir()
+            # REPO_ROOT may itself be a git archive, where the outer archive
+            # has already substituted this marker. Recreate the source
+            # template explicitly so the inner archive tests its own commit.
+            (source / ".archive-commit").write_text("$Format:%H$\n", encoding="utf-8")
+            shutil.copy2(REPO_ROOT / ".gitattributes", source / ".gitattributes")
+            for args in (
+                ("init", "-q", "-b", "main"),
+                ("config", "user.email", "fixture@example.invalid"),
+                ("config", "user.name", "Archive Fixture"),
+                ("add", "."),
+                ("commit", "-q", "-m", "archive marker"),
+            ):
+                subprocess.run(["git", "-C", str(source), *args], check=True, capture_output=True, text=True)
+            commit = subprocess.run(
+                ["git", "-C", str(source), "rev-parse", "HEAD"],
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            raw = subprocess.run(
+                ["git", "-C", str(source), "archive", "--format=tar", "HEAD"],
+                check=True,
+                capture_output=True,
+            ).stdout
+            archive = Path(temporary) / "archive"
+            archive.mkdir()
+            with tarfile.open(fileobj=io.BytesIO(raw), mode="r:") as bundle:
+                marker = bundle.extractfile(".archive-commit")
+                self.assertIsNotNone(marker)
+                (archive / ARCHIVE_PROVENANCE_FILE).write_bytes(marker.read())
+
+            self.assertEqual(commit, (archive / ARCHIVE_PROVENANCE_FILE).read_text(encoding="utf-8").strip())
+            self.assertEqual((commit, True), _git_head(archive))
+
+    def test_archive_without_valid_commit_marker_fails_closed(self) -> None:
+        archive = self._archive_protocol("not-a-commit")
+        with self.assertRaisesRegex(HarnessError, "HARNESS-PROTOCOL-PROVENANCE"):
+            bootstrap(
+                protocol_root=archive,
+                work_root=self.work,
+                output_root=self.output,
+                run_id="HR007",
+                now=NOW,
+                request_path=archive / "tests/fixtures/harness/request.yaml",
+            )
+        self.assertEqual([], list(self.work.iterdir()))
+        self.assertEqual([], list(self.output.iterdir()))
 
     def test_bootstrap_is_isolated_schema_valid_and_does_not_touch_protocol_or_output(self) -> None:
         before = snapshot(REPO_ROOT)

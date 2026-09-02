@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/self-repetition-scan.schema.json",
+  "title": "Self-repetition scan report",
+  "description": "Metadata-only deterministic comparison of a candidate project with explicitly supplied prior projects.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "repository",
+    "source_commit",
+    "candidate_project_id",
+    "scanned_at",
+    "scanned_project_count",
+    "scanned_signal_count",
+    "candidate_signal_count",
+    "risk_level",
+    "matches",
+    "assessment",
+    "mitigation"
+  ],
+  "properties": {
+    "contract_version": {"const": "self-repetition-scan/v1"},
+    "repository": {"type": "string", "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"},
+    "source_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "candidate_project_id": {"type": "string", "pattern": "^[A-Za-z0-9_.:/-]+$"},
+    "scanned_at": {"type": "string", "format": "date-time"},
+    "scanned_project_count": {"type": "integer", "minimum": 0},
+    "scanned_signal_count": {"type": "integer", "minimum": 0},
+    "candidate_signal_count": {"type": "integer", "minimum": 1},
+    "risk_level": {"enum": ["LOW", "MEDIUM", "HIGH"]},
+    "matches": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["candidate_signal_ref", "prior_signal_ref", "score", "matched_terms"],
+        "properties": {
+          "candidate_signal_ref": {"type": "string", "minLength": 1},
+          "prior_signal_ref": {"type": "string", "minLength": 1},
+          "score": {"type": "number", "minimum": 0, "maximum": 1},
+          "matched_terms": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+        }
+      }
+    },
+    "assessment": {"type": "string", "minLength": 1},
+    "mitigation": {"type": "string", "minLength": 1}
+  }
+}
