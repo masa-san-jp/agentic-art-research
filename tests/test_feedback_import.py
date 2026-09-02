@@ -160,7 +160,7 @@ class FeedbackImportContractTest(unittest.TestCase):
         }
         policy_path.write_text(yaml.safe_dump(policy, sort_keys=False, allow_unicode=True), encoding="utf-8")
 
-    def make_result(self, project: Path, *, result_id: str = "PR001") -> dict[str, object]:
+    def make_result(self, project: Path, *, result_id: str = "PR001", with_viewer_response: bool = False) -> dict[str, object]:
         handoff = yaml.safe_load((project / "05_production" / "production-handoff.yaml").read_text(encoding="utf-8"))
         result: dict[str, object] = {
             "schema_version": "1.0.0",
@@ -200,6 +200,18 @@ class FeedbackImportContractTest(unittest.TestCase):
             "open_gaps": [],
             "integrity": {},
         }
+        if with_viewer_response:
+            result["test_results"][0]["viewer_response"] = {
+                "source_kind": "measured",
+                "requirement_id": "RQ001",
+                "presentation_mode": "gallery",
+                "requirement_tags": ["clarity"],
+                "sample_size": 2,
+                "outcome_counts": {"pass": 1, "fail": 1, "unknown": 0},
+                "evidence_refs": ["production-result:PR001#AT001"],
+                "certainty": "medium",
+                "consent_scope": "aggregate-only",
+            }
         result["integrity"] = {"content_sha256": result_sha256(result)}
         return result
 
@@ -247,6 +259,44 @@ class FeedbackImportContractTest(unittest.TestCase):
         repeated = import_production_result(root, result_path, apply=True)
         self.assertEqual("ALREADY_APPLIED", repeated["status"])
         self.assertEqual(repeated_before, {path: path.read_bytes() for path in tracked})
+
+    def test_viewer_response_is_appended_once_and_replayed_without_duplication(self) -> None:
+        root, project = self.make_project()
+        self.configure_result_schema(root)
+        viewer_root = root / "viewer-response-notes"
+        viewer_root.mkdir()
+        result_path = self.write_result(root, self.make_result(project, with_viewer_response=True))
+        viewer_path = viewer_root / "records" / "viewer-response-records.jsonl"
+
+        preview = import_production_result(root, result_path, dry_run=True, viewer_root=viewer_root)
+        self.assertEqual("DRY_RUN", preview["status"])
+        self.assertEqual(1, preview["viewer_records_added"])
+        self.assertFalse(viewer_path.exists())
+
+        applied = import_production_result(root, result_path, apply=True, viewer_root=viewer_root)
+        self.assertEqual("APPLIED", applied["status"])
+        self.assertEqual(["VRR-PR001-AT001"], applied["viewer_record_ids"])
+        self.assertEqual(1, applied["viewer_records_added"])
+        records = [line for line in viewer_path.read_text(encoding="utf-8").splitlines() if line]
+        self.assertEqual(1, len(records))
+        self.assertNotIn("statement", records[0])
+
+        before = viewer_path.read_bytes()
+        repeated = import_production_result(root, result_path, apply=True, viewer_root=viewer_root)
+        self.assertEqual("ALREADY_APPLIED", repeated["status"])
+        self.assertEqual(0, repeated["viewer_records_added"])
+        self.assertEqual(before, viewer_path.read_bytes())
+
+    def test_viewer_response_requires_explicit_root_and_preserves_project_on_rejection(self) -> None:
+        root, project = self.make_project()
+        self.configure_result_schema(root)
+        result_path = self.write_result(root, self.make_result(project, with_viewer_response=True))
+        feedback_path = project / "07_runtime/production-feedback-imports.jsonl"
+        before = feedback_path.read_bytes()
+
+        with self.assertRaisesRegex(ResultImportError, "FEEDBACK-VIEWER-ROOT"):
+            import_production_result(root, result_path, apply=True)
+        self.assertEqual(before, feedback_path.read_bytes())
 
     def test_same_result_id_with_different_content_is_rejected(self) -> None:
         root, project = self.make_project()
