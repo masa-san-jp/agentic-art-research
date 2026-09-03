@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "medium": {
     "primary": "installation",
     "statement": "An installation makes the interval perceptible.",
@@ -10,6 +10,9 @@
       "id": "VT001",
       "name": "deliberate interruption",
       "intent": "Make the interruption observable without explanation.",
+      "mechanism": "A single omission interrupts an otherwise repeated spatial interval.",
+      "proposition_component_ids": ["DC001"],
+      "reference_ids": ["XR001"],
       "source_decision_ids": ["DC001"],
       "requirement_ids": ["RQ001"]
     }

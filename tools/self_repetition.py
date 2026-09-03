@@ -23,6 +23,7 @@ from _common import InputParseError, atomic_write_text, load_json, load_yaml, re
 
 
 CONTRACT_VERSION = "self-repetition-scan/v1"
+CONTRACT_VERSION_V2 = "self-repetition-scan/v2"
 SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 REPOSITORY_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 PROJECT_ID_PATTERN = re.compile(r"^[A-Za-z0-9_.:/-]+$")
@@ -45,6 +46,7 @@ ARTIFACT_NAMES = {
     "03_knowledge/claims.jsonl",
     "04_decisions/production-hypotheses.yaml",
     "05_production/production-brief.yaml",
+    "05_production/visual-language.yaml",
     "05_production/creative-direction.md",
     "03_plan/production-plan.yaml",
     "production-handoff/artifacts/creative-direction.md",
@@ -65,6 +67,7 @@ class Signal:
 @dataclass(frozen=True)
 class ProjectSignals:
     project_id: str
+    creator_id: str | None
     signals: tuple[Signal, ...]
 
 
@@ -170,27 +173,30 @@ def _artifact_paths(project_root: Path) -> list[Path]:
     return paths
 
 
-def _manifest_project_id(project_root: Path, fallback: str) -> str:
+def _manifest_project_metadata(project_root: Path, fallback: str) -> tuple[str, str | None]:
     manifest = project_root / "manifest.yaml"
     if not manifest.is_file() or manifest.is_symlink():
-        return _project_id(fallback, fallback)
+        return _project_id(fallback, fallback), None
     try:
         document = load_yaml(manifest) or {}
     except (OSError, InputParseError, ValueError) as exc:
         raise SelfRepetitionError(f"cannot read manifest {manifest}: {exc}") from exc
     project = document.get("project") if isinstance(document, Mapping) else None
     value = project.get("id") if isinstance(project, Mapping) else None
-    return _project_id(value, fallback)
+    creator = project.get("creator_id") if isinstance(project, Mapping) else None
+    if creator is not None and (not isinstance(creator, str) or not creator.strip()):
+        creator = None
+    return _project_id(value, fallback), creator
 
 
 def _collect_project(project_root: Path, fallback_project_id: str) -> ProjectSignals:
     project_root = project_root.resolve()
-    project_id = _manifest_project_id(project_root, fallback_project_id)
+    project_id, creator_id = _manifest_project_metadata(project_root, fallback_project_id)
     signals: list[Signal] = []
     for path in _artifact_paths(project_root):
         signals.extend(_signals_from_file(path, project_root, project_id))
     unique = {signal.source_ref: signal for signal in signals}
-    return ProjectSignals(project_id, tuple(unique[key] for key in sorted(unique)))
+    return ProjectSignals(project_id, creator_id, tuple(unique[key] for key in sorted(unique)))
 
 
 def _history_roots(history_root: Path) -> list[Path]:
@@ -292,17 +298,47 @@ def scan_projects(
     repository: str,
     source_commit: str,
     now: str,
+    contract_version: str = CONTRACT_VERSION,
 ) -> dict[str, Any]:
     """Return a deterministic, metadata-only repetition report."""
+    if contract_version not in {CONTRACT_VERSION, CONTRACT_VERSION_V2}:
+        raise SelfRepetitionError(f"unsupported contract version: {contract_version}")
     _validate_identity(repository, source_commit)
     scanned_at = _timestamp(now)
     candidate_project = _candidate_project(candidate)
     if not candidate_project.signals:
-        raise SelfRepetitionError("candidate project contains no supported claim or hypothesis signals")
+        raise SelfRepetitionError("candidate project contains no supported claim, hypothesis, or mechanism signals")
+    history_path = history_root.resolve()
+    try:
+        history_available = history_path.is_dir() and not history_path.is_symlink()
+    except OSError:
+        history_available = False
+    if not history_available:
+        if contract_version == CONTRACT_VERSION:
+            raise SelfRepetitionError("--history-root must be a real directory")
+        return {
+            "contract_version": CONTRACT_VERSION_V2,
+            "repository": repository,
+            "source_commit": source_commit,
+            "candidate_project_id": candidate_project.project_id,
+            "scanned_at": scanned_at,
+            "scanned_project_count": 0,
+            "scanned_signal_count": 0,
+            "candidate_signal_count": len(candidate_project.signals),
+            "history_access": {"status": "UNAVAILABLE", "reason_code": "HISTORY_ROOT_UNAVAILABLE"},
+            "risk_level": "UNKNOWN",
+            "matches": [],
+            "assessment": "過去プロジェクトの履歴rootを参照できないため、機構の重複を判定できない。",
+            "mitigation": "履歴rootへのread-onlyアクセスを確保してから再走査し、UNKNOWNのままhandoffを確定しない。",
+        }
     projects: list[ProjectSignals] = []
     for index, root in enumerate(_history_roots(history_root), 1):
         project = _collect_project(root, f"history-{index}")
-        if project.project_id != candidate_project.project_id and project.signals:
+        if (
+            project.project_id != candidate_project.project_id
+            and project.signals
+            and (candidate_project.creator_id is None or project.creator_id == candidate_project.creator_id)
+        ):
             projects.append(project)
     comparisons: list[dict[str, Any]] = []
     for candidate_signal in candidate_project.signals:
@@ -326,8 +362,8 @@ def scan_projects(
     else:
         assessment = f"横断走査した{len(projects)}件の既存projectに、候補signalと重複するsignalは検出されなかった。"
         mitigation = "新規候補を採用する場合も、次回handoff前に同じ履歴rootを再走査する。"
-    return {
-        "contract_version": CONTRACT_VERSION,
+    report = {
+        "contract_version": contract_version,
         "repository": repository,
         "source_commit": source_commit,
         "candidate_project_id": candidate_project.project_id,
@@ -340,6 +376,11 @@ def scan_projects(
         "assessment": assessment,
         "mitigation": mitigation,
     }
+    if contract_version == CONTRACT_VERSION_V2:
+        report["history_access"] = {"status": "AVAILABLE", "reason_code": None}
+        # Preserve the schema's stable field order only at render time; the
+        # report remains a normal mapping for callers.
+    return report
 
 
 def _render_report(report: Mapping[str, Any]) -> str:
@@ -402,6 +443,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--project", type=Path, help="project to receive the report when --apply is set")
     parser.add_argument("--apply", action="store_true", help="write the generated risk block to --project")
     parser.add_argument("--check", action="store_true", help="verify deterministic repeated output")
+    parser.add_argument(
+        "--contract-version",
+        choices=(CONTRACT_VERSION, CONTRACT_VERSION_V2),
+        default=CONTRACT_VERSION,
+        help="select the versioned report contract; v2 records unavailable history explicitly",
+    )
     args = parser.parse_args(argv)
     try:
         report = scan_projects(
@@ -410,6 +457,7 @@ def main(argv: list[str] | None = None) -> int:
             repository=args.repository,
             source_commit=args.source_commit,
             now=args.now,
+            contract_version=args.contract_version,
         )
         rendered = _render_report(report)
         if args.check:
@@ -419,6 +467,7 @@ def main(argv: list[str] | None = None) -> int:
                 repository=args.repository,
                 source_commit=args.source_commit,
                 now=args.now,
+                contract_version=args.contract_version,
             )
             if rendered != _render_report(repeated):
                 raise SelfRepetitionError("repeated scan output differs")

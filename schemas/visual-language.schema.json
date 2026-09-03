@@ -57,6 +57,19 @@
           "id": {"type": "string", "pattern": "^VT[0-9]{3,}$"},
           "name": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
           "intent": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+          "mechanism": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+          "proposition_component_ids": {
+            "type": "array",
+            "items": {"type": "string", "pattern": "^(?:DC|IN|PH)[0-9]{3,}$"},
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "reference_ids": {
+            "type": "array",
+            "items": {"type": "string", "pattern": "^(?:PA|XR)[0-9]{3,}$"},
+            "minItems": 1,
+            "uniqueItems": true
+          },
           "source_decision_ids": {"$ref": "#/$defs/decisionIds", "minItems": 1},
           "requirement_ids": {"$ref": "#/$defs/requirementIds"}
         }

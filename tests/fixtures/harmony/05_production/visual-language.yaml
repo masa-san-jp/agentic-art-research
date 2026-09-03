@@ -1,4 +1,4 @@
-schema_version: 1.0.0
+schema_version: 1.1.0
 medium:
   primary: installation
   statement: An installation makes the repeated interval perceptible.
@@ -7,6 +7,9 @@ techniques:
   - id: VT001
     name: deliberate interruption
     intent: Make the interruption observable without explanatory text.
+    mechanism: A single omission interrupts an otherwise repeated spatial interval.
+    proposition_component_ids: [DC001]
+    reference_ids: [PA001]
     source_decision_ids: [DC001]
     requirement_ids: [RQ001]
 palette:

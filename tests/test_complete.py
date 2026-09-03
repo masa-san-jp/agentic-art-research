@@ -78,6 +78,14 @@ class CompletionContractTest(unittest.TestCase):
                 "reviews:\n  - id: SR001\n    scope: Concept and visual language\n    prior_work_refs: [PA001]\n    risk_level: LOW\n    assessment: The proposal has a distinct interaction.\n    mitigation: Preserve the documented difference.\n    reviewed_at: '2026-08-11T00:00:00+09:00'\n",
                 encoding="utf-8",
             )
+        else:
+            # v1.1 visual-language mechanisms must still resolve their
+            # reference boundary even when the project fails research-quality
+            # minimums.  Keep the fixture incomplete for the intended reason.
+            (project / "03_knowledge" / "prior-art.jsonl").write_text(
+                '{"id":"PA001","work_title":"Related work","source_url":"https://example.com/related-work","difference":"The proposal changes the audience interaction."}\n',
+                encoding="utf-8",
+            )
         (project / "02_evidence" / "evidence-ledger.jsonl").write_text(
             json.dumps(
                 {
@@ -114,7 +122,7 @@ class CompletionContractTest(unittest.TestCase):
             encoding="utf-8",
         )
         (project / "05_production" / "visual-language.yaml").write_text(
-            "schema_version: 1.0.0\n"
+            "schema_version: 1.1.0\n"
             "medium:\n"
             "  primary: installation\n"
             "  statement: The fixture uses an installation.\n"
@@ -123,6 +131,9 @@ class CompletionContractTest(unittest.TestCase):
             "  - id: VT001\n"
             "    name: restrained arrangement\n"
             "    intent: Keep the fixture visually legible.\n"
+            "    mechanism: A single interval remains legible inside the repeated arrangement.\n"
+            "    proposition_component_ids: [DC002]\n"
+            "    reference_ids: [PA001]\n"
             "    source_decision_ids: [DC002]\n"
             "    requirement_ids: []\n"
             "palette:\n"

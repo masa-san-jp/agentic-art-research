@@ -1,9 +1,9 @@
-version: 3
-updated_at: "2026-09-03T10:00:00+09:00"
-current_milestone: G5
-next_task: null
+version: 5
+updated_at: "2026-09-03T20:17:09+09:00"
+current_milestone: G6
+next_task: SELF-REPETITION-V2-001
 last_completed_task: SELF-REPETITION-001
-terminal: true
+terminal: false
 blocked_by: []
 resume_from:
   read:
@@ -61,8 +61,8 @@ resume_from:
     - tests/test_harness.py
     - docs/agent-runtime-guide.md
     - docs/operations.md
-  action: No protocol task is ready. All 54 protocol tasks are DONE; self-repetition scan #83 is complete and the queue is terminal.
+  action: Implement the dependency-complete SELF-REPETITION-V2-001 task for Research Issue #85.
 last_verification:
-  result: PASS_WITH_ENVIRONMENT_NOTE
-  command: .venv/bin/python -m unittest discover -s tests -v; validate/security/docs/chaos/graph/release/handoff gates; bare python3 commands
-  detail: .venvで281 tests PASS。self-repetition scan fixtureは4 projectをHIGHとして検出し、validator/security/docs/chaos/graph/handoff release gatesもPASS。一時rootのharmony-proof移行はproject validator、graph current、handoff release gateをPASSし、外部output rootへ原版TIFFとともにmaterializeした。protocol queueは全54 taskがDONE、next_taskはnull。bare python3はPyYAML/jsonschema未導入のため依存環境差がある。
+  result: PASS_WITH_REMOTE_PENDING
+  command: /private/tmp/aap-production-py312/bin/python -m unittest discover -s tests -v; validate/security/docs/chaos/graph/handoff gates; git diff --check
+  detail: 289 tests PASS。validator、security、docs、chaos、graph、handoff release gate、git diff --checkがPASS。v2のcreator-scoped history、visual-language mechanism grounding、履歴root不在時のUNKNOWN/HISTORY_ROOT_UNAVAILABLEをfocused testsで検証した。リモートPRの品質ゲートは未実行のため、taskはIN_PROGRESSを維持する。

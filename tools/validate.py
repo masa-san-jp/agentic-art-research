@@ -1148,6 +1148,14 @@ def _check_visual_language(
     ready_or_later = ready_index is not None and status_index is not None and status_index >= ready_index
     medium = visual_language.get("medium")
     needs_decision = ready_or_later or medium is not None
+    schema_version = visual_language.get("schema_version")
+    try:
+        visual_version = tuple(int(part) for part in str(schema_version).split(".")[:3])
+    except (TypeError, ValueError):
+        visual_version = (0,)
+    # v1.0.0 remains readable for existing projects.  The v1.1.0 contract
+    # makes the mechanism-to-proposition/reference boundary explicit.
+    mechanism_grounding_required = visual_version >= (1, 1, 0)
 
     def finding(rule: str, message: str, *, field: str | None = None, remediation: str) -> None:
         findings.append(_visual_finding(root, project, rule, message, field=field, remediation=remediation))
@@ -1242,6 +1250,46 @@ def _check_visual_language(
                 decision_reference(decision_id, f"techniques[{index}].source_decision_ids[{decision_index}]")
             for requirement_index, requirement_id in enumerate(technique.get("requirement_ids", [])):
                 requirement_reference(requirement_id, f"techniques[{index}].requirement_ids[{requirement_index}]")
+            if mechanism_grounding_required:
+                mechanism = technique.get("mechanism")
+                if not isinstance(mechanism, str) or not mechanism.strip():
+                    finding(
+                        "VISUAL-LANGUAGE-MECHANISM-GROUNDING",
+                        "v1.1.0 mechanism records require a non-empty mechanism",
+                        field=f"techniques[{index}].mechanism",
+                        remediation="Describe the observable mechanism that implements the proposition; do not leave the mapping implicit.",
+                    )
+                component_ids = unique(
+                    technique.get("proposition_component_ids"),
+                    f"techniques[{index}].proposition_component_ids",
+                )
+                valid_component_kinds = {"decision", "insight", "production-hypothesis"}
+                valid_components = [
+                    component_id
+                    for component_id in component_ids
+                    if component_id in entries and entries[component_id][0] in valid_component_kinds
+                ]
+                if not valid_components:
+                    finding(
+                        "VISUAL-LANGUAGE-MECHANISM-GROUNDING",
+                        "mechanism is not grounded in a proposition component",
+                        field=f"techniques[{index}].proposition_component_ids",
+                        remediation="Reference at least one existing DC, IN, or PH proposition component from this project.",
+                    )
+                reference_ids = unique(technique.get("reference_ids"), f"techniques[{index}].reference_ids")
+                valid_reference_kinds = {"external-reference", "prior-art"}
+                valid_references = [
+                    reference_id
+                    for reference_id in reference_ids
+                    if reference_id in entries and entries[reference_id][0] in valid_reference_kinds
+                ]
+                if not valid_references:
+                    finding(
+                        "VISUAL-LANGUAGE-MECHANISM-GROUNDING",
+                        "mechanism does not cite a resolvable reference",
+                        field=f"techniques[{index}].reference_ids",
+                        remediation="Reference at least one existing XR or PA record that grounds the mechanism.",
+                    )
     unique(technique_ids, "techniques.id")
 
     def check_condition(name: str) -> None:
