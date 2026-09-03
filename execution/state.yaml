@@ -1,9 +1,9 @@
-version: 5
+version: 6
 updated_at: "2026-09-03T20:17:09+09:00"
 current_milestone: G6
-next_task: SELF-REPETITION-V2-001
-last_completed_task: SELF-REPETITION-001
-terminal: false
+next_task: null
+last_completed_task: SELF-REPETITION-V2-001
+terminal: true
 blocked_by: []
 resume_from:
   read:
@@ -61,8 +61,8 @@ resume_from:
     - tests/test_harness.py
     - docs/agent-runtime-guide.md
     - docs/operations.md
-  action: Implement the dependency-complete SELF-REPETITION-V2-001 task for Research Issue #85.
+  action: No protocol task is ready. SELF-REPETITION-V2-001 for Research Issue #85 is complete; resume only when a new dependency-complete task is added.
 last_verification:
-  result: PASS_WITH_REMOTE_PENDING
+  result: PASS_WITH_ENVIRONMENT_NOTE
   command: /private/tmp/aap-production-py312/bin/python -m unittest discover -s tests -v; validate/security/docs/chaos/graph/handoff gates; git diff --check
-  detail: 289 tests PASS。validator、security、docs、chaos、graph、handoff release gate、git diff --checkがPASS。v2のcreator-scoped history、visual-language mechanism grounding、履歴root不在時のUNKNOWN/HISTORY_ROOT_UNAVAILABLEをfocused testsで検証した。リモートPRの品質ゲートは未実行のため、taskはIN_PROGRESSを維持する。
+  detail: 289 tests PASS。validator、security、docs、chaos、graph、handoff release gate、git diff --checkがPASS。v2のcreator-scoped history、visual-language mechanism grounding、履歴root不在時のUNKNOWN/HISTORY_ROOT_UNAVAILABLEをfocused testsで検証した。PR #87はmainへmerge済み（1e8390e6ac7286c23a971d19a8797be4851cf086）。GitHub validateはbilling制限でジョブ未開始だったため、成功として扱わず環境注記を保持する。
