@@ -27,4 +27,4 @@ schema本体、source provenance、対応versionのいずれかがない間、
 `import_production_result.py`はdry-runを含めてfail-closedする。research側でproduction
 result schemaを仮定義してはならない。
 
-`production-result.schema.json`の正本は`masa-san-jp/agentic-art-production`が所有する。Production clean commit `fb15f32bf1eef0155c853c4b7c4b94df6b1bd78b`から`production-result.v1.schema.json`を取得済みであり、raw SHA-256は`sha256:5b69090476891629932e5b01260a6217273f8a4771cc004d4922fcd04a0a104a`である。snapshotのsource provenanceを改変・欠落させた場合、production result importはdry-runを含めてfail closedする。
+`production-result.schema.json`の正本は`masa-san-jp/agentic-art-production`が所有する。Production merge commit `e1bb0deb4c28489a881ef663a3d2a8d974c5b295`から`production-result.v1.schema.json`を取得済みであり、raw SHA-256は`sha256:c5217f7f1c6ea0cc2419b0833e08dc1edad450cb112d472aa0df052e9040c736`である。旧snapshotは`production-result.v1-20260812-fb15f32.schema.json`として保存し、現行policyは新snapshotを参照する。snapshotのsource provenanceを改変・欠落させた場合、production result importはdry-runを含めてfail closedする。

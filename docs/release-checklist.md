@@ -33,7 +33,7 @@ python3 tools/handoff_release_check.py \
 production-owned result schemaのsnapshotは登録済みであり、release判定では`--require-schema-snapshot`を付けて検査する。production schemaをresearch側で合成してはならない。
 通常のGitHub Actions検証でもこのresearch-side gateを実行し、schema snapshotの欠落・改変はfail-closedで検査する。
 
-production側のclean commit `fb15f32bf1eef0155c853c4b7c4b94df6b1bd78b`公開後、次でsnapshotとprovenanceを登録済みである。
+production側のmerge済みclean commit `e1bb0deb4c28489a881ef663a3d2a8d974c5b295`公開後、snapshotとprovenanceを更新済みである。旧snapshotは上書きせず、`schemas/external/production-result.v1-20260812-fb15f32.schema.json`として保持する。
 
 ```bash
 python3 tools/snapshot_production_schema.py \

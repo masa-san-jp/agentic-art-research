@@ -124,7 +124,7 @@ class HandoffE2EContractTest(_FeedbackImportContractTest):
 
         preview = import_production_result(root, result_path, dry_run=True)
         self.assertEqual("DRY_RUN", preview["status"])
-        self.assertEqual("fb15f32bf1eef0155c853c4b7c4b94df6b1bd78b", preview["schema_snapshot"]["source_commit"])
+        self.assertEqual("e1bb0deb4c28489a881ef663a3d2a8d974c5b295", preview["schema_snapshot"]["source_commit"])
         self.assertEqual(before, {path: path.read_bytes() for path in tracked})
 
         applied = import_production_result(root, result_path, apply=True)
