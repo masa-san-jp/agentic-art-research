@@ -48,6 +48,7 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 - [x] (2026-08-26 JST) `HARNESS-008`: 11 deterministic scenarioのE2E/fault matrix、hash付きappend-only event stream、run manifest observability、replay/fault/output boundary gate、provider conformance documentを追加する。
 - [x] (2026-08-27 JST) `HARNESS-009`: #77のbytecode snapshot汚染と#79のGitなしimmutable archive provenance不整合を解消し、cold archive上の全quality gateを再検証する。255 unittest、cold archive、validator/security/docs/chaos/graph、release/handoff release gateが合格。
 - [x] (2026-08-28 JST) `HARNESS-010`: #81のブランチ差分から、受理直後のtask runtime初期化とhandoff対象限定commitをprotocol側へ取り込んだ。harmony-proofは現行schemaへ移行し、実プロジェクトと原版TIFFをcanonicalへ戻さず外部output rootへmaterializeした。canonicalへの実プロジェクト復帰はrepository missionに反するため、Issue #81はnot plannedで閉じる。
+- [x] (2026-09-03 JST) `HARNESS-VIEWER-E2E-001` dependency: Production merge `e1bb0deb4c28489a881ef663a3d2a8d974c5b295`で公開された`viewer_response`を、旧snapshotを保持したままexternal schema snapshotへ再取得した。Research importerが4repo E2Eのaggregate viewer responseを検証できる開始点を確定した。
 チェックボックスとUTCまたはJST日時。未完了、部分完了、完了を正確に表す。
 
 ### Surprises & Discoveries
@@ -75,6 +76,7 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 - 2026-08-27: provenance修正後も、schema validatorの再構築と直列のkill-each-phaseがchild quality gateを300秒超へ押し上げた。schema treeの変更検知付きcache、独立scenario/phaseのcold subprocess並列化、handoff直後の重複validation除去で、cold archive full unittestを215秒へ短縮した。
 - 2026-08-27: 外側archive内で実archive markerテストを行うと、既に置換済みのSHAを内側repoへコピーしてしまう。テストfixtureは`.archive-commit`の`$Format:%H$` placeholderを明示的に再生成する必要があった。
 - 2026-08-28: #81の3 branchはnon-ancestorで、現行mainのschema追加後に直接mergeするとproject validatorが旧schema差分を18件返した。生成handoff/graphの手動解決は採用せず、protocol変更とproject migrationを別作業に分離した。
+- 2026-09-03: Productionの`viewer_response`追加により、Researchの既存external snapshotでは現行resultを検証できなかった。旧snapshotを上書きする案はimmutable snapshot契約に反するため、旧ファイルを保持してProduction merge SHAから新snapshotを生成する方式を採用した。
 - 2026-08-28: #81の原版TIFFはcanonicalではなく既存の`Agentic-Art-Output/20260823-必要な後退/`に存在し、18046×12026px・300dpiだった。現行schemaへ移行したharmony-proofと同一SHAの原版を`AI-Agent-Pipeline/Agentic-Art-Output/harmony-proof/production-input/`へmaterializeしたが、AT001/AT002/AT003/AT005は実寸制作・観察が未実施である。
 実装中に判明した制約、失敗、想定との差を、短い証拠とともに記録する。
 

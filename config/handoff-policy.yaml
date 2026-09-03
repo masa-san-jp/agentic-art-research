@@ -14,8 +14,8 @@ signed_url_markers:
 production_result_schema_path: schemas/external/production-result.v1.schema.json
 production_result_schema_source:
   repository: masa-san-jp/agentic-art-production
-  commit: fb15f32bf1eef0155c853c4b7c4b94df6b1bd78b
-  acquired_at: '2026-08-12T07:12:40+09:00'
-  sha256: sha256:5b69090476891629932e5b01260a6217273f8a4771cc004d4922fcd04a0a104a
+  commit: e1bb0deb4c28489a881ef663a3d2a8d974c5b295
+  acquired_at: '2026-09-03T16:20:00+09:00'
+  sha256: sha256:c5217f7f1c6ea0cc2419b0833e08dc1edad450cb112d472aa0df052e9040c736
 production_result_schema_versions:
 - 1.0.0
