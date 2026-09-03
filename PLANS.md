@@ -1126,6 +1126,26 @@ Issue #83の未実装だった横断検索を、明示された候補projectと�
 
 - 2026-09-03: Drive直接アクセスや会話本文の収集は実装しない。利用側が承認済みのmetadata-only history exportを明示的にmaterializeし、そのrootとsource commitを渡す方式に限定した。
 
+## SELF-REPETITION-V2-001 — Research Issue #85
+
+### Progress
+
+- 2026-09-03: `visual-language` schemaへmechanism、proposition component、prior-art/external-referenceの任意metadataを追加し、v1.1.0ではvalidatorがgroundingを要求する。v1.0.0は移行期間のため読み取り可能なままにした。
+- 2026-09-03: `self-repetition-scan/v2`の実装を開始し、visual-language mechanismを走査対象へ追加、manifestのcreator_idが宣言された場合は同一creatorの履歴へ比較範囲を限定、履歴root不在は`UNKNOWN`と`HISTORY_ROOT_UNAVAILABLE`で返す。
+
+### Surprises & Discoveries
+
+- 既存v1 schemaのrequired拡張は利用中の成果物を壊す後方非互換変更となるため、v2 schemaを追加し、v1は変更しない。
+
+### Decision Log
+
+- 2026-09-03: creator_idがない履歴は従来どおり比較対象とし、creator_idがある候補だけを同一creatorへscopeする。既存project manifestへ個人情報を補完・推定しない。
+- 2026-09-03: 履歴rootへアクセスできないv2 scanは測定riskを返さず`UNKNOWN`を返す。read-only履歴アクセスの回復後に再走査する。
+
+### Outcomes
+
+- Full child suite `289/289` and all local validator/security/docs/chaos/graph/handoff release gates passed. Remote PR quality gates remain before the task can be marked DONE.
+
 ### Outcomes & Retrospective
 
 - `tests.test_self_repetition` 3/3、schemaを含むfocused test 11/11、child full unittest 281/281、validator/security/docs/chaos/graph/handoff release gateがPASSした。

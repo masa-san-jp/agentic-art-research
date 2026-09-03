@@ -92,3 +92,64 @@ class SelfRepetitionScanTest(unittest.TestCase):
         self.assertIn("risk_level: `HIGH`", second)
         self.assertNotIn(str(candidate), second)
         self.assertNotIn("The project tests", second)
+
+    def test_v2_scopes_history_to_creator_and_reads_visual_language_mechanism(self) -> None:
+        temporary = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, temporary, True)
+        candidate = temporary / "candidate"
+        history = temporary / "history"
+
+        def write_project(root: Path, project_id: str, creator_id: str, mechanism: str) -> None:
+            production = root / "05_production"
+            production.mkdir(parents=True)
+            (root / "manifest.yaml").write_text(
+                f"project:\n  id: {project_id}\n  creator_id: {creator_id}\n",
+                encoding="utf-8",
+            )
+            (production / "visual-language.yaml").write_text(
+                "schema_version: 1.1.0\n"
+                "techniques:\n"
+                "  - id: VT001\n"
+                "    name: interval cut\n"
+                "    intent: expose a delayed response\n"
+                f"    mechanism: {mechanism}\n"
+                "    proposition_component_ids: [DC001]\n"
+                "    reference_ids: [PA001]\n",
+                encoding="utf-8",
+            )
+
+        write_project(candidate, "project/new-candidate", "creator/one", "shared interval mechanism")
+        write_project(history / "same", "production/same", "creator/one", "shared interval mechanism")
+        write_project(history / "other", "production/other", "creator/two", "shared interval mechanism")
+
+        report = scan_projects(
+            candidate,
+            history,
+            repository="masa-san-jp/agentic-art-research",
+            source_commit="ce7e214f22e25c277c8f7277d83cd8cd85a3a8c1",
+            now="2026-09-03T10:00:00+09:00",
+            contract_version="self-repetition-scan/v2",
+        )
+        self.assertEqual("self-repetition-scan/v2", report["contract_version"])
+        self.assertEqual({"status": "AVAILABLE", "reason_code": None}, report["history_access"])
+        self.assertEqual(1, report["scanned_project_count"])
+        self.assertTrue(any("visual-language.yaml" in item["prior_signal_ref"] for item in report["matches"]))
+        schema = json.loads((ROOT / "schemas/self-repetition-scan-v2.schema.json").read_text(encoding="utf-8"))
+        self.assertEqual([], list(Draft202012Validator(schema).iter_errors(report)))
+
+    def test_v2_records_unavailable_history_as_unknown(self) -> None:
+        candidate, _, temporary = self.make_fixture()
+        report = scan_projects(
+            candidate,
+            temporary / "does-not-exist",
+            repository="masa-san-jp/agentic-art-research",
+            source_commit="ce7e214f22e25c277c8f7277d83cd8cd85a3a8c1",
+            now="2026-09-03T10:00:00+09:00",
+            contract_version="self-repetition-scan/v2",
+        )
+        self.assertEqual("UNKNOWN", report["risk_level"])
+        self.assertEqual("UNAVAILABLE", report["history_access"]["status"])
+        self.assertIn("参照できない", report["assessment"])
+        self.assertNotEqual("MEDIUM", report["risk_level"])
+        schema = json.loads((ROOT / "schemas/self-repetition-scan-v2.schema.json").read_text(encoding="utf-8"))
+        self.assertEqual([], list(Draft202012Validator(schema).iter_errors(report)))

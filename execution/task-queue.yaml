@@ -460,3 +460,16 @@ tasks:
       - python3 tools/handoff_release_check.py --require-schema-snapshot
       - git diff --check
     completion: Four named fixture projects (close-but-cannot-reach, harmony-proof, auto-auto-plan-repository-202, and 余白の呼吸) are detected through project-relative references at HIGH risk; apply is atomic and idempotent, and full child gates pass.
+
+  - id: SELF-REPETITION-V2-001
+    milestone: G6
+    title: Ground mechanism repetition scans in visual language and creator-scoped history
+    status: IN_PROGRESS
+    depends_on: [SELF-REPETITION-001]
+    acceptance: The v1.1 visual-language contract records each mechanism with proposition-component and prior-art/external-reference IDs; self-repetition-scan/v2 reads those mechanisms, scopes comparable history to the same creator when declared, and reports unavailable history as explicit UNKNOWN with an access reason instead of a measured risk. Legacy v1 scan and v1.0 visual-language inputs remain readable.
+    issue_refs: ["agentic-art-research#85"]
+    checks:
+      - python3 -m unittest tests.test_visual_language tests.test_self_repetition tests.test_handoff_build tests.test_handoff_validation -v
+      - python3 tools/validate.py --check
+      - python3 -m unittest discover -s tests -v
+      - git diff --check

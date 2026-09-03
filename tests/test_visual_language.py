@@ -71,7 +71,7 @@ class VisualLanguageValidationTest(unittest.TestCase):
         self.assertEqual([], validate_repository(root))
         project = create_project(root, "draft-visual", "Draft Visual")
         self.assertEqual([], validate_repository(root))
-        self.assertEqual("1.0.0", yaml.safe_load((project / "05_production/visual-language.yaml").read_text(encoding="utf-8"))["schema_version"])
+        self.assertEqual("1.1.0", yaml.safe_load((project / "05_production/visual-language.yaml").read_text(encoding="utf-8"))["schema_version"])
 
     def test_ready_visual_language_is_valid(self) -> None:
         root = self.make_root()
@@ -122,6 +122,30 @@ class VisualLanguageValidationTest(unittest.TestCase):
 
         rules = self.rules_for(mutate)
         self.assertIn("VISUAL-LANGUAGE-COMPLETENESS", rules)
+
+    def test_v11_mechanism_requires_component_and_reference_grounding(self) -> None:
+        def mutate(project: Path) -> None:
+            path = project / "05_production/visual-language.yaml"
+            document = yaml.safe_load(path.read_text(encoding="utf-8"))
+            technique = document["techniques"][0]
+            technique.pop("proposition_component_ids")
+            technique["reference_ids"] = ["XR999"]
+            path.write_text(yaml.safe_dump(document, sort_keys=False, allow_unicode=True), encoding="utf-8")
+
+        rules = self.rules_for(mutate)
+        self.assertIn("VISUAL-LANGUAGE-MECHANISM-GROUNDING", rules)
+
+    def test_legacy_v10_mechanism_remains_readable_during_migration(self) -> None:
+        def mutate(project: Path) -> None:
+            path = project / "05_production/visual-language.yaml"
+            document = yaml.safe_load(path.read_text(encoding="utf-8"))
+            document["schema_version"] = "1.0.0"
+            technique = document["techniques"][0]
+            for field in ("mechanism", "proposition_component_ids", "reference_ids"):
+                technique.pop(field, None)
+            path.write_text(yaml.safe_dump(document, sort_keys=False, allow_unicode=True), encoding="utf-8")
+
+        self.assertNotIn("VISUAL-LANGUAGE-MECHANISM-GROUNDING", self.rules_for(mutate))
 
 
 if __name__ == "__main__":

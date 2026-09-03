@@ -10,6 +10,7 @@ The scanner reads only supported claim-bearing fields from these project-relativ
 - `03_knowledge/claims.jsonl`
 - `04_decisions/production-hypotheses.yaml`
 - `05_production/production-brief.yaml`
+- `05_production/visual-language.yaml` (v1.1以降はmechanismを命題componentとprior-art/external-referenceへ接続)
 - `05_production/creative-direction.md`
 - `03_plan/production-plan.yaml`
 - exported handoff creative-direction and hypothesis snapshots
@@ -17,6 +18,11 @@ The scanner reads only supported claim-bearing fields from these project-relativ
 Every invocation requires the repository name, the exact source commit for the supplied history snapshot, and a
 fixed timestamp. The JSON report contains project-relative or opaque signal references, scores, and the measured
 `LOW`/`MEDIUM`/`HIGH` level. It never copies claim text or absolute local paths to the report.
+
+`self-repetition-scan/v2`では、manifestの`project.creator_id`がある候補について同一creatorの履歴だけを比較し、
+履歴rootへアクセスできない場合は`history_access.status: UNAVAILABLE`、`risk_level: UNKNOWN`として明示する。
+この状態を`LOW`や`MEDIUM`へ変換してhandoffを確定してはならない。v1の既存挙動（履歴root不在時はエラー、
+creatorによる絞り込みなし）は後方互換のため維持する。
 
 ## Verify the four-project fixture
 
