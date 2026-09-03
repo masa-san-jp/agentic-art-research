@@ -1144,7 +1144,7 @@ Issue #83の未実装だった横断検索を、明示された候補projectと�
 
 ### Outcomes
 
-- Full child suite `289/289` and all local validator/security/docs/chaos/graph/handoff release gates passed. Remote PR quality gates remain before the task can be marked DONE.
+- Full child suite `289/289` and all local validator/security/docs/chaos/graph/handoff release gates passed. PR #87 was merged to `main` as `1e8390e6ac7286c23a971d19a8797be4851cf086`; GitHub `validate` was not started because of an account billing limit and is retained as an environment note, not a test pass.
 
 ### Outcomes & Retrospective
 
