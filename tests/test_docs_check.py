@@ -16,6 +16,29 @@ class DocumentationCheckContractTest(unittest.TestCase):
     def test_repository_documentation_contract_passes(self) -> None:
         self.assertEqual([], check_documentation(REPO_ROOT))
 
+    def test_agents_contract_is_self_contained_for_a_fresh_clone(self) -> None:
+        agents = (REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8")
+
+        for required in (
+            "python3 -m venv .venv",
+            ".venv/bin/python -m pip install -r requirements.txt",
+            ".venv/bin/python -m unittest discover -s tests -v",
+            ".venv/bin/python tools/validate.py --check",
+            ".venv/bin/python tools/next_action.py",
+            ".venv/bin/python tools/task_runtime.py",
+            "write_targets",
+            "lease",
+            "budget_remaining.exceeded",
+            "07_runtime/completion-report.json",
+            "<external-output-root>/<project-id>/",
+            "PRIVATE_RAW",
+            "外部送信",
+        ):
+            self.assertIn(required, agents)
+
+        self.assertNotIn("/Users/masa/", agents)
+        self.assertTrue((REPO_ROOT / "requirements.txt").is_file())
+
     def test_missing_required_section_is_reported(self) -> None:
         temporary = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, temporary, True)

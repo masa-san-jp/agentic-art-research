@@ -7,9 +7,27 @@
 ## Repository/output boundary
 
 - このリポジトリは常にプロトコル、設定、スキーマ、検証器、テストの正本として扱う。デモや実際の制作リサーチ成果物を常設しない。
-- 実際のプロジェクト成果物は、プロジェクトIDごとに /Users/masa/マイドライブ/AI-Agent-Pipeline/Agentic-Art-Output/<project-id>/ へ保存する。
+- 実際のプロジェクト成果物は、実行時に明示するリポジトリ外の `<external-output-root>/<project-id>/` へ保存する。利用者固有の絶対パスをこのrepositoryへ書かない。
 - プロジェクト生成・fixture展開・graph生成は一時cloneまたは一時作業rootで実行し、検証後にプロジェクト単位のフォルダだけを出力先へ蓄積する。
 - protocol repositoryのprojects/に実プロジェクトを追加せず、data/へ実プロジェクト由来のgraphを残さない。
+
+## Fresh-clone startup
+
+fresh cloneには依存関係が入っていない前提で、最初に次の条件付きpreflightを行う。`.venv/bin/python` が無い、または `yaml` と `jsonschema` のimportに失敗した場合だけ、repository-localの環境を準備する。
+
+```bash
+if ! test -x .venv/bin/python || ! .venv/bin/python -c 'import yaml, jsonschema' >/dev/null 2>&1; then
+  python3 -m venv .venv
+  .venv/bin/python -m pip install -r requirements.txt
+fi
+```
+
+このpreflight以外の通常task実行ではinstallやnetwork accessを暗黙に行わない。`.venv/` は環境生成物でありcommitしない。セットアップ後に宣言されたrepository checkは必ず次のinterpreterで実行する。
+
+```bash
+.venv/bin/python -m unittest discover -s tests -v
+.venv/bin/python tools/validate.py --check
+```
 
 ## Read order
 
@@ -26,7 +44,7 @@
 - 実装中に実行計画の `Progress`、`Surprises & Discoveries`、`Decision Log`、`Outcomes` を更新する。
 - セッション記憶を前提にしない。別のGPT-5.6 LunaまたはClaude Sonnet級エージェントが、リポジトリだけで再開できる状態を残す。
 - 曖昧さは設計仕様、テスト、保守的な既定値の順で解決する。人間確認は仕様書 §6.2 の場合だけ。
-- 実装後は `python3 -m unittest discover -s tests -v` と `python3 tools/validate.py --check` を実行する。
+- 実装後は `.venv/bin/python -m unittest discover -s tests -v` と `.venv/bin/python tools/validate.py --check` を実行する。
 - 完了時にタスク状態、実行コマンド、結果、残課題、次の開始点を更新する。
 
 ## 無人でプロジェクトを進めるとき
@@ -35,7 +53,7 @@
 全文読んでから組み立てる必要は無い——**入口が、そのタスクに要る分だけを返す。**
 
 ```
-python3 tools/next_action.py project/<slug> --worker <id> --now <RFC3339>
+.venv/bin/python tools/next_action.py project/<slug> --worker <id> --now <RFC3339>
 ```
 
 返る JSON が、そのターンの全てである。
@@ -47,7 +65,7 @@ python3 tools/next_action.py project/<slug> --worker <id> --now <RFC3339>
   `EVIDENCE_ROUND` / `ANSWER_FOUND` を残す。停止判定と予算はこの記録だけを見ているので、
   **記録しない探索は、していない探索と区別が付かない。**
 - **長い作業では心拍を打つ。** 1つのタスクが lease（既定1800秒）より長くかかるなら、その間に
-  `python3 tools/task_runtime.py project/<slug> heartbeat --task-id <id> --worker-id <id> --lease-token <token> --now <RFC3339>`
+  `.venv/bin/python tools/task_runtime.py project/<slug> heartbeat --task-id <id> --worker-id <id> --lease-token <token> --now <RFC3339>`
   で lease を延ばす。**期限切れは作業の失敗ではないので試行回数を減らさない**が、他の作業者が
   そのタスクを取れる状態になるので、握ったまま黙っていない。
 - **`acceptance` のコマンドを全部通してから完了させる。** 通らないまま `complete` しない。
@@ -58,6 +76,12 @@ python3 tools/next_action.py project/<slug> --worker <id> --now <RFC3339>
 - **`budget_remaining.exceeded` が空でないなら、そこで打ち切る。** 質問を `ANSWERED` か
   `UNRESOLVED` で終端させて返す。上限を越えて調べ続けない。
 - 全タスクが終わると入口は `NO_TASK_READY` と次の工程名を返す。そこから先も人を待たない。
+
+## Completion evidence
+
+- `acceptance` の全commandが成功してからだけ `complete` する。失敗は成功扱いにせず、named failureまたは未解決事項として残す。
+- 完了時は task ID、対象project、変更path、acceptance commandと結果、commit/source commit、残課題、次の開始点、機微情報と外部artifactの有無を、リポジトリ内のtask/runtime正本またはPRの証跡へ記録する。
+- project taskの成果物はcanonical toolが生成する `07_runtime/completion-report.json` を正本とし、`data/` や生成されたruntimeを手編集しない。repository maintenance taskでは、該当する `PLANS.md`、`execution/task-queue.yaml`、`execution/state.yaml`、`execution/handoff.md`だけを更新対象として扱う。
 
 ## Engineering rules
 
