@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -38,6 +39,34 @@ class DocumentationCheckContractTest(unittest.TestCase):
 
         self.assertNotIn("/Users/masa/", agents)
         self.assertTrue((REPO_ROOT / "requirements.txt").is_file())
+
+    def test_direct_offline_evaluation_uses_a_portable_external_root(self) -> None:
+        readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn('EVAL_ROOT="$(mktemp -d /tmp/agentic-art-evaluation.XXXXXX)"', readme)
+        self.assertIn(
+            '"$PYTHON" tools/evaluate.py --offline-fixture tests/fixtures/harmony --root "$EVAL_ROOT"',
+            readme,
+        )
+        self.assertNotIn('"$PYTHON" tools/evaluate.py --offline-fixture tests/fixtures/harmony\n', readme)
+
+        with tempfile.TemporaryDirectory() as output_root:
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "tools/evaluate.py",
+                    "--offline-fixture",
+                    "tests/fixtures/harmony",
+                    "--root",
+                    output_root,
+                ],
+                cwd=REPO_ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertTrue((Path(output_root) / "projects" / "harmony-study").is_dir())
+        self.assertFalse((REPO_ROOT / "projects" / "harmony-study").exists())
 
     def test_missing_required_section_is_reported(self) -> None:
         temporary = Path(tempfile.mkdtemp())
