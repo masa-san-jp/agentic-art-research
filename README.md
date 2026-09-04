@@ -244,7 +244,8 @@ PYTHON=".venv/bin/python"
 "$PYTHON" tools/docs_check.py --check
 "$PYTHON" tools/chaos_check.py
 "$PYTHON" tools/build_graph.py --check
-"$PYTHON" tools/evaluate.py --offline-fixture tests/fixtures/harmony
+EVAL_ROOT="$(mktemp -d /tmp/agentic-art-evaluation.XXXXXX)"
+"$PYTHON" tools/evaluate.py --offline-fixture tests/fixtures/harmony --root "$EVAL_ROOT"
 "$PYTHON" tools/release_check.py \
   --offline-fixture tests/fixtures/harmony \
   --ci-evidence execution/ci-evidence.json
