@@ -1,8 +1,8 @@
 contract_version: research-memory/v1
 owner: agentic-art-research
 allowed_kinds: [evidence, observation, claim, relationship, contradiction, external-reference, insight, decision, rejected-option, uncertainty, requirement, production-hypothesis, prior-art, question]
-rejection_codes: [none, budget-mismatch, condition-mismatch, unsupported, false-evidence, rights-unclear, safety-unresolved]
-non_revivable_codes: [false-evidence, rights-unclear, safety-unresolved]
+rejection_codes: [none, evidence-contradicted, insufficient-evidence, budget, environment, timing, artistic-choice, budget-mismatch, condition-mismatch, unsupported, false-evidence, rights-unclear, safety-unresolved]
+non_revivable_codes: [evidence-contradicted, false-evidence, rights-unclear, safety-unresolved]
 payload_fields: [project_id, source_creator_id, items, source_snapshot_sha256, reuse_trace]
 item_fields: [kind, data, rejection_code, conditions, reconsider_when]
 candidate_owners: [self-model-notes, art-history-notes, marketing-trends-notes]

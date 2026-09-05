@@ -1,5 +1,14 @@
 # Research memory
 
+Every native decision reuse entry carries a closed `common_trace` conforming to
+`reuse-trace/v1`: query, selection policy version, exact project/source/knowledge
+snapshot, reviewed item scope, immutable retrieved artifact identity/hash and the
+affected native decision. The owner checks this against the pinned stored payload;
+a retrieval hit alone remains NOT_RECORDED. Rejected artifact lifecycle cannot be
+adopted as accepted evidence. The rejection taxonomy distinguishes
+evidence-contradicted, insufficient-evidence, budget, environment, timing and
+artistic-choice; earlier owner reason codes remain readable.
+
 Owner implementation of AAK-08 / Issue #93. Purpose and acceptance remain in
 AAK-SPEC/PLAN at `b0e7c7f8d0a1f756fa708deef4fb380a62e45e0d`; this describes the implemented interface.
 

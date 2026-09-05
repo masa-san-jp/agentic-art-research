@@ -112,8 +112,22 @@ def validate_payload(payload):
     if not isinstance(payload["reuse_trace"], list):
         raise ValueError("explicit reuse trace list required")
     for trace in payload["reuse_trace"]:
-        if set(trace) != {"reference", "knowledge_commit", "item_id", "decision_id", "disposition", "reason", "effect"} or trace["decision_id"] not in ids or trace["disposition"] not in {"accepted", "rejected", "reconsidered"} or not trace["reason"] or not trace["effect"]:
+        if set(trace) != {"reference", "knowledge_commit", "item_id", "decision_id", "disposition", "reason", "effect", "common_trace"} or trace["decision_id"] not in ids or trace["disposition"] not in {"accepted", "rejected", "reconsidered"} or not trace["reason"] or not trace["effect"]:
             raise ValueError("reuse must identify an actual current decision, reason, and effect")
+        common = trace["common_trace"]
+        if not isinstance(common, dict) or set(common) != {"contract_version", "query", "selection_policy_version", "input_snapshot", "seen_scope", "records", "status"} or common["contract_version"] != "reuse-trace/v1" or common["status"] != "REUSED":
+            raise ValueError("explicit common reuse-trace/v1 required")
+        if not isinstance(common["query"], str) or not isinstance(common["selection_policy_version"], str) or not common["selection_policy_version"] or common["input_snapshot"] != {"project_id": payload["project_id"], "source_snapshot_sha256": payload["source_snapshot_sha256"], "knowledge_commit": trace["knowledge_commit"]}:
+            raise ValueError("reuse query, policy and exact input snapshot required")
+        if common["seen_scope"] != [trace["item_id"]] or not isinstance(common["records"], list) or len(common["records"]) != 1:
+            raise ValueError("reuse must identify the reviewed item scope")
+        row = common["records"][0]
+        if set(row) != {"record_id", "revision", "owner", "decision", "reason", "affected", "origin_instance_id", "payload_ref", "content_sha256"}:
+            raise ValueError("closed common reuse record required")
+        expected = {"accepted": "adopted", "rejected": "rejected", "reconsidered": "revalidate"}[trace["disposition"]]
+        ref = trace["reference"]
+        if any(row[k] != ref[k] for k in ("record_id", "revision", "origin_instance_id")) or row["owner"] != ref["owner_repository"] or row["decision"] != expected or row["reason"] != trace["reason"] or row["affected"] != [trace["decision_id"]]:
+            raise ValueError("common reuse trace differs from native decision")
     return payload
 
 
@@ -216,7 +230,7 @@ class MemoryStore:
                 raise ValueError("explicit stable identity required")
         if r["payload_ref"] != "knowledge/payloads/" + identity(r) + ".json" or r["content_sha256"] != hashed(encoded(payload)):
             raise ValueError("immutable payload path/hash mismatch")
-        if r["access_scope"] not in {"public", "creator-private"} or r["rights"] != {"knowledge_write": True, "redistribute": r["access_scope"] == "public"}:
+        if r["access_scope"] not in {"public", "creator-private"} or r["rights"] != {"knowledge_write": True, "redistribute": r["access_scope"] == "public"} or r["rights"]["knowledge_write"] is not True:
             raise ValueError("explicit write and redistribution permission required")
         if r["access_scope"] == "creator-private" and not r["consent_ref"]:
             raise ValueError("consent reference required")
@@ -272,10 +286,13 @@ class MemoryStore:
             if prior_record is None:
                 raise ValueError("reuse reference absent from pinned knowledge")
             prior_record = json.loads(prior_record)
+            row = trace["common_trace"]["records"][0]
+            if any(row[k] != prior_record[k] for k in ("payload_ref", "content_sha256")):
+                raise ValueError("reuse payload provenance mismatch")
             prior_payload = json.loads(self.read(trace["knowledge_commit"], prior_record["payload_ref"]))
             item = next((i for i in prior_payload["items"] if i["data"]["id"] == trace["item_id"]), None)
             _, invalid = self.active(head)
-            if item is None or (trace["disposition"] != "rejected" and (identity(prior_record) in invalid or item["rejection_code"] in POLICY["non_revivable_codes"] or item["data"].get("epistemic_status") == "REJECTED")):
+            if item is None or (trace["disposition"] != "rejected" and (prior_record["lifecycle"] == "rejected" or identity(prior_record) in invalid or item["rejection_code"] in POLICY["non_revivable_codes"] or item["data"].get("epistemic_status") == "REJECTED")):
                 raise ValueError("unresolved or disallowed reuse")
             if trace["reference"] not in r["derived_from"]:
                 raise ValueError("reuse dependency must propagate source corrections")
@@ -442,7 +459,8 @@ def main():
                 result = store.commit(candidate, args.knowledge_commit, args.operation_id, args.run_id)
         print(json.dumps(result, ensure_ascii=False, sort_keys=True)); return 0
     except (ValueError, OSError, TypeError, KeyError, AttributeError) as exc:
-        print(json.dumps({"status": "INDEX_PENDING" if args.command == "index" else "REJECTED", "target_commit": args.knowledge_commit, "reason": str(exc)})); return 1
+        status = "INDEX_PENDING" if args.command == "index" else "CONFLICT" if str(exc) in {"OPERATION_CONFLICT", "PARENT_CONFLICT", "REVISION_CONFLICT"} else "REJECTED"
+        print(json.dumps({"status": status, "target_commit": args.knowledge_commit, "reason": str(exc)})); return 1
 
 
 if __name__ == "__main__":

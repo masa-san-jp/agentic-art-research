@@ -99,7 +99,18 @@ class ResearchMemoryTests(unittest.TestCase):
         payload["reuse_trace"] = [{"reference": hit["reference"], "knowledge_commit": receipt["target_commit"],
             "item_id": "CL001", "decision_id": "DC001", "disposition": "accepted", "reason": "Applicable prior observation",
             "effect": "DC001 selects the scale prototype based on CL001; installation-scale uncertainty stays unresolved."}]
+        payload["reuse_trace"][0]["common_trace"] = {
+            "contract_version": "reuse-trace/v1", "query": "", "selection_policy_version": "research-memory/v1",
+            "input_snapshot": {"project_id": payload["project_id"], "source_snapshot_sha256": payload["source_snapshot_sha256"], "knowledge_commit": receipt["target_commit"]},
+            "seen_scope": ["CL001"], "status": "REUSED", "records": [{
+                "record_id": first["record"]["record_id"], "revision": 1, "owner": "agentic-art-research",
+                "origin_instance_id": first["record"]["origin_instance_id"], "payload_ref": first["record"]["payload_ref"],
+                "content_sha256": first["record"]["content_sha256"], "decision": "adopted",
+                "reason": "Applicable prior observation", "affected": ["DC001"]}]}
         second = self.candidate("second", payload=payload); second["record"]["derived_from"] = [hit["reference"]]
+        bad = copy.deepcopy(second); bad["payload"]["reuse_trace"][0]["common_trace"]["records"][0]["content_sha256"] = "0" * 64
+        bad["record"]["content_sha256"] = hashed(encoded(bad["payload"]))
+        with self.assertRaisesRegex(ValueError, "provenance mismatch"): self.commit(bad, "bad-trace")
         saved = self.commit(second, "second")
         data = json.loads(self.store.read(saved["target_commit"], second["record"]["payload_ref"]))
         self.assertEqual("accepted", data["reuse_trace"][0]["disposition"])
