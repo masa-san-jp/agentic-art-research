@@ -1,9 +1,9 @@
 version: 6
 updated_at: "2026-09-03T20:17:09+09:00"
 current_milestone: G6
-next_task: null
+next_task: AAK-08
 last_completed_task: SELF-REPETITION-V2-001
-terminal: true
+terminal: false
 blocked_by: []
 resume_from:
   read:

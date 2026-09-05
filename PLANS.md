@@ -28,6 +28,10 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 
 ### Progress
 
+- [ ] (2026-09-05 UTC) `AAK-08`: Issue #93 registered IN_PROGRESS on agent/aak-08-research-memory, base 71bfec77ea0d189186b8248565d340c124b81eab. Pinned AAK-SPEC/PLAN b0e7c7f8d0a1f756fa708deef4fb380a62e45e0d govern the added knowledge cycle. External dependency AAK-04 is qualified at 83f7e9e8d1c6e25b39351aebb6eb15cb12da4685 / instance-profile/v1 / orchestration PR201 (14 focused / 580 full tests with one existing skip PASS); unmerged candidate, not main integration.
+
+AAK-08 implementation steps: curate schema-valid records from external projects; commit only allowlisted knowledge with immutable revisions and receipts; rebuild owner index; connect retrieval and explicit disposition to context_pack/next_action; preserve source corrections, rejection reasons, and prior repetition guards. Validate AC1..5 using synthetic external Git stores and independent projects, then canonical validator/full tests/diff. Real agent AAK-02 integration remains NOT_RUN. On interruption resume from execution/state.yaml and execution/handoff.md; no actual project, raw source, or profile is copied into this protocol.
+
 - [x] `HANDOFF-REFERENCE-CONTRACT-001`: Issue #43のsource-ref Producer/Consumer契約をResearch側から公開する。Production consumerの実装・mergeは別repoの責務として行わない。120 testとvalidatorが合格。
 - [x] (2026-08-16 JST) `COMPLETION-QUALITY-001`: Issue #44の調査量・先行作品調査・自己反復リスクを完了条件へ組み込む。未達は`INCOMPLETE`としてhandoffを拒否する。123 unittest、validator、docs、security、chaos、graph、offline evaluation、release、handoff release gates合格。
 - [x] (2026-08-25 JST) `RUNTIME-005`: `task_runtime.peek_next()`、`next_action.py --dry-run`、preview/live一致テスト、execution queue/stateのblocking validatorを実装。対象58テスト合格。次は`BOUNDARY-001`。

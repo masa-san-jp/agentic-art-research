@@ -299,6 +299,7 @@ def scan_projects(
     source_commit: str,
     now: str,
     contract_version: str = CONTRACT_VERSION,
+    memory_query: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Return a deterministic, metadata-only repetition report."""
     if contract_version not in {CONTRACT_VERSION, CONTRACT_VERSION_V2}:
@@ -340,6 +341,21 @@ def scan_projects(
             and (candidate_project.creator_id is None or project.creator_id == candidate_project.creator_id)
         ):
             projects.append(project)
+    if memory_query is not None:
+        from research_memory import query_memory
+        if memory_query["at"] != now or (candidate_project.creator_id is not None and candidate_project.creator_id != memory_query["creator"]):
+            raise SelfRepetitionError("memory query creator/clock differs from candidate")
+        memory_projects: dict[str, list[Signal]] = {}
+        for hit in query_memory(memory_query)["records"]:
+            if candidate_project.creator_id is not None and hit["source_creator_id"] != candidate_project.creator_id:
+                continue
+            if hit["disposition"] not in {"CANDIDATE", "RECONSIDER"} or hit["kind"] not in {"claim", "production-hypothesis"} or hit["project_id"] == candidate_project.project_id:
+                continue
+            for identifier, field, text in _walk_text_fields(hit["data"]):
+                reference = "knowledge/" + hit["knowledge_commit"] + "/" + hit["item_id"] + "#" + field
+                memory_projects.setdefault(hit["project_id"], []).append(Signal(hit["project_id"], reference, identifier, text))
+        known_projects = {p.project_id for p in projects}
+        projects.extend(ProjectSignals(pid, memory_query["creator"], tuple(signals)) for pid, signals in sorted(memory_projects.items()) if pid not in known_projects)
     comparisons: list[dict[str, Any]] = []
     for candidate_signal in candidate_project.signals:
         best_by_project: dict[str, tuple[Signal, float, list[str]]] = {}
@@ -440,6 +456,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--source-commit", required=True)
     parser.add_argument("--now", required=True)
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--memory-query", type=Path, help="explicit pinned owner knowledge query JSON")
     parser.add_argument("--project", type=Path, help="project to receive the report when --apply is set")
     parser.add_argument("--apply", action="store_true", help="write the generated risk block to --project")
     parser.add_argument("--check", action="store_true", help="verify deterministic repeated output")
@@ -458,6 +475,7 @@ def main(argv: list[str] | None = None) -> int:
             source_commit=args.source_commit,
             now=args.now,
             contract_version=args.contract_version,
+            memory_query=json.loads(args.memory_query.read_text()) if args.memory_query else None,
         )
         rendered = _render_report(report)
         if args.check:
@@ -468,6 +486,7 @@ def main(argv: list[str] | None = None) -> int:
                 source_commit=args.source_commit,
                 now=args.now,
                 contract_version=args.contract_version,
+                memory_query=json.loads(args.memory_query.read_text()) if args.memory_query else None,
             )
             if rendered != _render_report(repeated):
                 raise SelfRepetitionError("repeated scan output differs")

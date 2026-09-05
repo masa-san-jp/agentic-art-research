@@ -3,6 +3,18 @@ updated_at: "2026-09-03T10:00:00+09:00"
 selection_policy: lowest_id_ready_with_dependencies_done
 allowed_statuses: [BACKLOG, READY, IN_PROGRESS, BLOCKED, DONE]
 tasks:
+  - id: AAK-08
+    milestone: G7
+    title: Persist curated research memory and reuse it across projects
+    status: IN_PROGRESS
+    depends_on: [SELF-REPETITION-V2-001]
+    issue_refs: ["agentic-art-research#93", "agentic-art-orchestration#196"]
+    acceptance: AAK-08-AC1..5 at AAK-SPEC/PLAN b0e7c7f8d0a1f756fa708deef4fb380a62e45e0d; immutable owner Git, traceable decisions, scoped reuse, revision recovery, and privacy rejection.
+    checks:
+      - .venv/bin/python -m unittest tests.test_research_memory -v
+      - .venv/bin/python tools/validate.py --check
+      - .venv/bin/python -m unittest discover -s tests -v
+      - git diff --check
   - id: BOOTSTRAP-001
     milestone: M0
     title: Repository bootstrap

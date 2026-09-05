@@ -285,3 +285,7 @@ docs/         設計・運用・runtime・schema・連携の詳細
 - 権利不明素材は採用せず、理由付きで棄却またはgapにします。
 - `data/`、runtime、handoffは正本から再生成し、手編集しません。
 - 外部送信、公開、応募、購入、契約、削除は自動実行しません。
+
+## 累積研究知識
+
+AAK-08のowner Git保存・再読込・条件付き再利用は[research-memory](docs/research-memory.md)を参照。実project/runtimeは外部に維持し、code commitとknowledge commitを分離する。

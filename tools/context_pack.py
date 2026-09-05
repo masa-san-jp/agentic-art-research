@@ -74,6 +74,7 @@ def build_context_pack(
     protocol_root: Path | None = None,
     work_root: Path | None = None,
     human_decision: dict[str, Any] | None = None,
+    memory_query: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     # Context files are project-owned and therefore always read from the work
     # root.  protocol_root is part of the shared API even though this pack has
@@ -96,6 +97,9 @@ def build_context_pack(
     }
     if human_decision is not None:
         pack["human_decision"] = dict(human_decision)
+    if memory_query is not None:
+        from research_memory import query_memory
+        pack["prior_knowledge"] = query_memory(memory_query)
     return pack
 
 
@@ -108,6 +112,7 @@ def main() -> int:
     parser.add_argument("--root", type=Path, default=ROOT, help="compatibility alias for --work-root")
     parser.add_argument("--work-root", type=Path, help="project work root")
     parser.add_argument("--protocol-root", type=Path, help="read-only protocol root (reserved for shared context)")
+    parser.add_argument("--memory-query", type=Path, help="explicit external owner/creator/pinned knowledge query JSON")
     args = parser.parse_args()
     try:
         content = stable_json(
@@ -118,6 +123,7 @@ def main() -> int:
                 args.role,
                 protocol_root=args.protocol_root.resolve() if args.protocol_root else None,
                 work_root=args.work_root.resolve() if args.work_root else None,
+                memory_query=__import__("json").loads(args.memory_query.read_text()) if args.memory_query else None,
             )
         )
     except (FileNotFoundError, InputParseError, ValueError) as exc:
