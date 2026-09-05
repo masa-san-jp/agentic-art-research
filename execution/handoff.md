@@ -1,5 +1,35 @@
 # AAK-08 verified handoff
 
+Latest qualification: local `b67d777422960445e33199cf37e636ed71e4a2eb`, remote
+`13c819eb34e91198c3584b8cfd75c81494ab148c`, identical tree
+`1a052301f312b22d5e0d67410281bcc0f761c9b6`. This supersedes the earlier code
+qualification below. The common trace now binds query/policy, input snapshot,
+seen item scope, artifact revision/payload hash and affected native decision.
+Required rejection reasons are distinct. Rejected artifact lifecycle cannot be
+adopted; stale parent/operation/revision failures report CONFLICT.
+
+Focused 7 PASS; full 298 PASS in 187.227s; validator/docs/diff PASS. Full log SHA-256
+`3901b48a974049bc4c6ebf01f3feba05ec854d8e6c4299e23d16e3c4213491e8`.
+An intermediate full run had one state/queue synchronization failure; it was
+repaired and the full suite rerun. No test or gate was weakened.
+
+Latest retained synthetic knowledge: first `74e3518df8e2c69d281b80a5dc07b72f2194f3cd`,
+second `7188bc56daa900455d4cf757b91d901611703238`. The second project's DC001 chooses
+a scale prototype using first/CL001. Its reuse-trace/v1 has query empty (all),
+selection_policy_version research-memory/v1, seen_scope [CL001], affected [DC001],
+decision adopted, reason Applicable prior observation, source artifact first@1,
+origin instance-a, payload SHA-256
+`85dcd310773c11f47f37e5276506ca5f94d26e0893273f66e40c36de362b8242`.
+Source snapshot of repeated `1` digits is explicitly synthetic fixture metadata;
+it is not a real project hash or live-agent evidence. AC1 separately tests actual
+native project capture and hashing. Full payload and trace are retained in the
+external synthetic owner store, with the same restart/reload test exercised.
+
+AAK-12 is now submitted as viewer-response-notes PR7. Next eligible prerequisite:
+Production #60 for Project #6/AAK-13. AAK-09 and live AAK-02 remain uncompleted.
+
+The following older proof is historical evidence for the preceding candidate:
+
 Task AAK-08 / Issue #93 / branch agent/aak-08-research-memory.
 Base 71bfec77ea0d189186b8248565d340c124b81eab; SSOT pin b0e7c7f8d0a1f756fa708deef4fb380a62e45e0d.
 AAK-04 qualified candidate and checks are in PLANS.md. Code and all five synthetic acceptance items PASS. No merge or live integration has been performed.

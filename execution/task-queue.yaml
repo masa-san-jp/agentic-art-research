@@ -6,7 +6,7 @@ tasks:
   - id: AAK-08
     milestone: G7
     title: Persist curated research memory and reuse it across projects
-    status: IN_PROGRESS
+    status: DONE
     depends_on: [SELF-REPETITION-V2-001]
     issue_refs: ["agentic-art-research#93", "agentic-art-orchestration#196"]
     acceptance: AAK-08-AC1..5 at AAK-SPEC/PLAN b0e7c7f8d0a1f756fa708deef4fb380a62e45e0d; immutable owner Git, traceable decisions, scoped reuse, revision recovery, and privacy rejection.

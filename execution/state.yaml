@@ -1,9 +1,9 @@
 version: 6
 updated_at: "2026-09-03T20:17:09+09:00"
 current_milestone: G6
-next_task: AAK-08
-last_completed_task: SELF-REPETITION-V2-001
-terminal: false
+next_task: null
+last_completed_task: AAK-08
+terminal: true
 blocked_by: []
 resume_from:
   read:
@@ -61,7 +61,7 @@ resume_from:
     - tests/test_harness.py
     - docs/agent-runtime-guide.md
     - docs/operations.md
-  action: Finish AAK-08 common reuse-trace and rejection taxonomy alignment, requalify candidate and update PR95. AAK-09 awaits AAK-05 and AAK-07 owner gates. Real AAK-02 integration is NOT_RUN.
+  action: AAK-08 requalified at 13c819eb34e91198c3584b8cfd75c81494ab148c, PR95. AAK-09 awaits AAK-05 and AAK-07 owner gates; parent continues Production60 prerequisite for AAK-13. Real AAK-02 integration is NOT_RUN.
 last_verification:
   result: PASS_WITH_ENVIRONMENT_NOTE
   command: /private/tmp/aap-production-py312/bin/python -m unittest discover -s tests -v; validate/security/docs/chaos/graph/handoff gates; git diff --check

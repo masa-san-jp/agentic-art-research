@@ -1148,6 +1148,8 @@ Issue #83の未実装だった横断検索を、明示された候補projectと�
 
 ### Outcomes
 
+AAK-08 common-contract requalification (2026-09-05): candidate 13c819eb34e91198c3584b8cfd75c81494ab148c, exact tree 1a052301f312b22d5e0d67410281bcc0f761c9b6. Common reuse provenance and six required rejection categories are enforced; 7 focused and 298 full tests PASS after repairing an intermediate state/queue mismatch. Latest proof and retained historical candidate are distinguished in execution/handoff.md. Live integration remains NOT_RUN.
+
 AAK-08 (2026-09-05): local code ec6b9eba5b2597368c5cfd8eaef6a611753a6f21 / GitHub candidate a8c859a810b7b55de775a0f501e3455732c1fd65 have identical tree 48433ed294fb3abc100e3fa5508585c8a5208284. Focused 7 PASS, full 298 PASS, canonical validator/docs/diff PASS. All five synthetic ACs passed. Two retained synthetic knowledge commits and the second decision's explicit reuse trace are in execution/handoff.md. Owner-candidate transport is OWNER_VALIDATION_REQUIRED; real destination intake and AAK-02 integration are NOT_RUN. AAK-09 remains dependent on blocked AAK-05/07; parent can continue AAK-12. Initial failures (manifest nesting, missing fixture runtime initialization) were repaired without changing gates.
 
 - Full child suite `289/289` and all local validator/security/docs/chaos/graph/handoff release gates passed. PR #87 was merged to `main` as `1e8390e6ac7286c23a971d19a8797be4851cf086`; GitHub `validate` was not started because of an account billing limit and is retained as an environment note, not a test pass.
