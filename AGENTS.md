@@ -6,6 +6,8 @@
 
 ## Repository/output boundary
 
+- AAK-08の限定拡張はIssue #93とAAK-SPEC/PLAN commit `b0e7c7f8d0a1f756fa708deef4fb380a62e45e0d`に従う。検証済みの再利用知識は[research-memory](docs/research-memory.md)のowner Gitへ保存する。実project/runtime/rawを無差別に保存する許可ではない。
+
 - このリポジトリは常にプロトコル、設定、スキーマ、検証器、テストの正本として扱う。デモや実際の制作リサーチ成果物を常設しない。
 - 実際のプロジェクト成果物は、実行時に明示するリポジトリ外の `<external-output-root>/<project-id>/` へ保存する。利用者固有の絶対パスをこのrepositoryへ書かない。
 - プロジェクト生成・fixture展開・graph生成は一時cloneまたは一時作業rootで実行し、検証後にプロジェクト単位のフォルダだけを出力先へ蓄積する。

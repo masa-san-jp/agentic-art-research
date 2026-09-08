@@ -28,6 +28,10 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 
 ### Progress
 
+- [x] (2026-09-05 UTC) `AAK-08`: Issue #93 code and synthetic acceptance complete on agent/aak-08-research-memory, base 71bfec77ea0d189186b8248565d340c124b81eab; evidence in Outcomes and execution/handoff.md. Pinned AAK-SPEC/PLAN b0e7c7f8d0a1f756fa708deef4fb380a62e45e0d govern the added knowledge cycle. External dependency AAK-04 is qualified at 83f7e9e8d1c6e25b39351aebb6eb15cb12da4685 / instance-profile/v1 / orchestration PR201 (14 focused / 580 full tests with one existing skip PASS); unmerged candidate, not main integration.
+
+AAK-08 implementation steps: curate schema-valid records from external projects; commit only allowlisted knowledge with immutable revisions and receipts; rebuild owner index; connect retrieval and explicit disposition to context_pack/next_action; preserve source corrections, rejection reasons, and prior repetition guards. Validate AC1..5 using synthetic external Git stores and independent projects, then canonical validator/full tests/diff. Real agent AAK-02 integration remains NOT_RUN. On interruption resume from execution/state.yaml and execution/handoff.md; no actual project, raw source, or profile is copied into this protocol.
+
 - [x] `HANDOFF-REFERENCE-CONTRACT-001`: Issue #43のsource-ref Producer/Consumer契約をResearch側から公開する。Production consumerの実装・mergeは別repoの責務として行わない。120 testとvalidatorが合格。
 - [x] (2026-08-16 JST) `COMPLETION-QUALITY-001`: Issue #44の調査量・先行作品調査・自己反復リスクを完了条件へ組み込む。未達は`INCOMPLETE`としてhandoffを拒否する。123 unittest、validator、docs、security、chaos、graph、offline evaluation、release、handoff release gates合格。
 - [x] (2026-08-25 JST) `RUNTIME-005`: `task_runtime.peek_next()`、`next_action.py --dry-run`、preview/live一致テスト、execution queue/stateのblocking validatorを実装。対象58テスト合格。次は`BOUNDARY-001`。
@@ -1143,6 +1147,10 @@ Issue #83の未実装だった横断検索を、明示された候補projectと�
 - 2026-09-03: 履歴rootへアクセスできないv2 scanは測定riskを返さず`UNKNOWN`を返す。read-only履歴アクセスの回復後に再走査する。
 
 ### Outcomes
+
+AAK-08 common-contract requalification (2026-09-05): candidate 13c819eb34e91198c3584b8cfd75c81494ab148c, exact tree 1a052301f312b22d5e0d67410281bcc0f761c9b6. Common reuse provenance and six required rejection categories are enforced; 7 focused and 298 full tests PASS after repairing an intermediate state/queue mismatch. Latest proof and retained historical candidate are distinguished in execution/handoff.md. Live integration remains NOT_RUN.
+
+AAK-08 (2026-09-05): local code ec6b9eba5b2597368c5cfd8eaef6a611753a6f21 / GitHub candidate a8c859a810b7b55de775a0f501e3455732c1fd65 have identical tree 48433ed294fb3abc100e3fa5508585c8a5208284. Focused 7 PASS, full 298 PASS, canonical validator/docs/diff PASS. All five synthetic ACs passed. Two retained synthetic knowledge commits and the second decision's explicit reuse trace are in execution/handoff.md. Owner-candidate transport is OWNER_VALIDATION_REQUIRED; real destination intake and AAK-02 integration are NOT_RUN. AAK-09 remains dependent on blocked AAK-05/07; parent can continue AAK-12. Initial failures (manifest nesting, missing fixture runtime initialization) were repaired without changing gates.
 
 - Full child suite `289/289` and all local validator/security/docs/chaos/graph/handoff release gates passed. PR #87 was merged to `main` as `1e8390e6ac7286c23a971d19a8797be4851cf086`; GitHub `validate` was not started because of an account billing limit and is retained as an environment note, not a test pass.
 
