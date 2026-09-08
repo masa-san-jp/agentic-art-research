@@ -9,6 +9,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import yaml
 
@@ -126,7 +127,14 @@ def source_ref_index(sources: HandoffSources, handoff: dict[str, Any]) -> dict[s
             # inventing one.
             location = record.get("source_location")
             if kind == "evidence" and isinstance(location, str) and location and not any(c.isspace() for c in location):
-                entry["access_url"] = location
+                parsed = urlsplit(location)
+                # A source locator may be an opaque local catalog identifier.
+                # Do not mislabel it as an externally accessible URL. Preserve
+                # its canonical record hash/path and let the consumer report
+                # absent external access without inventing a remote address.
+                if (parsed.scheme == "https" and parsed.hostname and not parsed.username
+                        and not parsed.password and not parsed.query and not parsed.fragment):
+                    entry["access_url"] = location
             records.append(entry)
     return {"source_project": sources.project_id, "references": sorted(records, key=lambda item: (item["kind"], item["id"]))}
 

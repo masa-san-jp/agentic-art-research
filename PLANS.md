@@ -1181,3 +1181,5 @@ The required handoff brief exists as an unfilled template but no role can author
 
 ### Outcomes
 Pending native qualification and rerun under an explicit new code pin.
+
+Actual fork testing also exposed opaque catalog URNs being exported as HTTPS access URLs. Preserve hashed provenance and omit unavailable external access; Production owns category availability and gap handling. Original465 candidate remains preserved, this follow-up is separately qualified.

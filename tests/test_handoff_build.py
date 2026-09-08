@@ -160,6 +160,26 @@ class HandoffBuildContractTest(unittest.TestCase):
         with self.assertRaisesRegex(HandoffExportError, "different bytes"):
             export_handoff(root, "project/handoff-build", output, allow_dirty=True)
 
+    def test_opaque_catalog_locator_is_preserved_as_provenance_not_an_access_url(self) -> None:
+        from types import SimpleNamespace
+        from canonical import canonical_sha256
+        from export_handoff import source_ref_index
+        root = self.make_root()
+        project = root / "projects/probe"
+        project.mkdir()
+        evidence = {'id':'EV001', 'source_type':'catalog', 'rights_status':'conditional', 'sensitivity':'PUBLIC', 'source_location':'urn:catalog:inherited:revision:P0001'}
+        sources = SimpleNamespace(project=project, project_id='project/probe', decisions=[], insights=[], evidence=[evidence])
+        handoff = {'source_refs':{'evidence_ids':['EV001']}}
+        record = source_ref_index(sources, handoff)['references'][0]
+        self.assertNotIn('access_url', record)
+        self.assertEqual(canonical_sha256(evidence), record['record_hash'])
+        self.assertEqual('02_evidence/evidence-ledger.jsonl', record['source_path'])
+        evidence['source_location'] = 'https://www.moma.org/collection/works/1'
+        self.assertEqual(evidence['source_location'], source_ref_index(sources, handoff)['references'][0]['access_url'])
+        for locator in ('https://user:password@example.org/source', 'https://example.org/source?token=secret', 'https://example.org/source#section', 'file:///private/source'):
+            evidence['source_location'] = locator
+            self.assertNotIn('access_url', source_ref_index(sources, handoff)['references'][0])
+
     def test_export_source_ref_index_uses_contract_keys_and_canonical_hashes(self) -> None:
         root, _ = self.make_project()
         build_handoff(root, "project/handoff-build", generated_at=self.generated_at, research_commit=self.commit)
