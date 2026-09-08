@@ -1,3 +1,7 @@
+# AAK02 native authoring/export repair qualified
+
+Research code2304261b0c009b9f8690f2d5afbd76a53304c8a9 passed313 fulltests and focused55/25. Native role boundary, source URI and generated snapshot conflicts are repaired; PR97 is separate from parent197 live acceptance. Active live code checkouts at465/230 remain untouched; this clone records submission evidence only. Parent agents continue final-one/two pairs. No merge, raw publication or physical execution.
+
 # AAK02 native authoring repair
 
 Live external agents found required production-brief.yaml omitted from role write targets. Isolated follow-up to qualified AAK09; no active code checkout or user data changed. Add only existing canonical brief and external-reference targets to their proper roles, preserve typed gates and forbidden runtime paths, qualify and publish separately. Parent197 is the integration acceptance authority.

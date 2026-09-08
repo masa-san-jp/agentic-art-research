@@ -1,4 +1,4 @@
-version: 24
+version: 25
 updated_at: "2026-09-08T00:07:56.510877+00:00"
 selection_policy: lowest_id_ready_with_dependencies_done
 allowed_statuses: [BACKLOG, READY, IN_PROGRESS, BLOCKED, DONE]
@@ -6,7 +6,7 @@ tasks:
   - id: AAK-02-NATIVE-AUTHORING
     milestone: G7
     title: Expose required canonical handoff and external-reference authoring targets
-    status: IN_PROGRESS
+    status: DONE
     depends_on: [AAK-09]
     issue_refs: [agentic-art-orchestration#197, agentic-art-research#94]
     acceptance: Native translator attempts may author the required production brief, and analyst attempts may author existing external-reference records; unrelated and runtime targets remain forbidden.
@@ -15,6 +15,7 @@ tasks:
     - .venv/bin/python tools/validate.py --check
     - .venv/bin/python -m unittest discover -s tests -v
     - git diff --check
+    completion: Role/cumulative/export repair qualified at2304261b0c009b9f8690f2d5afbd76a53304c8a9;313full/55role-focused/25export-focused and native gates PASS; PR97. Parent197 live acceptance remains separate.
   - id: AAK-09
     milestone: G7
     title: Ground cumulative research specificity in pinned owner knowledge

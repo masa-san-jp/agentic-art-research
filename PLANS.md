@@ -1173,8 +1173,8 @@ Qualified code `046c2380310d208ca52cbca461c95c798328b599`: 5 synthetic AC PASS, 
 
 ### Progress
 - [x] Observed live next_action/write-target contract omission at c221d59.
-- [ ] Add existing canonical brief and external-reference targets to translator/analyst roles; validate positive and forbidden paths.
-- [ ] Run owner gates, record qualified candidate, publish separate draft PR.
+- [x] Add existing canonical brief and external-reference targets to translator/analyst roles; validate positive and forbidden paths.
+- [x] Owner313 fulltests, focused55/25 and native gates PASS; PR97 published.
 
 ### Decision Log
 The required handoff brief exists as an unfilled template but no role can author it. Extend the role contract, not the agent permission bypass or acceptance thresholds. Existing external-reference records belong to analyst, which derives knowledge from collected evidence. No new domain schema or authority is introduced.
@@ -1183,3 +1183,5 @@ The required handoff brief exists as an unfilled template but no role can author
 Pending native qualification and rerun under an explicit new code pin.
 
 Actual fork testing also exposed opaque catalog URNs being exported as HTTPS access URLs. Preserve hashed provenance and omit unavailable external access; Production owns category availability and gap handling. Original465 candidate remains preserved, this follow-up is separately qualified.
+
+Qualification outcome: code2304261b0c009b9f8690f2d5afbd76a53304c8a9 passed all required owner gates. Six actual-agent runs and main integration remain parent AAK02 responsibilities; no physical or public execution is claimed.
