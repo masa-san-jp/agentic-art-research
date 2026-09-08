@@ -152,6 +152,16 @@ class EntryPointTests(unittest.TestCase):
 
         self.assertEqual("critic", answer["role"])
 
+    def test_translator_receives_required_canonical_handoff_authoring_targets(self):
+        path = self.root / "projects/probe/01_planning/research-plan.yaml"
+        plan = yaml.safe_load(path.read_text())
+        plan["tasks"][0]["role"] = "production-translator"
+        path.write_text(yaml.safe_dump(plan, sort_keys=False))
+        answer = next_action.build_next_action(self.root, "project/probe", "tester", NOW)
+        paths = {row["path"] for row in answer["write_targets"]}
+        self.assertTrue({"05_production/production-brief.yaml", "05_production/reference-categories.yaml", "04_decisions/cumulative-specificity-request.json"} <= paths)
+        self.assertNotIn("07_runtime/research-state.json", paths)
+
     def test_acceptance_is_typed_and_names_the_actual_project(self):
         answer = next_action.build_next_action(self.root, "project/probe", "tester", NOW)
 

@@ -68,6 +68,18 @@ class CumulativeSpecificityTests(unittest.TestCase):
         self.store.index(self.store.head())
         return technique['mechanism']
 
+    def test_derived_handoff_does_not_invalidate_inputs_but_authored_brief_does(self):
+        request = self.request()
+        before = specificity.evaluate(self.project, request)
+        for relative in ("05_production/production-handoff.yaml", "04_decisions/executive-brief.md"):
+            (self.project / relative).write_text("generated derivative\n")
+        self.assertEqual(request["project_snapshot"], specificity.project_snapshot(self.project))
+        self.assertEqual(before["selected_ids"], specificity.evaluate(self.project, request)["selected_ids"])
+        brief = self.project / "05_production/production-brief.yaml"
+        brief.write_text(brief.read_text() + "\n# changed authored input\n")
+        with self.assertRaisesRegex(specificity.SpecificityError, "PROJECT_SNAPSHOT_CHANGED"):
+            specificity.evaluate(self.project, request)
+
     def test_ac1_same_snapshot_rule_seed_reproduces_and_seed_only_breaks_ties(self):
         request=self.request();second=copy.deepcopy(request['candidates'][0]);second['hypothesis']['id']='PH002';second['hypothesis']['title']='Second title';request['candidates'].append(second)
         first=specificity.evaluate(self.project,request);self.assertEqual(first,specificity.evaluate(self.project,request))

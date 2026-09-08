@@ -64,6 +64,7 @@ roles:
       - {path: "03_knowledge/claims.jsonl", record: claim, schema: "schemas/claim.schema.json"}
       - {path: "03_knowledge/relationships.jsonl", record: relationship}
       - {path: "03_knowledge/contradictions.jsonl", record: contradiction}
+      - {path: "03_knowledge/external-references.jsonl", record: external-reference, schema: "schemas/external-reference.schema.json"}
     acceptance_checks:
       - {id: AG-ANALYST-VALIDATE, kind: project_validate}
       - {id: AG-ANALYST-CLAIMS, kind: collection_minimum, path: "03_knowledge/claims.jsonl", minimum: 1}
@@ -96,6 +97,9 @@ roles:
       - {path: "04_decisions/decision-log.yaml", record: decision, schema: "schemas/decision.schema.json"}
       - {path: "05_production/visual-language.yaml", record: visual-language, schema: "schemas/visual-language.schema.json"}
       - {path: "05_production/creative-direction.md", record: prose}
+      - {path: "05_production/production-brief.yaml", record: production-brief}
+      - {path: "05_production/reference-categories.yaml", record: reference-categories}
+      - {path: "04_decisions/cumulative-specificity-request.json", record: cumulative-specificity-request, schema: "schemas/cumulative-specificity-request.schema.json"}
     acceptance_checks:
       - {id: AG-TRANSLATOR-VALIDATE, kind: project_validate}
       - {id: AG-TRANSLATOR-MEDIUM, kind: medium_decision}

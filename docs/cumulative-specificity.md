@@ -2,7 +2,7 @@
 
 要件正本はResearch Issue94が参照するAAK-SPEC/PLAN commit `b0e7c7f8d0a1f756fa708deef4fb380a62e45e0d`。この文書はowner側の実装入口である。
 
-外部エージェントは既存のResearch project、production-hypothesis、visual-language v1.1を作成し、criticのwrite target `04_decisions/cumulative-specificity-request.json` に候補比較の入力を置く。テーマ・候補・根拠をLLM/daemon内蔵によって自動生成することを必須にしない。既存の半決定論的制作選択とnative validationを残し、累積知識を参照する比較と根拠の監査を追加する。
+外部エージェントは既存のResearch project、production-hypothesis、visual-language v1.1を作成し、criticまたはproduction-translatorのwrite target `04_decisions/cumulative-specificity-request.json` に候補比較の入力を置く。テーマ・候補・根拠をLLM/daemon内蔵によって自動生成することを必須にしない。既存の半決定論的制作選択とnative validationを残し、累積知識を参照する比較と根拠の監査を追加する。
 
 ```bash
 .venv/bin/python tools/cumulative_specificity.py --project "$WORK_ROOT/projects/$PROJECT_ID" --request "$REQUEST" --output "$NEW_REPORT"
@@ -15,7 +15,7 @@ outputは新規ファイル限定。実projectとrequest/reportは常にprotocol
 閉じたトップレベルは `schemas/cumulative-specificity-request.schema.json`、詳細のowner/reference関係は `tools/cumulative_specificity.py` の検証を使う。
 
 - `creator_id` とproject manifestの本人が一致すること。`origin_instance_id` は本人履歴と継承履歴の区別に使用する。
-- `project_snapshot` は `project_snapshot(project)` が返すnative intake/evidence/knowledge/decision/productionファイルのSHA256 map。request/report自体は除外する。変更後は再評価が必要。
+- `project_snapshot` は `project_snapshot(project)` が返すnative intake/evidence/knowledge/decision/productionファイルのSHA256 map。request/report自体と、それらを入力として後から生成する05_production/production-handoff.yaml・04_decisions/executive-brief.mdは除外する。変更後は再評価が必要。
 - `inputs` は id、閉じたartifact-record/v1 record、code_commit、knowledge_commit、外部payload_path。実payloadのhashをowner recordと照合する。本人signalのcreator不一致、失効・撤回・未受理、private scope不一致を拒否する。code refとknowledge refを分離する。
 - `sources` はid、kind（primary/secondary/ai-derived/unknown）、locator、content_sha256、parents、input_id。出典locator/hashが対応owner artifactのsourcesに存在することを確認する。原典を読んだかどうかは外部workerが正しく記録する。ツールが出典内容の真実性や実読を推定することはない。
 - `memory_query` はAAK-08の閉じたnative queryをそのまま使用し、clean code commit、creator、collection、knowledge snapshot、clockを固定する。Noneや読取失敗はUNAVAILABLE。検証可能な空storeのみEMPTY_HISTORY。検索できないことを重複LOWやPASSへ変換しない。
@@ -37,3 +37,5 @@ AAK-08のcapture/retrieveをnative mechanismに拡張した。captureは検証�
 構造化候補、採否理由、選択id、rule hash/version、seed、input snapshot、code/knowledge ref、分類付き比較先を返す。reuse有無で根拠充足・未解決・構造重複の指標を併記する。照合しない比較では重複数をnull/NOT_SCANNEDとし、ゼロとしない。`artistic_quality_guarantee: false`。これは制作の具体性と検証可能性を支えるもので、芸術的な優劣を自動保証するものではない。
 
 AAK09の合成受入は `tests.test_cumulative_specificity`。実エージェントによる制作・次回利用の最終受入は別途AAK02で実行する。
+
+実エージェントのtranslatorはbrief・reference-categoriesと最終仮説を作成してから比較snapshotを固定する。request内の既存 `inputs[].payload_path` と `memory_query.store_root` だけはlocal owner参照として絶対パスを許す。role境界は存在・型・symlink・traversalを検査し、それ以外の絶対パス、秘密、禁止区分は引き続き拒否する。payload hash・owner・creator・knowledge pinの照合は既存native evaluatorが行う。requestはhandoffの公開artifactへ含めない。
