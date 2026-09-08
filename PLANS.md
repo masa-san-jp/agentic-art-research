@@ -28,6 +28,10 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 
 ### Progress
 
+- [ ] (2026-09-08) AAK-09 claimed. Qualified dependencies: AAK08 code 13c819eb34e91198c3584b8cfd75c81494ab148c (7 focused / 298 full PASS), AAK05 code 765b1a3833602c8d9740dd584211e4ae88795f3d (5 AC / 173 full / native policy PASS), AAK06 f10a4f187966d1d2602a03410e8b3c9aa31fb22e (5 AC / 11 focused PASS), AAK07 7be3d5ff495a91f3ce75159c96e9fc0ec383aa57 (5 AC / 57 full / native completion PASS). These are isolated qualified candidates, not merged integration.
+
+AAK09 implementation: connect immutable owner memory to mechanism comparison; preserve native grounding and repetition thresholds; distinguish own/inherited/external history, source ancestry and explicit continuation; deterministic rule/seed ordering; report reuse/no-reuse coverage and unresolved/repetition metrics without artistic superiority claims. Verify negative input replacement, renamed mechanism, unsupported reference and AI self-citation fixtures.
+
 - [x] (2026-09-05 UTC) `AAK-08`: Issue #93 code and synthetic acceptance complete on agent/aak-08-research-memory, base 71bfec77ea0d189186b8248565d340c124b81eab; evidence in Outcomes and execution/handoff.md. Pinned AAK-SPEC/PLAN b0e7c7f8d0a1f756fa708deef4fb380a62e45e0d govern the added knowledge cycle. External dependency AAK-04 is qualified at 83f7e9e8d1c6e25b39351aebb6eb15cb12da4685 / instance-profile/v1 / orchestration PR201 (14 focused / 580 full tests with one existing skip PASS); unmerged candidate, not main integration.
 
 AAK-08 implementation steps: curate schema-valid records from external projects; commit only allowlisted knowledge with immutable revisions and receipts; rebuild owner index; connect retrieval and explicit disposition to context_pack/next_action; preserve source corrections, rejection reasons, and prior repetition guards. Validate AC1..5 using synthetic external Git stores and independent projects, then canonical validator/full tests/diff. Real agent AAK-02 integration remains NOT_RUN. On interruption resume from execution/state.yaml and execution/handoff.md; no actual project, raw source, or profile is copied into this protocol.

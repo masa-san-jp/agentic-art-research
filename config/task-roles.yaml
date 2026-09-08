@@ -77,6 +77,7 @@ roles:
       - {path: "04_decisions/decision-log.yaml", record: decision, schema: "schemas/decision.schema.json"}
       - {path: "03_knowledge/prior-art.jsonl", record: prior-art, schema: "schemas/prior-art.schema.json"}
       - {path: "04_decisions/self-repetition-review.yaml", record: self-repetition-review, schema: "schemas/self-repetition-review.schema.json"}
+      - {path: "04_decisions/cumulative-specificity-request.json", record: cumulative-specificity-request, schema: "schemas/cumulative-specificity-request.schema.json"}
     acceptance_checks:
       - {id: AG-CRITIC-VALIDATE, kind: project_validate}
       - {id: AG-CRITIC-REJECTED, kind: collection_minimum, path: "04_decisions/rejected-options.yaml", collection_key: rejected_options, minimum: 1}

@@ -1,9 +1,9 @@
-version: 6
-updated_at: "2026-09-03T20:17:09+09:00"
+version: 7
+updated_at: "2026-09-08T00:07:56.510191+00:00"
 current_milestone: G6
-next_task: null
+next_task: AAK-09
 last_completed_task: AAK-08
-terminal: true
+terminal: false
 blocked_by: []
 resume_from:
   read:
@@ -61,7 +61,7 @@ resume_from:
     - tests/test_harness.py
     - docs/agent-runtime-guide.md
     - docs/operations.md
-  action: AAK-08 requalified at 13c819eb34e91198c3584b8cfd75c81494ab148c, PR95. AAK-09 awaits AAK-05 and AAK-07 owner gates; parent continues Production60 prerequisite for AAK-13. Real AAK-02 integration is NOT_RUN.
+  action: AAK09 registered and claimed on agent/aak-09-cumulative-specificity from qualified AAK08 c3e25347b3f36d96e903690ff0274838333f5132. Focused9, native validator/security/docs PASS; next commit exact candidate then full suite. Main integration and AAK02 live NOT_RUN.
 last_verification:
   result: PASS_WITH_ENVIRONMENT_NOTE
   command: /private/tmp/aap-production-py312/bin/python -m unittest discover -s tests -v; validate/security/docs/chaos/graph/handoff gates; git diff --check

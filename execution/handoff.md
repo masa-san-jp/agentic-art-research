@@ -1,3 +1,7 @@
+# AAK09 in progress — 2026-09-08
+
+Task AAK-09, Issue94, branch agent/aak-09-cumulative-specificity, base c3e25347b3f36d96e903690ff0274838333f5132. Dependencies and evidence in PLANS.md. Implement cumulative specificity/native context and validation integration; then tests.test_cumulative_specificity, validator and full suite. No actual project/profile/raw is written to protocol Git.
+
 # AAK-08 verified handoff
 
 Latest qualification: local `b67d777422960445e33199cf37e636ed71e4a2eb`, remote

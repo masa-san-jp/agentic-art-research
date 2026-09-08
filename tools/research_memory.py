@@ -162,6 +162,13 @@ def capture(work_root, target, selections, reuse_trace=None):
         snapshots[path] = hashed(file.read_bytes())
         for data in (load_yaml(file) or {}).get(field, []):
             records[data["id"]] = (kind, data)
+    visual_path = project / "05_production/visual-language.yaml"
+    if visual_path.exists():
+        if visual_path.is_symlink():
+            raise ValueError("symlink source forbidden")
+        snapshots["05_production/visual-language.yaml"] = hashed(visual_path.read_bytes())
+        for mechanism in (load_yaml(visual_path) or {}).get("techniques", []):
+            records[mechanism["id"]] = ("mechanism", mechanism)
     questions = project / "01_planning/question-register.yaml"
     if questions.is_symlink():
         raise ValueError("symlink question source forbidden")
