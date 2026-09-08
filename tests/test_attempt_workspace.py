@@ -86,6 +86,45 @@ class AttemptWorkspaceContractTest(unittest.TestCase):
             inspect_attempt(attempt, protocol_root=REPO_ROOT, work_root=self.work, output_root=self.output)
         self.assertNotIn("allowed candidate", (self.project / "01_planning/question-register.yaml").read_text())
 
+    def test_translator_can_author_required_brief_categories_and_final_comparison(self) -> None:
+        attempt = self.make_attempt(role="production-translator")
+        for relative in ("05_production/production-brief.yaml", "05_production/reference-categories.yaml"):
+            target = attempt.project / relative
+            target.write_text("categories: {}\n" if "categories" in relative else target.read_text() + "\n# authored proposal\n")
+        report = inspect_attempt(attempt, protocol_root=REPO_ROOT, work_root=self.work, output_root=self.output)
+        self.assertEqual({"05_production/production-brief.yaml", "05_production/reference-categories.yaml"}, {row["path"] for row in report["changes"]})
+        forbidden = self.make_attempt(role="collector", attempt_id="AT-FORBIDDEN")
+        (forbidden.project / "05_production/production-brief.yaml").write_text("forbidden\n")
+        with self.assertRaisesRegex(AttemptWorkspaceError, "ATTEMPT-WRITE-BOUNDARY"):
+            inspect_attempt(forbidden, protocol_root=REPO_ROOT, work_root=self.work, output_root=self.output)
+
+    def test_cumulative_local_references_do_not_exempt_prose_or_symlinks(self) -> None:
+        attempt = self.make_attempt(role="production-translator")
+        payload = self.root / "curated-payload.json"
+        payload.write_text("{}\n")
+        store = self.root / "owner-store"
+        store.mkdir()
+        document = {"contract_version":"cumulative-specificity-request/v1", "rule_version":"cumulative-specificity-policy/v1", "creator_id":"test", "origin_instance_id":"instance", "at":"2026-09-08T00:00:00Z", "seed":1, "project_snapshot":{}, "inputs":[{"payload_path":str(payload)}], "sources":[], "candidates":[{}], "memory_query":{"store_root":str(store)}}
+        target = attempt.project / "04_decisions/cumulative-specificity-request.json"
+        target.write_text(json.dumps(document))
+        inspect_attempt(attempt, protocol_root=REPO_ROOT, work_root=self.work, output_root=self.output)
+        for field, value in (("creator_id", "/private/secret"), ("creator_id", "PRIVATE_RAW")):
+            changed = copy.deepcopy(document)
+            changed[field] = value
+            target.write_text(json.dumps(changed))
+            with self.assertRaisesRegex(AttemptWorkspaceError, "ATTEMPT-SECURITY"):
+                inspect_attempt(attempt, protocol_root=REPO_ROOT, work_root=self.work, output_root=self.output)
+        alias = self.root / "alias.json"
+        alias.symlink_to(payload)
+        document["inputs"][0]["payload_path"] = str(alias)
+        target.write_text(json.dumps(document))
+        with self.assertRaisesRegex(AttemptWorkspaceError, "ATTEMPT-SECURITY"):
+            inspect_attempt(attempt, protocol_root=REPO_ROOT, work_root=self.work, output_root=self.output)
+        document["inputs"][0]["payload_path"] = str(self.root / "missing.json")
+        target.write_text(json.dumps(document))
+        with self.assertRaisesRegex(AttemptWorkspaceError, "ATTEMPT-SECURITY"):
+            inspect_attempt(attempt, protocol_root=REPO_ROOT, work_root=self.work, output_root=self.output)
+
     def test_runtime_namespace_is_not_a_worker_write_target(self) -> None:
         targets = load_write_targets(REPO_ROOT, "collector")
         self.assertNotIn("07_runtime/run-log.jsonl", {target["path"] for target in targets})

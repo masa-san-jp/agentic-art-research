@@ -42,7 +42,9 @@ def project_snapshot(project):
     result={}
     for folder in ('00_intake','02_evidence','03_knowledge','04_decisions','05_production'):
         for path in sorted((project/folder).rglob('*')):
+            # Derived outputs must not invalidate the input snapshot that creates them.
             if path.name.startswith('cumulative-specificity-') or path.is_dir():continue
+            if str(path.relative_to(project)) in {'05_production/production-handoff.yaml', '04_decisions/executive-brief.md'}:continue
             need(not path.is_symlink(),'PROJECT_SYMLINK')
             result[str(path.relative_to(project))]=hashed(path.read_bytes())
     return result

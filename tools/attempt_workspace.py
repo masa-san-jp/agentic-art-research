@@ -572,6 +572,29 @@ def _security_check_file(path: Path, relative: str, protocol_root: Path) -> None
         raise AttemptWorkspaceError("ATTEMPT-SECURITY", "changed file contains a configured secret pattern")
     if "PRIVATE_RAW" in text or "RESTRICTED" in text:
         raise AttemptWorkspaceError("ATTEMPT-SECURITY", "changed file contains a prohibited access classification")
+    if relative == "04_decisions/cumulative-specificity-request.json":
+        # This local-only input contract explicitly carries owner payload/store
+        # locators. Preserve secret/classification checks above and scan every
+        # other value below; never exempt prose or an entire JSON document.
+        try:
+            document = json.loads(text)
+            _validate_schema(protocol_root, "cumulative-specificity-request", document)
+            locators = [(row, "payload_path", False) for row in document["inputs"]]
+            if document["memory_query"] is not None:
+                locators.append((document["memory_query"], "store_root", True))
+            for row, key, directory in locators:
+                value = row[key]
+                if not isinstance(value, str):
+                    raise ValueError("locator must be a string")
+                target = Path(value)
+                if (not target.is_absolute() or ".." in target.parts
+                        or any(part.is_symlink() for part in (target, *target.parents))
+                        or (not target.is_dir() if directory else not target.is_file())):
+                    raise ValueError("locator is missing, relative, traversing, or symlinked")
+                row[key] = "validated-owner-local-locator"
+            text = json.dumps(document, ensure_ascii=False)
+        except (ValueError, KeyError, TypeError, OSError) as exc:
+            raise AttemptWorkspaceError("ATTEMPT-SECURITY", "invalid cumulative knowledge locator contract") from exc
     if ABSOLUTE_PATH_RE.search(text):
         raise AttemptWorkspaceError("ATTEMPT-SECURITY", "changed file contains an absolute local path")
 
