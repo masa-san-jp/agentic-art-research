@@ -1168,3 +1168,16 @@ AAK-08 (2026-09-05): local code ec6b9eba5b2597368c5cfd8eaef6a611753a6f21 / GitHu
 ### AAK-09 Outcomes
 
 Qualified code `046c2380310d208ca52cbca461c95c798328b599`: 5 synthetic AC PASS, 9 focused / 307 full tests PASS, validator/security/docs/graph/chaos/local release/handoff gates PASS. Own/inherited/external attribution, immutable input binding, native grounding, source ancestry, explicit continuation and unseen-history rejection are implemented. Real Marketing07 artifact `bc146abbf7f40451fcc5b51a3ba5a8922910a68b` was read with synthetic Research memory `88ad1c2c152f76b294ed8e8ceaec8cdd309283bf`, producing a reasoned continuation with one detected structural duplicate. This is synthetic acceptance, not an artistic quality guarantee or real-agent AAK02 completion.
+
+## AAK02 native authoring repair
+
+### Progress
+- [x] Observed live next_action/write-target contract omission at c221d59.
+- [ ] Add existing canonical brief and external-reference targets to translator/analyst roles; validate positive and forbidden paths.
+- [ ] Run owner gates, record qualified candidate, publish separate draft PR.
+
+### Decision Log
+The required handoff brief exists as an unfilled template but no role can author it. Extend the role contract, not the agent permission bypass or acceptance thresholds. Existing external-reference records belong to analyst, which derives knowledge from collected evidence. No new domain schema or authority is introduced.
+
+### Outcomes
+Pending native qualification and rerun under an explicit new code pin.

@@ -1,9 +1,9 @@
-version: 7
+version: 8
 updated_at: "2026-09-08T00:13:50.243233+00:00"
 current_milestone: G6
-next_task: null
+next_task: AAK-02-NATIVE-AUTHORING
 last_completed_task: AAK-09
-terminal: true
+terminal: false
 blocked_by: []
 resume_from:
   read:
@@ -66,3 +66,12 @@ last_verification:
   result: PASS_WITH_ENVIRONMENT_NOTE
   command: /private/tmp/aap-production-py312/bin/python -m unittest discover -s tests -v; validate/security/docs/chaos/graph/handoff gates; git diff --check
   detail: 289 tests PASS。validator、security、docs、chaos、graph、handoff release gate、git diff --checkがPASS。v2のcreator-scoped history、visual-language mechanism grounding、履歴root不在時のUNKNOWN/HISTORY_ROOT_UNAVAILABLEをfocused testsで検証した。PR #87はmainへmerge済み（1e8390e6ac7286c23a971d19a8797be4851cf086）。GitHub validateはbilling制限でジョブ未開始だったため、成功として扱わず環境注記を保持する。
+
+aak02_native_authoring:
+  owner: codex-aak02-native-authoring
+  status: IN_PROGRESS
+  branch: agent/aak-02-native-authoring
+  base_commit: c221d59f23cfcc15a3fa22e8ca98292f17409373
+  scope: config/task-roles.yaml, native role boundary tests, execution and docs
+  observed: Live translator cannot author required production-brief.yaml; external-reference records have no authoring role.
+  updated_at: "2026-09-08T02:00:48.295238+00:00"

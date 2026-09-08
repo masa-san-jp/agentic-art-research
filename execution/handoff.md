@@ -1,3 +1,7 @@
+# AAK02 native authoring repair
+
+Live external agents found required production-brief.yaml omitted from role write targets. Isolated follow-up to qualified AAK09; no active code checkout or user data changed. Add only existing canonical brief and external-reference targets to their proper roles, preserve typed gates and forbidden runtime paths, qualify and publish separately. Parent197 is the integration acceptance authority.
+
 # AAK09 qualified — 2026-09-08
 
 Code `046c2380310d208ca52cbca461c95c798328b599`, base c3e25347b3f36d96e903690ff0274838333f5132, branch agent/aak-09-cumulative-specificity. 5 synthetic AC / 9 focused / 307 full tests and native gates PASS. Evidence execution/aak-09-verification.json. No real project/profile/raw was placed in protocol Git. Main and AAK02 integration are NOT_RUN. Parent next task: Production AAK10, reuse qualified Production60 PR63.
