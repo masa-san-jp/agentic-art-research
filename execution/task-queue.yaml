@@ -1,8 +1,30 @@
-version: 22
-updated_at: "2026-09-03T10:00:00+09:00"
+version: 23
+updated_at: "2026-09-08T00:07:56.510877+00:00"
 selection_policy: lowest_id_ready_with_dependencies_done
 allowed_statuses: [BACKLOG, READY, IN_PROGRESS, BLOCKED, DONE]
 tasks:
+  - id: AAK-09
+    milestone: G7
+    title: Ground cumulative research specificity in pinned owner knowledge
+    status: DONE
+    depends_on:
+    - AAK-08
+    issue_refs:
+    - agentic-art-research#94
+    - self-model-notes#93
+    - art-history-notes#386
+    - marketing-trends-notes#86
+    acceptance: 'AAK09 AC1..5 at pinned AAK-SPEC/PLAN b0e7c7f8d0a1f756fa708deef4fb380a62e45e0d: deterministic selection, grounded
+      mechanisms, source lineage, creator-scoped comparison, explicit continuation, EMPTY_HISTORY versus UNAVAILABLE, reuse
+      metrics.'
+    checks:
+    - .venv/bin/python -m unittest tests.test_cumulative_specificity -v
+    - .venv/bin/python tools/validate.py --check
+    - .venv/bin/python -m unittest discover -s tests -v
+    - git diff --check
+    completion: AAK09 AC1..5 synthetic PASS at 046c2380310d208ca52cbca461c95c798328b599; 9 focused / 307 full / validator, security,
+      docs, graph, chaos, local release and handoff PASS. Immutable Marketing07 -> Research memory continuation proof retained.
+      Main integration and AAK02 live NOT_RUN.
   - id: AAK-08
     milestone: G7
     title: Persist curated research memory and reuse it across projects

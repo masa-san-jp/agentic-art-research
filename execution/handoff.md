@@ -1,3 +1,11 @@
+# AAK09 qualified — 2026-09-08
+
+Code `046c2380310d208ca52cbca461c95c798328b599`, base c3e25347b3f36d96e903690ff0274838333f5132, branch agent/aak-09-cumulative-specificity. 5 synthetic AC / 9 focused / 307 full tests and native gates PASS. Evidence execution/aak-09-verification.json. No real project/profile/raw was placed in protocol Git. Main and AAK02 integration are NOT_RUN. Parent next task: Production AAK10, reuse qualified Production60 PR63.
+
+# AAK09 in progress — 2026-09-08
+
+Task AAK-09, Issue94, branch agent/aak-09-cumulative-specificity, base c3e25347b3f36d96e903690ff0274838333f5132. Dependencies and evidence in PLANS.md. Implement cumulative specificity/native context and validation integration; then tests.test_cumulative_specificity, validator and full suite. No actual project/profile/raw is written to protocol Git.
+
 # AAK-08 verified handoff
 
 Latest qualification: local `b67d777422960445e33199cf37e636ed71e4a2eb`, remote

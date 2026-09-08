@@ -164,6 +164,14 @@ def evaluate_project(root: Path, target: str) -> dict[str, Any]:
         "self_repetition_review": len(self_repetition_reviews),
     }
     quality_gaps = quality_failures(quality_policy, quality_counts)
+    from cumulative_specificity import REQUEST_PATH, evaluate_file
+    if (project / REQUEST_PATH).exists() or (project / REQUEST_PATH).is_symlink():
+        try:
+            specificity = evaluate_file(project)
+            if specificity["status"] != "QUALIFIED":
+                quality_gaps.append({"id": "CUMULATIVE-SPECIFICITY", "reason": "Cumulative mechanism/source/history qualification is incomplete.", "impact": "Resolve the named candidate reasons before production handoff."})
+        except (ValueError, OSError, KeyError, TypeError):
+            quality_gaps.append({"id": "CUMULATIVE-SPECIFICITY", "reason": "Pinned cumulative input or history is unavailable or changed.", "impact": "Revalidate the explicit snapshot; do not infer a passing comparison."})
     stopping_defaults = (load_yaml(root / "config" / "stopping-policy.yaml") or {}).get("defaults") or {}
     thin_questions = _questions_without_primary(stopping_defaults, questions, evidence)
     tests_by_id = {record.get("id"): record for record in acceptance_tests}

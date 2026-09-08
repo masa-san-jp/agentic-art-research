@@ -77,6 +77,7 @@ DOMAIN_SCHEMAS = (
     "hypothesis-comparison",
     "prototype-plan",
     "visual-language",
+    "mechanism",
     "production-handoff",
     "research-request",
     "research-request-receipt",

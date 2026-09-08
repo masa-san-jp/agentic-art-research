@@ -1,0 +1,10 @@
+contract_version: cumulative-specificity-policy/v1
+# Preserve existing self_repetition similarity thresholds; seed only breaks ties.
+match_threshold: 0.35
+structural_duplicate_threshold: 0.85
+minimum_independent_roots: 1
+exploration_slots:
+  reuse: 1
+  unresolved-reexplore: 1
+  new-reference: 1
+history_kinds: [mechanism, production-hypothesis, prior-art, question]

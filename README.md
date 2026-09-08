@@ -289,3 +289,7 @@ docs/         設計・運用・runtime・schema・連携の詳細
 ## 累積研究知識
 
 AAK-08のowner Git保存・再読込・条件付き再利用は[research-memory](docs/research-memory.md)を参照。実project/runtimeは外部に維持し、code commitとknowledge commitを分離する。
+
+## 累積知識と研究の固有性
+
+AAK-09の[累積比較](docs/cumulative-specificity.md)は、owner artifact/knowledge snapshotとnative mechanismを照合し、seedによる同順位選択、本人/継承/外部作品の区別、出典系列、明示継続の差分を記録します。履歴未読はUNAVAILABLEのままです。

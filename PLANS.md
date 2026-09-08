@@ -28,6 +28,10 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 
 ### Progress
 
+- [x] (2026-09-08) AAK-09 qualified. Qualified dependencies: AAK08 code 13c819eb34e91198c3584b8cfd75c81494ab148c (7 focused / 298 full PASS), AAK05 code 765b1a3833602c8d9740dd584211e4ae88795f3d (5 AC / 173 full / native policy PASS), AAK06 f10a4f187966d1d2602a03410e8b3c9aa31fb22e (5 AC / 11 focused PASS), AAK07 7be3d5ff495a91f3ce75159c96e9fc0ec383aa57 (5 AC / 57 full / native completion PASS). These are isolated qualified candidates, not merged integration.
+
+AAK09 implementation: connect immutable owner memory to mechanism comparison; preserve native grounding and repetition thresholds; distinguish own/inherited/external history, source ancestry and explicit continuation; deterministic rule/seed ordering; report reuse/no-reuse coverage and unresolved/repetition metrics without artistic superiority claims. Verify negative input replacement, renamed mechanism, unsupported reference and AI self-citation fixtures.
+
 - [x] (2026-09-05 UTC) `AAK-08`: Issue #93 code and synthetic acceptance complete on agent/aak-08-research-memory, base 71bfec77ea0d189186b8248565d340c124b81eab; evidence in Outcomes and execution/handoff.md. Pinned AAK-SPEC/PLAN b0e7c7f8d0a1f756fa708deef4fb380a62e45e0d govern the added knowledge cycle. External dependency AAK-04 is qualified at 83f7e9e8d1c6e25b39351aebb6eb15cb12da4685 / instance-profile/v1 / orchestration PR201 (14 focused / 580 full tests with one existing skip PASS); unmerged candidate, not main integration.
 
 AAK-08 implementation steps: curate schema-valid records from external projects; commit only allowlisted knowledge with immutable revisions and receipts; rebuild owner index; connect retrieval and explicit disposition to context_pack/next_action; preserve source corrections, rejection reasons, and prior repetition guards. Validate AC1..5 using synthetic external Git stores and independent projects, then canonical validator/full tests/diff. Real agent AAK-02 integration remains NOT_RUN. On interruption resume from execution/state.yaml and execution/handoff.md; no actual project, raw source, or profile is copied into this protocol.
@@ -56,6 +60,8 @@ AAK-08 implementation steps: curate schema-valid records from external projects;
 チェックボックスとUTCまたはJST日時。未完了、部分完了、完了を正確に表す。
 
 ### Surprises & Discoveries
+
+- AAK09: AAK08 curated claims/hypotheses but not native mechanism records. Added a mechanism schema that references the existing visual-language technique contract and capture/retrieve support; no duplicate visual schema or title-derived mechanism.
 
 - Production側の現状が`references`/`record_hash`を期待し、Research exporterの`records`/`record_sha256`と不一致だった。canonical hashの計算責任はResearchに置き、Productionは形式と非ゼロ値を検証する。
 - Issue #44の実測では、証拠10件・主張5件・インサイト2件・判断2件・要件4件、棄却案0件、先行作品調査0件、自己反復評価0件でも完了・handoffまで到達していた。既存の`COMPLETE_WITH_GAPS`は調査済みの未解決事項を表すため、調査未達とは別の`INCOMPLETE`が必要。
@@ -1158,3 +1164,7 @@ AAK-08 (2026-09-05): local code ec6b9eba5b2597368c5cfd8eaef6a611753a6f21 / GitHu
 
 - `tests.test_self_repetition` 3/3、schemaを含むfocused test 11/11、child full unittest 281/281、validator/security/docs/chaos/graph/handoff release gateがPASSした。
 - 実制作outputは変更せず、4件のsynthetic completed-project fixtureでIssue #83の検出条件を再現した。
+
+### AAK-09 Outcomes
+
+Qualified code `046c2380310d208ca52cbca461c95c798328b599`: 5 synthetic AC PASS, 9 focused / 307 full tests PASS, validator/security/docs/graph/chaos/local release/handoff gates PASS. Own/inherited/external attribution, immutable input binding, native grounding, source ancestry, explicit continuation and unseen-history rejection are implemented. Real Marketing07 artifact `bc146abbf7f40451fcc5b51a3ba5a8922910a68b` was read with synthetic Research memory `88ad1c2c152f76b294ed8e8ceaec8cdd309283bf`, producing a reasoned continuation with one detected structural duplicate. This is synthetic acceptance, not an artistic quality guarantee or real-agent AAK02 completion.
