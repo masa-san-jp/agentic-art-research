@@ -119,6 +119,32 @@ class ResearchRequestAcceptanceTest(unittest.TestCase):
 
         self.assertFalse((root / "projects" / "harmony-study").exists())
 
+    def test_external_work_root_initializes_runtime_from_protocol_root(self) -> None:
+        """A generated work root must not need a second copy of protocol policy."""
+        protocol_root = self.make_root()
+        work_root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, work_root, True)
+        (work_root / "projects").mkdir()
+        (work_root / "data").mkdir()
+        request = work_root / "incoming" / "research-request.yaml"
+        request.parent.mkdir(parents=True)
+        shutil.copyfile(REPO_ROOT / "tests" / "fixtures" / "schema-valid" / "research-request.yaml", request)
+
+        applied = accept_research_request(
+            work_root,
+            request,
+            apply=True,
+            accepted_at="2026-08-12T09:05:00+09:00",
+            protocol_root=protocol_root,
+        )
+
+        self.assertEqual("APPLIED", applied["status"])
+        project = work_root / "projects" / "harmony-study"
+        state = yaml.safe_load((project / "07_runtime" / "research-state.json").read_text(encoding="utf-8"))
+        self.assertTrue(state["task_runtime"]["tasks"])
+        self.assertEqual([], validate_repository(work_root, "project/harmony-study", protocol_root=protocol_root))
+        self.assertFalse(list(protocol_root.glob("projects/*")))
+
 
 if __name__ == "__main__":
     unittest.main()

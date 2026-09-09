@@ -262,7 +262,7 @@ def _materialize(
                 "PLAN-WITHOUT-TASKS: 01_planning/research-plan.yaml carries no tasks, "
                 "so the accepted project would have nothing to claim"
             )
-        initialize_runtime(root, f"project/{slug}", initialized_at=accepted_at)
+        initialize_runtime(root, f"project/{slug}", initialized_at=accepted_at, protocol_root=protocol_root)
 
         from executive_brief import write_executive_brief
 
