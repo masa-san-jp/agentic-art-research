@@ -312,10 +312,11 @@ def initialize_runtime(
     definitions: Iterable[dict[str, Any]] | None = None,
     *,
     initialized_at: str | None = None,
+    protocol_root: Path | None = None,
 ) -> dict[str, Any]:
     project = _project(root.resolve(), target)
     source = list(definitions) if definitions is not None else _plan_tasks(project)
-    canonical = _canonical_tasks(root.resolve(), source)
+    canonical = _canonical_tasks((protocol_root or root).resolve(), source)
     timestamp = _timestamp(initialized_at)
     state_path = project / "07_runtime" / "research-state.json"
     log_path = project / "07_runtime" / "run-log.jsonl"
@@ -841,6 +842,7 @@ def main() -> int:
     parser.add_argument("target")
     parser.add_argument("command", choices=["init", "claim", "resume", "heartbeat", "complete", "fail"])
     parser.add_argument("--root", type=Path, default=ROOT)
+    parser.add_argument("--protocol-root", type=Path, help="read-only protocol checkout containing runtime policy")
     parser.add_argument("--now")
     parser.add_argument("--worker-id")
     parser.add_argument("--lease-token")
@@ -858,7 +860,10 @@ def main() -> int:
     args = parser.parse_args()
     try:
         if args.command == "init":
-            result = initialize_runtime(args.root.resolve(), args.target, initialized_at=args.now)
+            result = initialize_runtime(
+                args.root.resolve(), args.target, initialized_at=args.now,
+                protocol_root=args.protocol_root.resolve() if args.protocol_root else None,
+            )
         elif args.command == "claim":
             if not args.worker_id:
                 parser.error("claim requires --worker-id")
