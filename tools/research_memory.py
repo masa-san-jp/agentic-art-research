@@ -189,8 +189,13 @@ class MemoryStore:
 
     def __init__(self, root, creator, collection, code_commit):
         self.root = Path(root)
-        if not self.root.is_absolute() or self.root.is_symlink() or self.root.resolve() != self.root or self.root == ROOT or ROOT in self.root.parents:
+        protocol = ROOT.resolve()
+        if not self.root.is_absolute() or self.root.is_symlink():
             raise ValueError("explicit external nonsymlink owner store required")
+        resolved = self.root.resolve(strict=False)
+        if resolved == protocol or protocol in resolved.parents:
+            raise ValueError("owner store must remain outside protocol root")
+        self.root = resolved
         self.creator, self.collection, self.code_commit = creator, collection, code_commit
         if json.loads((self.root / "store.json").read_text()) != {"owner": OWNER, "creator": creator, "collection": collection}:
             raise ValueError("owner/creator/collection binding mismatch")
