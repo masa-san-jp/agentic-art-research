@@ -156,6 +156,12 @@ class ResearchMemoryTests(unittest.TestCase):
             if mutation == "path": candidate["record"]["payload_ref"] = "../raw.json"
             with self.subTest(mutation=mutation), self.assertRaises(ValueError): self.commit(candidate)
 
+    def test_external_parent_alias_does_not_invalidate_owner_store(self):
+        alias = self.root / "parent-alias"
+        alias.symlink_to(self.root, target_is_directory=True)
+        reopened = MemoryStore(alias / "memory", "creator-a", "research-a", self.code)
+        self.assertEqual(self.store.head(), reopened.head())
+
     def test_memory_repetition_uses_existing_similarity_and_scoped_metadata(self):
         receipt = self.commit(self.candidate())
         root = self.work_root(); project = create_project(root, "second", "Second", "creator-a")

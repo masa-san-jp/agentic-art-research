@@ -587,8 +587,11 @@ def _security_check_file(path: Path, relative: str, protocol_root: Path) -> None
                 if not isinstance(value, str):
                     raise ValueError("locator must be a string")
                 target = Path(value)
+                protocol = protocol_root.resolve()
+                resolved = target.resolve(strict=False)
                 if (not target.is_absolute() or ".." in target.parts
-                        or any(part.is_symlink() for part in (target, *target.parents))
+                        or target.is_symlink()
+                        or resolved == protocol or protocol in resolved.parents
                         or (not target.is_dir() if directory else not target.is_file())):
                     raise ValueError("locator is missing, relative, traversing, or symlinked")
                 row[key] = "validated-owner-local-locator"

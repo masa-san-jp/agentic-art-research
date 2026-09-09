@@ -120,6 +120,14 @@ class AttemptWorkspaceContractTest(unittest.TestCase):
         target.write_text(json.dumps(document))
         with self.assertRaisesRegex(AttemptWorkspaceError, "ATTEMPT-SECURITY"):
             inspect_attempt(attempt, protocol_root=REPO_ROOT, work_root=self.work, output_root=self.output)
+        parent_alias = self.root / "parent-alias"
+        parent_alias.symlink_to(self.root, target_is_directory=True)
+        document["inputs"][0]["payload_path"] = str(parent_alias / "curated-payload.json")
+        document["memory_query"]["store_root"] = str(parent_alias / "owner-store")
+        target.write_text(json.dumps(document))
+        # An OS-managed parent alias is harmless; only the locator itself and
+        # protocol-root escapes are rejected.
+        inspect_attempt(attempt, protocol_root=REPO_ROOT, work_root=self.work, output_root=self.output)
         document["inputs"][0]["payload_path"] = str(self.root / "missing.json")
         target.write_text(json.dumps(document))
         with self.assertRaisesRegex(AttemptWorkspaceError, "ATTEMPT-SECURITY"):
