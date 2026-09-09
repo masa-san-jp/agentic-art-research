@@ -24,6 +24,7 @@ NOW='2026-09-05T00:00:00Z'
 class CumulativeSpecificityTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        # Let each runner choose its writable temporary root; macOS and Linux differ.
         cls.code_temp=tempfile.TemporaryDirectory()
         cls.code_root=Path(cls.code_temp.name)/'code'
         shutil.copytree(ROOT,cls.code_root,ignore=shutil.ignore_patterns('.git','.venv','__pycache__'))
@@ -35,6 +36,7 @@ class CumulativeSpecificityTests(unittest.TestCase):
     def tearDownClass(cls):cls.code_temp.cleanup()
 
     def setUp(self):
+        # The production path policy still rejects user-controlled symlink aliases.
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
         self.root=Path(self.temp.name);self.work=self.root/'work';self.work.mkdir()
         for name in ('templates','config','schemas'):shutil.copytree(ROOT/name,self.work/name)
