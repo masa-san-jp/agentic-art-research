@@ -9,6 +9,7 @@ import os
 import re
 import shutil
 import stat
+import sys
 import tempfile
 import unicodedata
 from dataclasses import dataclass
@@ -28,6 +29,22 @@ ATTEMPT_ID_RE = re.compile(r"^AT[A-Za-z0-9_-]{3,}$")
 SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 ABSOLUTE_PATH_RE = re.compile(r"(?:^|[\s\"'])(/(?:[^\s\"']+/)*[^\s\"']*)|\b[A-Za-z]:[\\/][^\s\"']*")
 SKIP_NAMES = {".git", ".venv", "__pycache__", ".pytest_cache"}
+
+
+def _has_unsafe_locator_symlink(path: Path) -> bool:
+    """Reject locator symlinks while tolerating macOS system path aliases."""
+    macos_aliases = {
+        Path("/var"): Path("/private/var"),
+        Path("/tmp"): Path("/private/tmp"),
+        Path("/etc"): Path("/private/etc"),
+    }
+    for part in (path, *path.parents):
+        if not part.is_symlink():
+            continue
+        if sys.platform == "darwin" and macos_aliases.get(part) == part.resolve(strict=False):
+            continue
+        return True
+    return False
 
 
 class AttemptWorkspaceError(ValueError):
@@ -588,7 +605,7 @@ def _security_check_file(path: Path, relative: str, protocol_root: Path) -> None
                     raise ValueError("locator must be a string")
                 target = Path(value)
                 if (not target.is_absolute() or ".." in target.parts
-                        or any(part.is_symlink() for part in (target, *target.parents))
+                        or _has_unsafe_locator_symlink(target)
                         or (not target.is_dir() if directory else not target.is_file())):
                     raise ValueError("locator is missing, relative, traversing, or symlinked")
                 row[key] = "validated-owner-local-locator"

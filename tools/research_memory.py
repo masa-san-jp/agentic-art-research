@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 import tempfile
 from datetime import datetime
 
@@ -21,6 +22,22 @@ POLICY = load_yaml(ROOT / "config/research-memory.yaml")
 OWNER = POLICY["owner"]
 CONTRACT = POLICY["contract_version"]
 FIELDS = set("contract_version record_id revision origin_instance_id creator_id owner_repository collection_id kind payload_schema payload_ref content_sha256 sources derived_from epistemic_status lifecycle applicability rights access_scope consent_ref created_at reviewed_at valid_until producer supersedes invalidates".split())
+
+
+def _has_unsafe_store_symlink(path: Path) -> bool:
+    """Reject store symlinks while tolerating macOS system path aliases."""
+    macos_aliases = {
+        Path("/var"): Path("/private/var"),
+        Path("/tmp"): Path("/private/tmp"),
+        Path("/etc"): Path("/private/etc"),
+    }
+    for part in (path, *path.parents):
+        if not part.is_symlink():
+            continue
+        if sys.platform == "darwin" and macos_aliases.get(part) == part.resolve(strict=False):
+            continue
+        return True
+    return False
 
 
 def encoded(value):
@@ -189,7 +206,14 @@ class MemoryStore:
 
     def __init__(self, root, creator, collection, code_commit):
         self.root = Path(root)
-        if not self.root.is_absolute() or self.root.is_symlink() or self.root.resolve() != self.root or self.root == ROOT or ROOT in self.root.parents:
+        resolved_root = self.root.resolve(strict=False)
+        protocol_root = ROOT.resolve(strict=False)
+        if (
+            not self.root.is_absolute()
+            or _has_unsafe_store_symlink(self.root)
+            or resolved_root == protocol_root
+            or protocol_root in resolved_root.parents
+        ):
             raise ValueError("explicit external nonsymlink owner store required")
         self.creator, self.collection, self.code_commit = creator, collection, code_commit
         if json.loads((self.root / "store.json").read_text()) != {"owner": OWNER, "creator": creator, "collection": collection}:

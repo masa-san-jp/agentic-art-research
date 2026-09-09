@@ -147,6 +147,9 @@ class ResearchMemoryTests(unittest.TestCase):
 
     def test_ac5_raw_secret_extra_fields_and_other_creator_rejected(self):
         with self.assertRaises(ValueError): MemoryStore(self.store_root, "creator-b", "research-a", self.code)
+        store_alias = self.root / "store-alias"
+        store_alias.symlink_to(self.store_root, target_is_directory=True)
+        with self.assertRaises(ValueError): MemoryStore(store_alias, "creator-a", "research-a", self.code)
         for mutation in ("raw", "secret", "private", "path"):
             candidate = self.candidate()
             if mutation == "raw": candidate["payload"]["conversation"] = "not permitted"
