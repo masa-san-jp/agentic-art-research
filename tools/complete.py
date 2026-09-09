@@ -130,16 +130,17 @@ def _questions_without_primary(policy: dict[str, Any], questions: list[dict[str,
     )
 
 
-def evaluate_project(root: Path, target: str) -> dict[str, Any]:
+def evaluate_project(root: Path, target: str, *, protocol_root: Path | None = None) -> dict[str, Any]:
     root = root.resolve()
+    protocol = (protocol_root or root).resolve()
     project = _project_path(root, target)
-    findings = _project_findings(validate_repository(root), project, root)
+    findings = _project_findings(validate_repository(root, protocol_root=protocol), project, root)
     manifest_path = project / "manifest.yaml"
     manifest = load_yaml(manifest_path) or {}
     project_data = manifest.get("project") if isinstance(manifest, dict) else {}
     state = load_json(project / "07_runtime" / "research-state.json")
     completion_report = load_json(project / "07_runtime" / "completion-report.json")
-    vocab = load_yaml(root / "config" / "vocabularies.yaml") or {}
+    vocab = load_yaml(protocol / "config" / "vocabularies.yaml") or {}
     terminal_questions = set(vocab.get("question_terminal_statuses", []))
     questions = yaml_list(project / "01_planning" / "question-register.yaml", "questions")
     evidence = read_jsonl(project / "02_evidence" / "evidence-ledger.jsonl")
@@ -151,7 +152,7 @@ def evaluate_project(root: Path, target: str) -> dict[str, Any]:
     uncertainties = yaml_list(project / "04_decisions" / "uncertainty-register.yaml", "uncertainties")
     prior_art = read_jsonl(project / "03_knowledge" / "prior-art.jsonl")
     self_repetition_reviews = yaml_list(project / "04_decisions" / "self-repetition-review.yaml", "reviews")
-    quality_policy = load_completion_quality_policy(root, load_yaml(project / "01_planning" / "research-plan.yaml") or {})
+    quality_policy = load_completion_quality_policy(protocol, load_yaml(project / "01_planning" / "research-plan.yaml") or {})
     quality_counts = {
         "evidence": len(evidence),
         "claims": len(claims),
@@ -172,7 +173,7 @@ def evaluate_project(root: Path, target: str) -> dict[str, Any]:
                 quality_gaps.append({"id": "CUMULATIVE-SPECIFICITY", "reason": "Cumulative mechanism/source/history qualification is incomplete.", "impact": "Resolve the named candidate reasons before production handoff."})
         except (ValueError, OSError, KeyError, TypeError):
             quality_gaps.append({"id": "CUMULATIVE-SPECIFICITY", "reason": "Pinned cumulative input or history is unavailable or changed.", "impact": "Revalidate the explicit snapshot; do not infer a passing comparison."})
-    stopping_defaults = (load_yaml(root / "config" / "stopping-policy.yaml") or {}).get("defaults") or {}
+    stopping_defaults = (load_yaml(protocol / "config" / "stopping-policy.yaml") or {}).get("defaults") or {}
     thin_questions = _questions_without_primary(stopping_defaults, questions, evidence)
     tests_by_id = {record.get("id"): record for record in acceptance_tests}
 
@@ -252,7 +253,8 @@ def evaluate_project(root: Path, target: str) -> dict[str, Any]:
     }
 
 
-def complete_project(root: Path, target: str, *, completed_at: str | None = None) -> dict[str, Any]:
+def complete_project(root: Path, target: str, *, completed_at: str | None = None,
+                    protocol_root: Path | None = None) -> dict[str, Any]:
     root = root.resolve()
     project = _project_path(root, target)
     manifest_path = project / "manifest.yaml"
@@ -266,7 +268,8 @@ def complete_project(root: Path, target: str, *, completed_at: str | None = None
         raise ValueError("manifest and research-state statuses must match before completion")
     if current_status not in {"VALIDATING", *TERMINAL_STATUSES}:
         raise ValueError("completion requires project status VALIDATING or an idempotent terminal status")
-    report = evaluate_project(root, target)
+    protocol = (protocol_root or root).resolve()
+    report = evaluate_project(root, target, protocol_root=protocol)
     if completed_at is not None:
         normalized = _timestamp(completed_at)
         if normalized is None:
@@ -299,7 +302,7 @@ def complete_project(root: Path, target: str, *, completed_at: str | None = None
             "to_status": report["status"],
         }
         try:
-            load_state_machine(root).apply(current_status, event)
+            load_state_machine(protocol).apply(current_status, event)
         except TransitionError as exc:
             raise ValueError(str(exc)) from exc
         atomic_write_text(manifest_path, yaml.safe_dump(manifest, sort_keys=False))
@@ -307,7 +310,7 @@ def complete_project(root: Path, target: str, *, completed_at: str | None = None
         atomic_write_text(report_path, stable_json(report))
         existing_log = run_log_path.read_text(encoding="utf-8")
         atomic_write_text(run_log_path, existing_log + json.dumps(event, ensure_ascii=False) + "\n")
-        findings = validate_repository(root)
+        findings = validate_repository(root, protocol_root=protocol)
         if findings:
             raise ValueError("completion produced invalid project:\n" + "\n".join(finding.render() for finding in findings))
     except Exception:
@@ -322,9 +325,13 @@ def main() -> int:
     parser.add_argument("target")
     parser.add_argument("--completed-at")
     parser.add_argument("--root", type=Path, default=ROOT)
+    parser.add_argument("--protocol-root", type=Path, help="read-only protocol checkout containing schemas and policy")
     args = parser.parse_args()
     try:
-        report = complete_project(args.root.resolve(), args.target, completed_at=args.completed_at)
+        report = complete_project(
+            args.root.resolve(), args.target, completed_at=args.completed_at,
+            protocol_root=args.protocol_root.resolve() if args.protocol_root else None,
+        )
     except (FileNotFoundError, ValueError) as exc:
         parser.error(str(exc))
     print(stable_json(report), end="")

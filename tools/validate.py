@@ -2941,7 +2941,7 @@ def validate_repository(
                     _check_human_decision_journal(root, path, value, findings)
                 if relative == "01_planning/research-plan.yaml":
                     try:
-                        load_completion_quality_policy(root, value)
+                        load_completion_quality_policy(protocol, value)
                     except CompletionQualityConfigError as exc:
                         findings.append(
                             Finding(
