@@ -17,6 +17,8 @@
 
 このrepositoryは、兄弟repositoryのデータを一つにコピーする場所ではありません。各repositoryの正本をsource commit・schema・opaque referenceで参照し、境界で必要な入力またはhandoffへ変換します。
 
+8リポジトリの全体図と、どこが何を所有してどこへ渡すかは、親repoの [repository map](https://github.com/masa-san-jp/agentic-art-orchestration/blob/main/docs/repository-map.md) を参照してください。このREADMEでは、Researchから見た接続だけを説明します。
+
 ```text
 self-model-notes ───────┐
 art-history-notes ───────┼─ pinned reference / normalized signal ─→ agentic-art-research
@@ -35,6 +37,7 @@ viewer-response-notes ───── feedback / assessment（契約に適合し
 | [marketing-trends-notes](https://github.com/masa-san-jp/marketing-trends-notes) | 市場・トレンド・practiceの知識源 | freshnessと出典を持つnormalized signalとして、必要な場合に横断入力へ接続します。trend本文を本repositoryの正本にしません。 |
 | [agentic-art-production](https://github.com/masa-san-jp/agentic-art-production) | 制作計画、試作、本制作、結果記録 | 本repositoryが生成するversioned production handoffを受け取る下流repoです。本repositoryはproduction repoへ直接書き込みません。 |
 | [viewer-response-notes](https://github.com/masa-san-jp/viewer-response-notes) | viewer反応とassessmentの知識源 | 契約に適合したfeedback・assessmentだけを扱い、会話本文や個人情報をresearch projectへコピーしません。 |
+| [agentic-art-project](https://github.com/masa-san-jp/agentic-art-project) | 公開制作プラン、作品、制作記録のカタログ | Researchから直接書き込まず、Productionのcanonical planをOrchestrationが検証・投影した公開先です。 |
 
 矢印はrepository間の責任分界とversioned contractを示し、常時同期や相互の作業ツリー参照を意味しません。兄弟repositoryを使わないresearchは、該当する外部依存を省略したままofflineで実行できます。
 
