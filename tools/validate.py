@@ -16,6 +16,11 @@ from referencing import Registry, Resource
 
 from canonical import canonical_json_bytes, handoff_hash_payload, handoff_sha256
 from completion_quality import CompletionQualityConfigError, load_completion_quality_policy
+from handoff_common import (
+    digital_prototype_plan_reasons,
+    has_digital_prototype_plan,
+    prototype_task_effect_type_fields,
+)
 from _common import (
     InputParseError,
     PROJECT_REQUIRED_FILES,
@@ -1574,6 +1579,42 @@ def _check_handoff_contract(
                     remediation="Compare all candidates on the same axes and mark the comparison COMPLETE or HUMAN_SELECTION_REQUIRED.",
                 )
             )
+
+    for plan_index, task_index in prototype_task_effect_type_fields(prototype_plans):
+        findings.append(
+            _handoff_finding(
+                root,
+                project,
+                PROTOTYPES_PATH,
+                "PROTOTYPE_TASK_EFFECT_TYPE_REQUIRED",
+                f"prototype_plans[{plan_index}].tasks[{task_index}].effect_type is required",
+                field=f"prototype_plans[{plan_index}].tasks[{task_index}].effect_type",
+                remediation="Declare the task effect boundary using the shared effect_type vocabulary.",
+            )
+        )
+
+    selected_plan_ids = set()
+    if isinstance(handoff, dict) and isinstance(handoff.get("prototype_plan_ids"), list):
+        selected_plan_ids = {
+            plan_id for plan_id in handoff["prototype_plan_ids"] if isinstance(plan_id, str)
+        }
+    if not has_digital_prototype_plan(prototype_plans, selected_plan_ids=selected_plan_ids):
+        reasons = []
+        for plan in prototype_plans:
+            if isinstance(plan, dict) and plan.get("id") in selected_plan_ids:
+                reasons.append(f"{plan.get('id')}: {', '.join(digital_prototype_plan_reasons(plan))}")
+        detail = "; ".join(reasons) or "the handoff selects no qualifying digital prototype plan"
+        findings.append(
+            _handoff_finding(
+                root,
+                project,
+                HANDOFF_PATH,
+                "PROTOTYPE_PLAN_DIGITAL_REQUIRED",
+                detail,
+                field="prototype_plan_ids",
+                remediation="Attach at least one digital-prototype-renderer plan with local effect types, production-plan inputs, and SVG evidence.",
+            )
+        )
 
     _check_prototype_dags(root, project, prototype_plans, findings)
     for plan_index, plan in enumerate(prototype_plans):

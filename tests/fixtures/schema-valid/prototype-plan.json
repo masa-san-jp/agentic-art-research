@@ -3,28 +3,33 @@
   "hypothesis_id": "PH001",
   "question": "Can the interruption be identified from three fixed viewpoints?",
   "uncertainty_ids": ["U001"],
-  "method": "Observe a one-tenth scale model under fixed lighting from three viewpoints.",
-  "inputs": ["Twelve paper elements", "Three fixed cameras"],
-  "constraints": ["Do not record identifiable people"],
+  "method": "Render a deterministic SVG preview from the production plan and inspect the composition from three fixed viewpoints.",
+  "inputs": [
+    "03_plan/production-plan.yaml dimensions, materials, quantity, and unit",
+    "Selected hypothesis composition and production-plan placement"
+  ],
+  "constraints": ["Do not include identifiable people in the rendered preview"],
   "tasks": [
     {
       "id": "PT001",
-      "title": "Build the scale model",
+      "title": "Read production-plan geometry",
       "depends_on": [],
-      "completion_condition": "Twelve positions with one omitted element are fixed."
+      "completion_condition": "All required dimensions, materials, quantity, and unit values are resolved from the production plan.",
+      "effect_type": "READ_ONLY"
     },
     {
       "id": "PT002",
-      "title": "Record three viewpoints",
+      "title": "Render the deterministic SVG preview",
       "depends_on": ["PT001"],
-      "completion_condition": "Three frames with identical exposure are available."
+      "completion_condition": "An SVG image preview with the plan values and three fixed viewpoints is written to the declared output.",
+      "effect_type": "REPOSITORY_WRITE"
     }
   ],
   "acceptance_test_ids": ["AT001"],
-  "expected_evidence": "fixed-camera-frame-set",
+  "expected_evidence": "deterministic-svg-image-output",
   "estimated_cost_band": "LOW",
   "estimated_duration_band": "HOURS",
-  "executor_capability": "physical-prototype-agent",
+  "executor_capability": "digital-prototype-renderer",
   "external_validation_reason": null,
   "status": "PLANNED"
 }

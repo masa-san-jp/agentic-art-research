@@ -14,6 +14,80 @@ from _common import load_json, load_yaml, read_jsonl
 
 PROJECT_SLUG = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
+DIGITAL_PROTOTYPE_EXECUTOR = "digital-prototype-renderer"
+DIGITAL_PROTOTYPE_EFFECT_TYPES = frozenset({"READ_ONLY", "REPOSITORY_WRITE"})
+
+
+def prototype_task_effect_type_fields(prototype_plans: list[dict[str, Any]]) -> list[tuple[int, int]]:
+    """Return plan/task indexes whose effect boundary is undeclared."""
+
+    missing: list[tuple[int, int]] = []
+    for plan_index, plan in enumerate(prototype_plans):
+        if not isinstance(plan, dict):
+            continue
+        tasks = plan.get("tasks") if isinstance(plan.get("tasks"), list) else []
+        for task_index, task in enumerate(tasks):
+            if isinstance(task, dict) and "effect_type" not in task:
+                missing.append((plan_index, task_index))
+    return missing
+
+
+def digital_prototype_plan_reasons(plan: Any) -> list[str]:
+    """Explain why a plan cannot be used as the local digital prototype plan."""
+
+    if not isinstance(plan, dict):
+        return ["plan is not an object"]
+    reasons: list[str] = []
+    if plan.get("executor_capability") != DIGITAL_PROTOTYPE_EXECUTOR:
+        reasons.append(f"executor_capability must be {DIGITAL_PROTOTYPE_EXECUTOR!r}")
+
+    tasks = plan.get("tasks") if isinstance(plan.get("tasks"), list) else []
+    if not tasks:
+        reasons.append("tasks must contain at least one task")
+    disallowed = sorted(
+        {
+            str(task.get("effect_type")) if isinstance(task, dict) else "<non-object>"
+            for task in tasks
+            if not isinstance(task, dict) or task.get("effect_type") not in DIGITAL_PROTOTYPE_EFFECT_TYPES
+        }
+    )
+    if disallowed:
+        reasons.append("all task effect_type values must be READ_ONLY or REPOSITORY_WRITE")
+
+    inputs = plan.get("inputs") if isinstance(plan.get("inputs"), list) else []
+    input_text = " ".join(item.casefold() for item in inputs if isinstance(item, str))
+    if "03_plan/production-plan.yaml" not in input_text:
+        reasons.append("inputs must reference 03_plan/production-plan.yaml")
+    for label, terms in (
+        ("dimensions", ("dimension", "size")),
+        ("materials", ("material",)),
+        ("quantity", ("quantity", "count", "number")),
+    ):
+        if not any(term in input_text for term in terms):
+            reasons.append(f"inputs must reference production-plan {label}")
+
+    expected_evidence = plan.get("expected_evidence")
+    if not isinstance(expected_evidence, str) or "svg" not in expected_evidence.casefold():
+        reasons.append("expected_evidence must indicate SVG image output")
+    return reasons
+
+
+def has_digital_prototype_plan(
+    prototype_plans: list[dict[str, Any]],
+    *,
+    selected_plan_ids: set[str] | None = None,
+) -> bool:
+    """Return whether the selected plan set contains a qualifying digital plan."""
+
+    for plan in prototype_plans:
+        if not isinstance(plan, dict):
+            continue
+        if selected_plan_ids is not None and plan.get("id") not in selected_plan_ids:
+            continue
+        if not digital_prototype_plan_reasons(plan):
+            return True
+    return False
+
 
 class HandoffInputError(ValueError):
     """Raised when canonical handoff inputs cannot be resolved safely."""
