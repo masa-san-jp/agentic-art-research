@@ -100,6 +100,16 @@ def build_context_pack(
     if memory_query is not None:
         from research_memory import query_memory
         pack["prior_knowledge"] = query_memory(memory_query)
+    inspiration_sources = []
+    for relative in (
+        "04_decisions/inspiration-candidates.yaml",
+        "04_decisions/inspiration-comparison.yaml",
+        "04_decisions/inspiration-critiques.yaml",
+    ):
+        if (project / relative).is_file():
+            inspiration_sources.append(_read_source(project, relative))
+    if inspiration_sources:
+        pack["prior_inspiration"] = inspiration_sources
     from cumulative_specificity import REQUEST_PATH, evaluate_file
     if (project / REQUEST_PATH).exists() or (project / REQUEST_PATH).is_symlink():
         pack["cumulative_specificity"] = evaluate_file(project)

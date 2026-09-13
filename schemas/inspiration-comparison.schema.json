@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/inspiration-comparison.schema.json",
+  "title": "Inspiration candidate comparison",
+  "type": "object",
+  "required": ["id", "candidate_ids", "axes", "recommended_candidate_id", "reason", "knowledge_used_ids", "status"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {"type": "string", "pattern": "^ICMP[0-9]{3,}$"},
+    "candidate_ids": {"type": "array", "items": {"type": "string", "pattern": "^IC[0-9]{3,}$"}, "minItems": 2, "uniqueItems": true},
+    "axes": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["name", "assessments"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {"type": "string", "minLength": 1},
+          "assessments": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "object",
+              "required": ["candidate_id", "statement", "rating"],
+              "additionalProperties": false,
+              "properties": {
+                "candidate_id": {"type": "string", "pattern": "^IC[0-9]{3,}$"},
+                "statement": {"type": "string", "minLength": 1},
+                "rating": {"type": "integer", "minimum": 1, "maximum": 5}
+              }
+            }
+          }
+        }
+      }
+    },
+    "recommended_candidate_id": {"oneOf": [{"type": "string", "pattern": "^IC[0-9]{3,}$"}, {"type": "null"}]},
+    "reason": {"type": "string", "minLength": 1},
+    "knowledge_used_ids": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+    "status": {"enum": ["COMPLETE", "HUMAN_SELECTION_REQUIRED", "INCOMPLETE"]}
+  }
+}

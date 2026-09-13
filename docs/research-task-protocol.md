@@ -50,6 +50,10 @@ ID、source location、取得日時、SHA-256、権利、機密区分、関連�
 
 ### 8.1 仮説を1つに絞る
 
+候補生成は `tools/inspiration_pipeline.py` の `inspiration-pipeline/v1` を使う。agent outputは候補ごとに、中心質問、命題、鑑賞体験、具体的構成、素材の働き、観察からの創造的変換、decision/insightの参照、材料・道具・技能・費用・時間・完了経路・代替経路を持つ。創造的変換は常に `CREATIVE_PROPOSAL` とし、外部事実へ昇格させない。候補は意味的fingerprintで比較し、題名、装置名、数量だけの差は独立候補として扱わない。
+
+候補ごとに自動批評を通し、詩的な雰囲気だけ、測定値だけ、素材と命題の断絶、完了経路の欠落を検出する。実験的な表現は具体的な構成があれば棄却しない。批評で修正が必要な場合は `revisions` に実質変更を与え、revisionを増やしてから再比較する。前回の比較・採択・修正記録は `previous_knowledge` と `knowledge_refs` で再読し、読み込めなければ完了扱いにしない。
+
 `04_decisions/production-hypotheses.yaml` に候補を書き、`hypothesis-comparison.yaml` で比較して1つを `RECOMMENDED` にする。比較の `status` を `COMPLETE` にし、推薦を一意にすること。**そこまで書き切れば、引き継ぎは人の承認を待たずに `AGENT_RECOMMENDED` で出る。** 承認を外すのではなく、選べる状態まで書くことで待ちが消える。
 
 同点に見えるときの手順を固定する。順序を変えない。
