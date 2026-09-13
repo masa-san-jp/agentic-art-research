@@ -51,6 +51,9 @@ SCHEMA_FOR_YAML_COLLECTION = {
     "04_decisions/self-repetition-review.yaml": ("reviews", "self-repetition-review"),
     "04_decisions/production-hypotheses.yaml": ("hypotheses", "production-hypothesis"),
     "04_decisions/hypothesis-comparison.yaml": ("comparisons", "hypothesis-comparison"),
+    "04_decisions/inspiration-candidates.yaml": ("candidates", "inspiration-candidate"),
+    "04_decisions/inspiration-comparison.yaml": ("comparisons", "inspiration-comparison"),
+    "04_decisions/inspiration-critiques.yaml": ("critiques", "inspiration-critique"),
     "05_production/prototype-plans.yaml": ("prototype_plans", "prototype-plan"),
 }
 SCHEMA_FOR_YAML_OBJECT = {
@@ -80,6 +83,9 @@ DOMAIN_SCHEMAS = (
     "requirement",
     "production-hypothesis",
     "hypothesis-comparison",
+    "inspiration-candidate",
+    "inspiration-comparison",
+    "inspiration-critique",
     "prototype-plan",
     "visual-language",
     "mechanism",
@@ -128,6 +134,9 @@ REFERENCE_FIELDS = {
     "acceptance_test": [("target_requirement", "requirement")],
     "production-hypothesis": [("source_decision_ids", "decision"), ("source_insight_ids", "insight")],
     "hypothesis-comparison": [("hypothesis_ids", "production-hypothesis"), ("recommended_hypothesis_id", "production-hypothesis")],
+    "inspiration-candidate": [("source_decision_ids", "decision"), ("source_insight_ids", "insight")],
+    "inspiration-comparison": [("recommended_candidate_id", "inspiration-candidate")],
+    "inspiration-critique": [("candidate_id", "inspiration-candidate")],
     "prototype-plan": [
         ("hypothesis_id", "production-hypothesis"),
         ("uncertainty_ids", "uncertainty"),
