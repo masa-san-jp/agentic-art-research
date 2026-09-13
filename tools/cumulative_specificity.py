@@ -11,6 +11,7 @@ from _common import ROOT, load_yaml, read_jsonl, yaml_list
 from research_memory import query_memory, FIELDS as ARTIFACT_FIELDS, timestamp
 from self_repetition import _similarity
 from validate import _load_schema_validators, validate_repository
+from path_safety import external_path
 
 CONTRACT='cumulative-specificity/v1'
 REQUEST='cumulative-specificity-request/v1'
@@ -60,8 +61,11 @@ def load_inputs(rows,creator,at):
         need(isinstance(record,dict) and set(record)==ARTIFACT_FIELDS and record['contract_version']=='artifact-record/v1','INPUT_ARTIFACT_CONTRACT')
         need(SHA.fullmatch(row['code_commit']) and SHA.fullmatch(row['knowledge_commit']) and HASH.fullmatch(record['content_sha256']),'INPUT_PIN')
         need(type(record['revision']) is int and record['revision']>0,'INPUT_REVISION')
-        path=Path(row['payload_path'])
-        need(path.is_absolute() and not any(p.is_symlink() for p in (path,*path.parents)) and path.is_file(),'INPUT_UNAVAILABLE')
+        try:
+            path = external_path(row['payload_path'], require_exists=True)
+        except ValueError:
+            raise SpecificityError('INPUT_UNAVAILABLE')
+        need(path.is_file(),'INPUT_UNAVAILABLE')
         need(hashed(path.read_bytes())==record['content_sha256'],'INPUT_HASH_MISMATCH')
         need(record['owner_repository']!='self-model-notes' or record['creator_id']==creator,'SELF_SIGNAL_SCOPE')
         need(record['lifecycle']=='accepted','INPUT_LIFECYCLE')
