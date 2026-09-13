@@ -64,6 +64,10 @@ ID、source location、取得日時、SHA-256、権利、機密区分、関連�
 
 この記録は制作側が「何で作るか」を決め直さないための入力であり、視覚言語の導出元にもなる。
 
+### 8.3 デジタル試作planを必ず渡す
+
+`05_production/prototype-plans.yaml` には、採択する各仮説へ接続したデジタル試作planを少なくとも1件含める。planは `executor_capability: digital-prototype-renderer` とし、全taskに `effect_type` を書く。デジタルplanのtaskでは `READ_ONLY` または `REPOSITORY_WRITE` だけを使い、`inputs` に `03_plan/production-plan.yaml` の寸法、素材、数量、単位への参照を含め、`expected_evidence` にSVG画像出力を示す。物理作業を含むplanは別planとして併存できるが、デジタルplanの代用にはならない。context packとworker adapterはこの節をそのまま実行指示として渡し、検証で条件を満たさないhandoffを停止する。
+
 ## 9. 検証する
 
 ```bash
