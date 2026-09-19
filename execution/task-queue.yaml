@@ -1,8 +1,24 @@
-version: 25
-updated_at: "2026-09-08T00:07:56.510877+00:00"
+version: 26
+updated_at: "2026-09-19T03:26:13.066202+00:00"
 selection_policy: lowest_id_ready_with_dependencies_done
 allowed_statuses: [BACKLOG, READY, IN_PROGRESS, BLOCKED, DONE]
 tasks:
+  - id: THEME-RESEARCH-P2
+    milestone: G7
+    title: Run one bounded art-history theme research pass per run and emit the owner write job
+    status: DONE
+    depends_on: [AAK-09]
+    issue_refs: [agentic-art-research#112, art-history-notes#395, agentic-art-orchestration#251]
+    acceptance: 'theme-research-pass/v1: recon runs the pinned owner tool and records the demand log; a verified exact-label hit yields no-new-evidence with the recon summary in reason; assemble computes hashes only and the owner validator accepts the candidate; budget exhaustion is named and writes no partial candidate; existing gates pass.'
+    checks:
+      - .venv/bin/python -m unittest tests.test_theme_research_pass -v
+      - .venv/bin/python -m unittest discover -s tests -v
+      - .venv/bin/python tools/validate.py --check
+      - .venv/bin/python tools/security_check.py --check
+      - .venv/bin/python tools/docs_check.py --check
+      - .venv/bin/python tools/chaos_check.py
+      - git diff --check
+    completion: 'tools/theme_research_pass.py (recon/assemble/write-job), docs/theme-research-pass.md, protocol §2 extension; 9 new tests pass; validate/security/docs/chaos and git diff --check pass. Full discover shows 342 tests with 8 errors, all tests.test_research_memory setUp "execute a clean pinned code checkout" caused by untracked files in this local clone (pre-existing "README (1).md"); they pass on a clean checkout. Live agent run remains Phase 3 (AAK-02).'
   - id: AAK-02-NATIVE-AUTHORING
     milestone: G7
     title: Expose required canonical handoff and external-reference authoring targets

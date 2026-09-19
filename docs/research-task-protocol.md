@@ -10,7 +10,13 @@
 
 - 同一プロジェクトのquestion、evidence、claimを検索する。
 - 外部profile output rootの関連シグナルを`--profiles-root`で検証・検索する。repositoryの`profiles/`には実profileを置かない。
-- `art-history-notes` のbundleを利用できる場合は検索する。
+- `art-history-notes` のbundleを利用できる場合は検索する。pinされたcheckoutがあるrunでは、
+  1 runにつき1回だけ **theme research pass** を回す（`docs/theme-research-pass.md`）:
+  `tools/theme_research_pass.py recon` で主題語を検索し（owner側の需要ログに残る）、全主題に
+  `verified` の主題一致entityがあれば `NO_NEW_EVIDENCE`、無ければ owner の予算内で出典を読み、
+  §5 の台帳と snapshot hash を根拠に candidate を組み立てて（`assemble`）、親の write job
+  （`write-job`）へ渡す。読んでいない出典を candidate に書かない。予算到達で止め、`reason` に
+  上限名を残す。
 - 同一URL、同一hash、転載関係の資料を独立証拠として重複計上しない。
 
 ## 3. 質問を固定する
