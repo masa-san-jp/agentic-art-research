@@ -68,7 +68,8 @@
           "id",
           "title",
           "depends_on",
-          "completion_condition"
+          "completion_condition",
+          "effect_type"
         ],
         "additionalProperties": false,
         "properties": {

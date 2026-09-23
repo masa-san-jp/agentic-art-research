@@ -10,7 +10,13 @@
 
 - 同一プロジェクトのquestion、evidence、claimを検索する。
 - 外部profile output rootの関連シグナルを`--profiles-root`で検証・検索する。repositoryの`profiles/`には実profileを置かない。
-- `art-history-notes` のbundleを利用できる場合は検索する。
+- `art-history-notes` のbundleを利用できる場合は検索する。pinされたcheckoutがあるrunでは、
+  1 runにつき1回だけ **theme research pass** を回す（`docs/theme-research-pass.md`）:
+  `tools/theme_research_pass.py recon` で主題語を検索し（owner側の需要ログに残る）、全主題に
+  `verified` の主題一致entityがあれば `NO_NEW_EVIDENCE`、無ければ owner の予算内で出典を読み、
+  §5 の台帳と snapshot hash を根拠に candidate を組み立てて（`assemble`）、親の write job
+  （`write-job`）へ渡す。読んでいない出典を candidate に書かない。予算到達で止め、`reason` に
+  上限名を残す。
 - 同一URL、同一hash、転載関係の資料を独立証拠として重複計上しない。
 
 ## 3. 質問を固定する
@@ -50,6 +56,10 @@ ID、source location、取得日時、SHA-256、権利、機密区分、関連�
 
 ### 8.1 仮説を1つに絞る
 
+候補生成は `tools/inspiration_pipeline.py` の `inspiration-pipeline/v1` を使う。agent outputは候補ごとに、中心質問、命題、鑑賞体験、具体的構成、素材の働き、観察からの創造的変換、decision/insightの参照、材料・道具・技能・費用・時間・完了経路・代替経路を持つ。創造的変換は常に `CREATIVE_PROPOSAL` とし、外部事実へ昇格させない。候補は意味的fingerprintで比較し、題名、装置名、数量だけの差は独立候補として扱わない。
+
+候補ごとに自動批評を通し、詩的な雰囲気だけ、測定値だけ、素材と命題の断絶、完了経路の欠落を検出する。実験的な表現は具体的な構成があれば棄却しない。批評で修正が必要な場合は `revisions` に実質変更を与え、revisionを増やしてから再比較する。前回の比較・採択・修正記録は `previous_knowledge` と `knowledge_refs` で再読し、読み込めなければ完了扱いにしない。
+
 `04_decisions/production-hypotheses.yaml` に候補を書き、`hypothesis-comparison.yaml` で比較して1つを `RECOMMENDED` にする。比較の `status` を `COMPLETE` にし、推薦を一意にすること。**そこまで書き切れば、引き継ぎは人の承認を待たずに `AGENT_RECOMMENDED` で出る。** 承認を外すのではなく、選べる状態まで書くことで待ちが消える。
 
 同点に見えるときの手順を固定する。順序を変えない。
@@ -63,6 +73,10 @@ ID、source location、取得日時、SHA-256、権利、機密区分、関連�
 テーマ・制約・先行作品から**媒体の候補を列挙し**、選んだものと棄却したものを `decision-log.yaml` に1件の判断として残す。棄却案の無い媒体決定は、選んだのではなく最初に浮かんだものを採っている。
 
 この記録は制作側が「何で作るか」を決め直さないための入力であり、視覚言語の導出元にもなる。
+
+### 8.3 デジタル試作planを必ず渡す
+
+`05_production/prototype-plans.yaml` には、採択する各仮説へ接続したデジタル試作planを少なくとも1件含める。planは `executor_capability: digital-prototype-renderer` とし、全taskに `effect_type` を書く。デジタルplanのtaskでは `READ_ONLY` または `REPOSITORY_WRITE` だけを使い、`inputs` に `03_plan/production-plan.yaml` の寸法、素材、数量、単位への参照を含め、`expected_evidence` にSVG画像出力を示す。物理作業を含むplanは別planとして併存できるが、デジタルplanの代用にはならない。context packとworker adapterはこの節をそのまま実行指示として渡し、検証で条件を満たさないhandoffを停止する。
 
 ## 9. 検証する
 

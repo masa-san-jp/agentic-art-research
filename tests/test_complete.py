@@ -226,6 +226,21 @@ class CompletionContractTest(unittest.TestCase):
         manifest = yaml.safe_load((root_a / "projects/completion-test/manifest.yaml").read_text(encoding="utf-8"))
         self.assertEqual("COMPLETE", manifest["project"]["status"])
 
+    def test_completion_accepts_external_work_root_with_read_only_protocol_root(self) -> None:
+        protocol_root = self.prepare_validating_project(governance_complete=True)
+        work_root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, work_root, True)
+        shutil.copytree(protocol_root / "projects", work_root / "projects")
+        (work_root / "data").mkdir()
+        report = complete_project(
+            work_root,
+            "project/completion-test",
+            completed_at="2026-08-11T00:30:00+09:00",
+            protocol_root=protocol_root,
+        )
+        self.assertEqual("COMPLETE", report["status"])
+        self.assertEqual([], validate_repository(work_root, protocol_root=protocol_root))
+
     def test_complete_with_gaps_report_is_schema_valid_and_idempotent(self) -> None:
         root = self.prepare_validating_project(governance_complete=False)
         report = complete_project(root, "project/completion-test", completed_at="2026-08-11T00:30:00+09:00")

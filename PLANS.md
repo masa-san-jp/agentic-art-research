@@ -28,6 +28,14 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 
 ### Progress
 
+- [x] (2026-09-08) AAK-09 qualified. Qualified dependencies: AAK08 code 13c819eb34e91198c3584b8cfd75c81494ab148c (7 focused / 298 full PASS), AAK05 code 765b1a3833602c8d9740dd584211e4ae88795f3d (5 AC / 173 full / native policy PASS), AAK06 f10a4f187966d1d2602a03410e8b3c9aa31fb22e (5 AC / 11 focused PASS), AAK07 7be3d5ff495a91f3ce75159c96e9fc0ec383aa57 (5 AC / 57 full / native completion PASS). These are isolated qualified candidates, not merged integration.
+
+AAK09 implementation: connect immutable owner memory to mechanism comparison; preserve native grounding and repetition thresholds; distinguish own/inherited/external history, source ancestry and explicit continuation; deterministic rule/seed ordering; report reuse/no-reuse coverage and unresolved/repetition metrics without artistic superiority claims. Verify negative input replacement, renamed mechanism, unsupported reference and AI self-citation fixtures.
+
+- [x] (2026-09-05 UTC) `AAK-08`: Issue #93 code and synthetic acceptance complete on agent/aak-08-research-memory, base 71bfec77ea0d189186b8248565d340c124b81eab; evidence in Outcomes and execution/handoff.md. Pinned AAK-SPEC/PLAN b0e7c7f8d0a1f756fa708deef4fb380a62e45e0d govern the added knowledge cycle. External dependency AAK-04 is qualified at 83f7e9e8d1c6e25b39351aebb6eb15cb12da4685 / instance-profile/v1 / orchestration PR201 (14 focused / 580 full tests with one existing skip PASS); unmerged candidate, not main integration.
+
+AAK-08 implementation steps: curate schema-valid records from external projects; commit only allowlisted knowledge with immutable revisions and receipts; rebuild owner index; connect retrieval and explicit disposition to context_pack/next_action; preserve source corrections, rejection reasons, and prior repetition guards. Validate AC1..5 using synthetic external Git stores and independent projects, then canonical validator/full tests/diff. Real agent AAK-02 integration remains NOT_RUN. On interruption resume from execution/state.yaml and execution/handoff.md; no actual project, raw source, or profile is copied into this protocol.
+
 - [x] `HANDOFF-REFERENCE-CONTRACT-001`: Issue #43のsource-ref Producer/Consumer契約をResearch側から公開する。Production consumerの実装・mergeは別repoの責務として行わない。120 testとvalidatorが合格。
 - [x] (2026-08-16 JST) `COMPLETION-QUALITY-001`: Issue #44の調査量・先行作品調査・自己反復リスクを完了条件へ組み込む。未達は`INCOMPLETE`としてhandoffを拒否する。123 unittest、validator、docs、security、chaos、graph、offline evaluation、release、handoff release gates合格。
 - [x] (2026-08-25 JST) `RUNTIME-005`: `task_runtime.peek_next()`、`next_action.py --dry-run`、preview/live一致テスト、execution queue/stateのblocking validatorを実装。対象58テスト合格。次は`BOUNDARY-001`。
@@ -52,6 +60,8 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 チェックボックスとUTCまたはJST日時。未完了、部分完了、完了を正確に表す。
 
 ### Surprises & Discoveries
+
+- AAK09: AAK08 curated claims/hypotheses but not native mechanism records. Added a mechanism schema that references the existing visual-language technique contract and capture/retrieve support; no duplicate visual schema or title-derived mechanism.
 
 - Production側の現状が`references`/`record_hash`を期待し、Research exporterの`records`/`record_sha256`と不一致だった。canonical hashの計算責任はResearchに置き、Productionは形式と非ゼロ値を検証する。
 - Issue #44の実測では、証拠10件・主張5件・インサイト2件・判断2件・要件4件、棄却案0件、先行作品調査0件、自己反復評価0件でも完了・handoffまで到達していた。既存の`COMPLETE_WITH_GAPS`は調査済みの未解決事項を表すため、調査未達とは別の`INCOMPLETE`が必要。
@@ -1144,9 +1154,34 @@ Issue #83の未実装だった横断検索を、明示された候補projectと�
 
 ### Outcomes
 
+AAK-08 common-contract requalification (2026-09-05): candidate 13c819eb34e91198c3584b8cfd75c81494ab148c, exact tree 1a052301f312b22d5e0d67410281bcc0f761c9b6. Common reuse provenance and six required rejection categories are enforced; 7 focused and 298 full tests PASS after repairing an intermediate state/queue mismatch. Latest proof and retained historical candidate are distinguished in execution/handoff.md. Live integration remains NOT_RUN.
+
+AAK-08 (2026-09-05): local code ec6b9eba5b2597368c5cfd8eaef6a611753a6f21 / GitHub candidate a8c859a810b7b55de775a0f501e3455732c1fd65 have identical tree 48433ed294fb3abc100e3fa5508585c8a5208284. Focused 7 PASS, full 298 PASS, canonical validator/docs/diff PASS. All five synthetic ACs passed. Two retained synthetic knowledge commits and the second decision's explicit reuse trace are in execution/handoff.md. Owner-candidate transport is OWNER_VALIDATION_REQUIRED; real destination intake and AAK-02 integration are NOT_RUN. AAK-09 remains dependent on blocked AAK-05/07; parent can continue AAK-12. Initial failures (manifest nesting, missing fixture runtime initialization) were repaired without changing gates.
+
 - Full child suite `289/289` and all local validator/security/docs/chaos/graph/handoff release gates passed. PR #87 was merged to `main` as `1e8390e6ac7286c23a971d19a8797be4851cf086`; GitHub `validate` was not started because of an account billing limit and is retained as an environment note, not a test pass.
 
 ### Outcomes & Retrospective
 
 - `tests.test_self_repetition` 3/3、schemaを含むfocused test 11/11、child full unittest 281/281、validator/security/docs/chaos/graph/handoff release gateがPASSした。
 - 実制作outputは変更せず、4件のsynthetic completed-project fixtureでIssue #83の検出条件を再現した。
+
+### AAK-09 Outcomes
+
+Qualified code `046c2380310d208ca52cbca461c95c798328b599`: 5 synthetic AC PASS, 9 focused / 307 full tests PASS, validator/security/docs/graph/chaos/local release/handoff gates PASS. Own/inherited/external attribution, immutable input binding, native grounding, source ancestry, explicit continuation and unseen-history rejection are implemented. Real Marketing07 artifact `bc146abbf7f40451fcc5b51a3ba5a8922910a68b` was read with synthetic Research memory `88ad1c2c152f76b294ed8e8ceaec8cdd309283bf`, producing a reasoned continuation with one detected structural duplicate. This is synthetic acceptance, not an artistic quality guarantee or real-agent AAK02 completion.
+
+## AAK02 native authoring repair
+
+### Progress
+- [x] Observed live next_action/write-target contract omission at c221d59.
+- [x] Add existing canonical brief and external-reference targets to translator/analyst roles; validate positive and forbidden paths.
+- [x] Owner313 fulltests, focused55/25 and native gates PASS; PR97 published.
+
+### Decision Log
+The required handoff brief exists as an unfilled template but no role can author it. Extend the role contract, not the agent permission bypass or acceptance thresholds. Existing external-reference records belong to analyst, which derives knowledge from collected evidence. No new domain schema or authority is introduced.
+
+### Outcomes
+Pending native qualification and rerun under an explicit new code pin.
+
+Actual fork testing also exposed opaque catalog URNs being exported as HTTPS access URLs. Preserve hashed provenance and omit unavailable external access; Production owns category availability and gap handling. Original465 candidate remains preserved, this follow-up is separately qualified.
+
+Qualification outcome: code2304261b0c009b9f8690f2d5afbd76a53304c8a9 passed all required owner gates. Six actual-agent runs and main integration remain parent AAK02 responsibilities; no physical or public execution is claimed.

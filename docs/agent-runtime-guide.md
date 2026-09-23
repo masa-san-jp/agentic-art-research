@@ -331,3 +331,9 @@ checkpointは、テスト可能な状態、queue更新、state更新、短い判
 - 実行したテストと結果
 - 残るgapまたはblocker
 - 次のtask IDと最初の1操作
+
+### Required canonical authoring inputs
+
+The production-translator owns the existing production brief and reference-category map as well as its requirements and visual language. It may refresh the cumulative-specificity request after authoring those final inputs; the critic retains comparison authoring access. The analyst owns existing external-reference records. All edits still pass isolated attempt promotion and native typed gates. Runtime files and other roles remain protected.
+
+Evidence source locators may be opaque local catalog IDs. Handoff export emits `access_url` only for stable HTTPS URLs without user information, queries or fragments; it retains every source record hash and canonical path. Missing external access is explicit, never replaced by a fabricated URL.

@@ -1,0 +1,175 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/inspiration-candidate.schema.json",
+  "title": "Inspiration candidate",
+  "type": "object",
+  "required": [
+    "id",
+    "revision",
+    "title",
+    "core_question",
+    "proposition",
+    "intended_experience",
+    "composition",
+    "material_relationship",
+    "input_transformation",
+    "source_decision_ids",
+    "source_insight_ids",
+    "differentiation",
+    "feasibility",
+    "uncertainties",
+    "acceptance_test_ids",
+    "knowledge_refs",
+    "status"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "textList": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "sourceRef": {
+      "type": "object",
+      "required": ["kind", "id", "source_commit"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {"enum": ["observation", "claim", "prior_art", "decision", "insight"]},
+        "id": {"type": "string", "minLength": 1},
+        "source_commit": {"$ref": "common.schema.json#/$defs/gitSha"},
+        "source_url": {"type": ["string", "null"]}
+      }
+    },
+    "uncertainty": {
+      "type": "object",
+      "required": ["id", "statement", "severity", "external_validation_reason"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "pattern": "^U[0-9]{3,}$"},
+        "statement": {"type": "string", "minLength": 1},
+        "severity": {"$ref": "common.schema.json#/$defs/uncertaintySeverity"},
+        "external_validation_reason": {"type": ["string", "null"], "minLength": 1}
+      }
+    }
+  },
+  "properties": {
+    "id": {"type": "string", "pattern": "^IC[0-9]{3,}$"},
+    "revision": {"type": "integer", "minimum": 1},
+    "title": {"type": "string", "minLength": 1},
+    "core_question": {"type": "string", "minLength": 1},
+    "proposition": {"type": "string", "minLength": 1},
+    "intended_experience": {"$ref": "#/$defs/textList"},
+    "composition": {
+      "type": "object",
+      "required": ["elements", "spatial_relation", "viewer_action"],
+      "additionalProperties": false,
+      "properties": {
+        "elements": {"$ref": "#/$defs/textList"},
+        "spatial_relation": {"type": "string", "minLength": 1},
+        "viewer_action": {"type": "string", "minLength": 1},
+        "device_name": {"type": ["string", "null"], "minLength": 1},
+        "quantity": {"type": ["string", "integer", "number", "null"]}
+      }
+    },
+    "material_relationship": {
+      "type": "object",
+      "required": ["material", "behavior", "relation"],
+      "additionalProperties": false,
+      "properties": {
+        "material": {"type": "string", "minLength": 1},
+        "behavior": {"type": "string", "minLength": 1},
+        "relation": {"type": "string", "minLength": 1}
+      }
+    },
+    "input_transformation": {
+      "type": "object",
+      "required": ["source_refs", "observation", "creative_leap", "epistemic_status"],
+      "additionalProperties": false,
+      "properties": {
+        "source_refs": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/sourceRef"},
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "observation": {"type": "string", "minLength": 1},
+        "creative_leap": {"type": "string", "minLength": 1},
+        "epistemic_status": {"const": "CREATIVE_PROPOSAL"}
+      }
+    },
+    "source_decision_ids": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^DC[0-9]{3,}$"},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "source_insight_ids": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^IN[0-9]{3,}$"},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "differentiation": {
+      "type": "object",
+      "required": ["precedent_refs", "statement"],
+      "additionalProperties": false,
+      "properties": {
+        "precedent_refs": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+        "statement": {"type": "string", "minLength": 1}
+      }
+    },
+    "feasibility": {
+      "type": "object",
+      "required": [
+        "method",
+        "materials",
+        "tools",
+        "skills",
+        "cost_band",
+        "duration_band",
+        "venue",
+        "dimensions",
+        "quantity",
+        "unit",
+        "completion_path",
+        "alternatives",
+        "rights_status",
+        "safety_status"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "method": {"type": "string", "minLength": 1},
+        "materials": {"$ref": "#/$defs/textList"},
+        "tools": {"$ref": "#/$defs/textList"},
+        "skills": {"$ref": "#/$defs/textList"},
+        "cost_band": {"$ref": "common.schema.json#/$defs/costBand"},
+        "duration_band": {"$ref": "common.schema.json#/$defs/durationBand"},
+        "venue": {"type": "string", "minLength": 1},
+        "dimensions": {"type": "string", "minLength": 1},
+        "quantity": {"type": ["string", "integer", "number"], "minLength": 1},
+        "unit": {"type": "string", "minLength": 1},
+        "completion_path": {"$ref": "#/$defs/textList"},
+        "alternatives": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+        "rights_status": {"$ref": "common.schema.json#/$defs/reviewStatus"},
+        "safety_status": {"$ref": "common.schema.json#/$defs/reviewStatus"}
+      }
+    },
+    "uncertainties": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/uncertainty"},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "acceptance_test_ids": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^AT[0-9]{3,}$"},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "knowledge_refs": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+    "includes": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+    "excludes": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+    "status": {"enum": ["PROPOSED", "REVISED", "ADOPTED", "REJECTED", "INCOMPLETE"]}
+  }
+}

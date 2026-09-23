@@ -1,0 +1,28 @@
+{
+  "task": "AAK-02-NATIVE-AUTHORING",
+  "issue": "https://github.com/masa-san-jp/agentic-art-orchestration/issues/197",
+  "pull_request": "https://github.com/masa-san-jp/agentic-art-research/pull/97",
+  "base_commit": "c221d59f23cfcc15a3fa22e8ca98292f17409373",
+  "code_candidate": "2304261b0c009b9f8690f2d5afbd76a53304c8a9",
+  "previous_candidate": "465aa4c940aa93912739d22de2c994a4ba342f4b",
+  "status": "CODE_VERIFIED",
+  "checks": {
+    "role_cumulative_focused": "55 PASS at465; retained and passed in230 full",
+    "export_focused": "25 PASS",
+    "full": "313 PASS;221.148s",
+    "validator": "PASS",
+    "security": "PASS",
+    "docs": "PASS",
+    "graph": "PASS",
+    "native_harness_release_handoff": "PASS at465; also covered by230 full; historical CI evidence not new CI execution"
+  },
+  "boundary": "No permission/threshold weakening; typed role writes, secret/classification/path checks, actual owner payload hashes and policy-mandated source categories retained. Opaque local sources do not gain invented access URLs.",
+  "live_acceptance": "Parent AAK02 IN_PROGRESS; no six-run completion claimed here",
+  "merge": "NOT_MERGED",
+  "log_sha256": {
+    "aak02-research-reference-full.log": "5b9f88a714798fa65fc2722b01714793e42153fb7fb5044baac3eace818f0099",
+    "aak02-research-reference-focused.log": "8487a40b41dbc036aaab006ff9f3f88835cecd36ae40c97d3af2cd253e4f2981",
+    "aak02-research-authoring-focused-final.log": "a480edfdae36c34b71e22ed8ce380d9a6486a699eb433952d6d46988c0a2c0d6"
+  },
+  "updated_at": "2026-09-08T02:27:05.077279+00:00"
+}

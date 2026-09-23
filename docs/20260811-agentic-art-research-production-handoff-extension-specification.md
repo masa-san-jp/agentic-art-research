@@ -223,16 +223,39 @@ prototype_plans:
         title: 模型を組み立てる
         depends_on: []
         completion_condition: 12要素中1要素を欠落させた模型が固定されている
+        effect_type: PHYSICAL_EXTERNAL
       - id: PT002
         title: 三方向から記録する
         depends_on: [PT001]
         completion_condition: 同一露出の静止画が3枚ある
+        effect_type: PHYSICAL_EXTERNAL
     acceptance_test_ids: [AT001]
     expected_evidence: fixed-camera-frame-set
     estimated_cost_band: LOW
     estimated_duration_band: HOURS
     executor_capability: physical-prototype-agent
     status: PLANNED
+```
+
+各handoffの選択prototype planには、上記の物理試作planと併存して、次の条件を満たすデジタル試作planを少なくとも1件含める。`executor_capability` は予約値 `digital-prototype-renderer`、全taskの `effect_type` は `READ_ONLY` または `REPOSITORY_WRITE`、`inputs` は `03_plan/production-plan.yaml` の寸法・素材・数量・単位を参照し、`expected_evidence` はSVG画像出力を示す。これはProductionが人の承認や外部providerなしに実行できる試作の根拠である。条件を満たさない場合、validatorとhandoff生成は `PROTOTYPE_PLAN_DIGITAL_REQUIRED` で停止する。effect_typeが欠落したtaskは `PROTOTYPE_TASK_EFFECT_TYPE_REQUIRED` で停止する。
+
+```yaml
+    executor_capability: digital-prototype-renderer
+    inputs:
+      - 03_plan/production-plan.yaml dimensions, materials, quantity, and unit
+      - selected hypothesis composition
+    tasks:
+      - id: PT101
+        title: Read production-plan values
+        depends_on: []
+        completion_condition: dimensions, materials, quantity, and unit are resolved
+        effect_type: READ_ONLY
+      - id: PT102
+        title: Render SVG image preview
+        depends_on: [PT101]
+        completion_condition: deterministic SVG image output is written
+        effect_type: REPOSITORY_WRITE
+    expected_evidence: deterministic-svg-image-output
 ```
 
 research側では、担当者名、購入先、正確な価格、確定日時を必須にしない。それらは採択後にproduction側で基準線化する。

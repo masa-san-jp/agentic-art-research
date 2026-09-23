@@ -8,7 +8,15 @@ from typing import Any
 
 from _common import ROOT, atomic_write_text, load_yaml
 from canonical import handoff_hash_payload, handoff_sha256
-from handoff_common import HandoffInputError, HandoffSources, load_handoff_sources, yaml_text
+from handoff_common import (
+    HandoffInputError,
+    HandoffSources,
+    digital_prototype_plan_reasons,
+    has_digital_prototype_plan,
+    load_handoff_sources,
+    prototype_task_effect_type_fields,
+    yaml_text,
+)
 from validate import validate_repository
 
 
@@ -298,6 +306,20 @@ def build_handoff_payload(
         for plan_id, plan in plans.items()
         if plan.get("hypothesis_id") in candidate_ids and plan.get("status") not in INACTIVE_PLAN_STATUSES
     )
+    missing_effect_types = prototype_task_effect_type_fields(sources.prototype_plans)
+    if missing_effect_types:
+        plan_index, task_index = missing_effect_types[0]
+        raise HandoffBuildError(
+            "PROTOTYPE_TASK_EFFECT_TYPE_REQUIRED: "
+            f"prototype_plans[{plan_index}].tasks[{task_index}].effect_type is required"
+        )
+    if not has_digital_prototype_plan(sources.prototype_plans, selected_plan_ids=set(active_plan_ids)):
+        candidate_reasons = []
+        for plan in sources.prototype_plans:
+            if isinstance(plan, dict) and plan.get("id") in set(active_plan_ids):
+                candidate_reasons.append(f"{plan.get('id')}: {', '.join(digital_prototype_plan_reasons(plan))}")
+        detail = "; ".join(candidate_reasons) or "no active prototype plan is attached to the selected hypothesis"
+        raise HandoffBuildError(f"PROTOTYPE_PLAN_DIGITAL_REQUIRED: {detail}")
     constraints = _constraints(sources)
     open_gaps = _open_gaps(sources)
     triggers = _unique_strings(

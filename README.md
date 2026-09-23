@@ -4,6 +4,58 @@
 
 このリポジトリのAIは、調査の計画、証拠の整理、分析、判断、制作要件への翻訳、受入条件の検証、制作側への引き渡しを扱います。AIが作品を制作するリポジトリではありません。実制作物・実プロジェクト・個人の生データは、このリポジトリに保存しません。
 
+## Agentic Art全体との関係と利用方法
+
+8リポジトリ全体の人間向け案内は、親repoの[repository map](https://github.com/masa-san-jp/agentic-art-orchestration/blob/main/docs/repository-map.md)を正本とします。このREADMEにも、役割と利用入口を次の通り表示します。
+
+```text
+self-model-notes ─┐
+art-history-notes ├─ normalized research signal ─┐
+marketing-trends ┘                               │
+                                                 ▼
+viewer-response-notes ─ feedback ─→ agentic-art-orchestration
+                                                 │
+                                                 ▼
+                                       agentic-art-research
+                                                 │ production-handoff
+                                                 ▼
+                                       agentic-art-production
+                                                 │ canonical plan
+                                                 ▼
+                                       agentic-art-project
+                                           公開カタログ
+```
+
+| リポジトリ | 役割 |
+|---|---|
+| [agentic-art-orchestration](https://github.com/masa-san-jp/agentic-art-orchestration) | 全体のcontrol plane。workspace、pin、retrieval、実行、再開、検証 |
+| [self-model-notes](https://github.com/masa-san-jp/self-model-notes) | 本人の明示的・同意済みの自己モデル |
+| [art-history-notes](https://github.com/masa-san-jp/art-history-notes) | 美術史上の作品、技法、関係、根拠 |
+| [marketing-trends-notes](https://github.com/masa-san-jp/marketing-trends-notes) | 社会・市場の変化と鮮度付きの根拠 |
+| [agentic-art-research](https://github.com/masa-san-jp/agentic-art-research) | 入力知識を使った調査、仮説、要件、判断 |
+| [agentic-art-production](https://github.com/masa-san-jp/agentic-art-production) | handoffを受けた制作プラン、試作、制作結果 |
+| [viewer-response-notes](https://github.com/masa-san-jp/viewer-response-notes) | 鑑賞者反応の集計と保守的な評価 |
+| [agentic-art-project](https://github.com/masa-san-jp/agentic-art-project) | 検証済みの公開プラン、作品、制作記録のカタログ |
+
+### 利用者の入口
+
+- 制作を始める: [OrchestrationのREADME](https://github.com/masa-san-jp/agentic-art-orchestration#利用者向けの最短ルート)と[agent-runtime-guide](https://github.com/masa-san-jp/agentic-art-orchestration/blob/main/docs/agent-runtime-guide.md)から始める。個別repoを順番に手操作しない。
+- 知識を更新する: 更新対象repoのREADME、Issue、schema、validatorを正本として使い、親へ本文をコピーしない。
+- Research/Productionを確認する: [agentic-art-research](https://github.com/masa-san-jp/agentic-art-research)と[agentic-art-production](https://github.com/masa-san-jp/agentic-art-production)の各入口を読む。
+- 公開プランや作品を見る: [agentic-art-projectのplans/とworks/](https://github.com/masa-san-jp/agentic-art-project)を開く。
+- 鑑賞者反応を戻す: [viewer-response-notes](https://github.com/masa-san-jp/viewer-response-notes)で集計し、次回Researchで再検証する。
+
+各repoは独立した正本を持ち、内部log、会話、prompt、credential、PRIVATE_RAW、RESTRICTEDを兄弟repoへ渡しません。
+
+### 根底にある問い
+
+Agentic Artは、生成AIを「古代の芸術家に霊感を与えた精霊のような存在なのか、人間の思考の延長に過ぎないのか」という問いへの態度として、芸術の契機を「精霊や風が運び、人間が受け取って具象化する」と捉えています。全体の背景は[`agentic-art-orchestration`のREADME](https://github.com/masa-san-jp/agentic-art-orchestration#根底にある問い)を正本とし、この姿勢は前身プロジェクト「Vibe Art」（2025年）から受け継がれています。
+
+### このrepoの使い方
+
+このrepoは入力signalとviewer feedbackを調査要件、仮説、判断、evidenceへ変換し、検証済みproduction-handoffをProductionへ渡します。実際の制作物や個人の生データは保存せず、制作を始める利用者はまずOrchestrationのrun入口を使います。
+
+
 ## まず結論
 
 - canonical repository は `config/`、`schemas/`、`tools/`、`templates/`、`tests/` と運用記録を管理します。
@@ -285,3 +337,11 @@ docs/         設計・運用・runtime・schema・連携の詳細
 - 権利不明素材は採用せず、理由付きで棄却またはgapにします。
 - `data/`、runtime、handoffは正本から再生成し、手編集しません。
 - 外部送信、公開、応募、購入、契約、削除は自動実行しません。
+
+## 累積研究知識
+
+AAK-08のowner Git保存・再読込・条件付き再利用は[research-memory](docs/research-memory.md)を参照。実project/runtimeは外部に維持し、code commitとknowledge commitを分離する。
+
+## 累積知識と研究の固有性
+
+AAK-09の[累積比較](docs/cumulative-specificity.md)は、owner artifact/knowledge snapshotとnative mechanismを照合し、seedによる同順位選択、本人/継承/外部作品の区別、出典系列、明示継続の差分を記録します。履歴未読はUNAVAILABLEのままです。

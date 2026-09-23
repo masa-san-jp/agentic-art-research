@@ -152,6 +152,19 @@ class EntryPointTests(unittest.TestCase):
 
         self.assertEqual("critic", answer["role"])
 
+    def test_translator_receives_required_canonical_handoff_authoring_targets(self):
+        path = self.root / "projects/probe/01_planning/research-plan.yaml"
+        plan = yaml.safe_load(path.read_text())
+        plan["tasks"][0]["role"] = "production-translator"
+        path.write_text(yaml.safe_dump(plan, sort_keys=False))
+        answer = next_action.build_next_action(self.root, "project/probe", "tester", NOW)
+        paths = {row["path"] for row in answer["write_targets"]}
+        self.assertTrue({"05_production/production-brief.yaml", "05_production/reference-categories.yaml", "04_decisions/cumulative-specificity-request.json"} <= paths)
+        instruction_text = "\n".join(section["body"] for section in answer["instructions"])
+        self.assertIn("digital-prototype-renderer", instruction_text)
+        self.assertIn("03_plan/production-plan.yaml", instruction_text)
+        self.assertNotIn("07_runtime/research-state.json", paths)
+
     def test_acceptance_is_typed_and_names_the_actual_project(self):
         answer = next_action.build_next_action(self.root, "project/probe", "tester", NOW)
 
@@ -312,10 +325,10 @@ class PrototypeTaskEffectTests(unittest.TestCase):
             {"READ_ONLY", "REPOSITORY_WRITE", "PHYSICAL_EXTERNAL", "PUBLICATION", "PURCHASE", "CONTRACT", "DELETION"},
             allowed)
 
-    def test_declaring_it_stays_optional_so_older_plans_still_validate(self):
+    def test_declaring_it_is_required_before_a_plan_can_validate(self):
         required = self.SCHEMA["properties"]["tasks"]["items"]["required"]
 
-        self.assertNotIn("effect_type", required)
+        self.assertIn("effect_type", required)
 
 
 class LogEventTests(unittest.TestCase):

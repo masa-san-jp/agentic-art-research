@@ -1,8 +1,8 @@
-version: 6
-updated_at: "2026-09-03T20:17:09+09:00"
+version: 9
+updated_at: "2026-09-08T00:13:50.243233+00:00"
 current_milestone: G6
 next_task: null
-last_completed_task: SELF-REPETITION-V2-001
+last_completed_task: AAK-02-NATIVE-AUTHORING
 terminal: true
 blocked_by: []
 resume_from:
@@ -61,8 +61,21 @@ resume_from:
     - tests/test_harness.py
     - docs/agent-runtime-guide.md
     - docs/operations.md
-  action: No protocol task is ready. SELF-REPETITION-V2-001 for Research Issue #85 is complete; resume only when a new dependency-complete task is added.
+  action: AAK09 qualified at 046c2380310d208ca52cbca461c95c798328b599; 9 focused / 307 full / native gates PASS. Evidence execution/aak-09-verification.json. Parent continues Production AAK10; no Research task remains ready. Main and AAK02 live NOT_RUN.
 last_verification:
   result: PASS_WITH_ENVIRONMENT_NOTE
   command: /private/tmp/aap-production-py312/bin/python -m unittest discover -s tests -v; validate/security/docs/chaos/graph/handoff gates; git diff --check
   detail: 289 tests PASS。validator、security、docs、chaos、graph、handoff release gate、git diff --checkがPASS。v2のcreator-scoped history、visual-language mechanism grounding、履歴root不在時のUNKNOWN/HISTORY_ROOT_UNAVAILABLEをfocused testsで検証した。PR #87はmainへmerge済み（1e8390e6ac7286c23a971d19a8797be4851cf086）。GitHub validateはbilling制限でジョブ未開始だったため、成功として扱わず環境注記を保持する。
+
+aak02_native_authoring:
+  owner: codex-aak02-native-authoring
+  status: CODE_VERIFIED
+  branch: agent/aak-02-native-authoring
+  base_commit: c221d59f23cfcc15a3fa22e8ca98292f17409373
+  scope: config/task-roles.yaml, native role boundary tests, execution and docs
+  observed: Live translator cannot author required production-brief.yaml; external-reference records have no authoring role.
+  updated_at: "2026-09-08T02:00:48.295238+00:00"
+
+  code_candidate: 2304261b0c009b9f8690f2d5afbd76a53304c8a9
+  evidence: execution/aak-02-native-authoring-verification.json
+  pull_request: https://github.com/masa-san-jp/agentic-art-research/pull/97

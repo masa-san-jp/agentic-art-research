@@ -107,6 +107,34 @@ class HandoffValidationTest(unittest.TestCase):
         handoff["constraints"]["safety"][0] += "."
         self.assertNotEqual(original_hash, handoff_sha256(handoff))
 
+    def test_every_prototype_task_must_declare_its_effect_type(self) -> None:
+        project = self.make_handoff_project()
+        path = project / "05_production" / "prototype-plans.yaml"
+        plans = yaml.safe_load(path.read_text(encoding="utf-8"))
+        plans["prototype_plans"][0]["tasks"][0].pop("effect_type")
+        path.write_text(yaml.safe_dump(plans, sort_keys=False, allow_unicode=True), encoding="utf-8")
+
+        findings = self.findings_for(project)
+
+        self.assertTrue(
+            any(item.rule == "PROTOTYPE_TASK_EFFECT_TYPE_REQUIRED" for item in findings),
+            [item.render() for item in findings],
+        )
+
+    def test_handoff_requires_a_qualifying_digital_prototype_plan(self) -> None:
+        project = self.make_handoff_project()
+        path = project / "05_production" / "prototype-plans.yaml"
+        plans = yaml.safe_load(path.read_text(encoding="utf-8"))
+        plans["prototype_plans"][0]["executor_capability"] = "physical-prototype-agent"
+        path.write_text(yaml.safe_dump(plans, sort_keys=False, allow_unicode=True), encoding="utf-8")
+
+        findings = self.findings_for(project)
+
+        self.assertTrue(
+            any(item.rule == "PROTOTYPE_PLAN_DIGITAL_REQUIRED" for item in findings),
+            [item.render() for item in findings],
+        )
+
     def test_handoff_blocking_mutations_have_named_rules(self) -> None:
         mutations = {
             "hash": ("HANDOFF-HASH", lambda handoff, project: handoff["integrity"].update({"content_sha256": "sha256:" + "0" * 64})),

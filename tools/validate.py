@@ -16,6 +16,11 @@ from referencing import Registry, Resource
 
 from canonical import canonical_json_bytes, handoff_hash_payload, handoff_sha256
 from completion_quality import CompletionQualityConfigError, load_completion_quality_policy
+from handoff_common import (
+    digital_prototype_plan_reasons,
+    has_digital_prototype_plan,
+    prototype_task_effect_type_fields,
+)
 from _common import (
     InputParseError,
     PROJECT_REQUIRED_FILES,
@@ -46,6 +51,9 @@ SCHEMA_FOR_YAML_COLLECTION = {
     "04_decisions/self-repetition-review.yaml": ("reviews", "self-repetition-review"),
     "04_decisions/production-hypotheses.yaml": ("hypotheses", "production-hypothesis"),
     "04_decisions/hypothesis-comparison.yaml": ("comparisons", "hypothesis-comparison"),
+    "04_decisions/inspiration-candidates.yaml": ("candidates", "inspiration-candidate"),
+    "04_decisions/inspiration-comparison.yaml": ("comparisons", "inspiration-comparison"),
+    "04_decisions/inspiration-critiques.yaml": ("critiques", "inspiration-critique"),
     "05_production/prototype-plans.yaml": ("prototype_plans", "prototype-plan"),
 }
 SCHEMA_FOR_YAML_OBJECT = {
@@ -75,8 +83,12 @@ DOMAIN_SCHEMAS = (
     "requirement",
     "production-hypothesis",
     "hypothesis-comparison",
+    "inspiration-candidate",
+    "inspiration-comparison",
+    "inspiration-critique",
     "prototype-plan",
     "visual-language",
+    "mechanism",
     "production-handoff",
     "research-request",
     "research-request-receipt",
@@ -122,6 +134,9 @@ REFERENCE_FIELDS = {
     "acceptance_test": [("target_requirement", "requirement")],
     "production-hypothesis": [("source_decision_ids", "decision"), ("source_insight_ids", "insight")],
     "hypothesis-comparison": [("hypothesis_ids", "production-hypothesis"), ("recommended_hypothesis_id", "production-hypothesis")],
+    "inspiration-candidate": [("source_decision_ids", "decision"), ("source_insight_ids", "insight")],
+    "inspiration-comparison": [("recommended_candidate_id", "inspiration-candidate")],
+    "inspiration-critique": [("candidate_id", "inspiration-candidate")],
     "prototype-plan": [
         ("hypothesis_id", "production-hypothesis"),
         ("uncertainty_ids", "uncertainty"),
@@ -1574,6 +1589,42 @@ def _check_handoff_contract(
                 )
             )
 
+    for plan_index, task_index in prototype_task_effect_type_fields(prototype_plans):
+        findings.append(
+            _handoff_finding(
+                root,
+                project,
+                PROTOTYPES_PATH,
+                "PROTOTYPE_TASK_EFFECT_TYPE_REQUIRED",
+                f"prototype_plans[{plan_index}].tasks[{task_index}].effect_type is required",
+                field=f"prototype_plans[{plan_index}].tasks[{task_index}].effect_type",
+                remediation="Declare the task effect boundary using the shared effect_type vocabulary.",
+            )
+        )
+
+    selected_plan_ids = set()
+    if isinstance(handoff, dict) and isinstance(handoff.get("prototype_plan_ids"), list):
+        selected_plan_ids = {
+            plan_id for plan_id in handoff["prototype_plan_ids"] if isinstance(plan_id, str)
+        }
+    if not has_digital_prototype_plan(prototype_plans, selected_plan_ids=selected_plan_ids):
+        reasons = []
+        for plan in prototype_plans:
+            if isinstance(plan, dict) and plan.get("id") in selected_plan_ids:
+                reasons.append(f"{plan.get('id')}: {', '.join(digital_prototype_plan_reasons(plan))}")
+        detail = "; ".join(reasons) or "the handoff selects no qualifying digital prototype plan"
+        findings.append(
+            _handoff_finding(
+                root,
+                project,
+                HANDOFF_PATH,
+                "PROTOTYPE_PLAN_DIGITAL_REQUIRED",
+                detail,
+                field="prototype_plan_ids",
+                remediation="Attach at least one digital-prototype-renderer plan with local effect types, production-plan inputs, and SVG evidence.",
+            )
+        )
+
     _check_prototype_dags(root, project, prototype_plans, findings)
     for plan_index, plan in enumerate(prototype_plans):
         if not isinstance(plan, dict):
@@ -2940,7 +2991,7 @@ def validate_repository(
                     _check_human_decision_journal(root, path, value, findings)
                 if relative == "01_planning/research-plan.yaml":
                     try:
-                        load_completion_quality_policy(root, value)
+                        load_completion_quality_policy(protocol, value)
                     except CompletionQualityConfigError as exc:
                         findings.append(
                             Finding(

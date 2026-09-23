@@ -6,6 +6,14 @@ agentic-art-research is a protocol repository. Its tracked content defines the s
 
 ## Output location
 
+AAK-08 adds a separate owner knowledge boundary under the pinned AAK-SPEC/PLAN
+`b0e7c7f8d0a1f756fa708deef4fb380a62e45e0d`. Explicitly curated, owner-schema-validated
+records may be committed to an owner knowledge Git store. This does not permit
+copying project directories or runtime/raw/profile material into the protocol.
+The external store uses `knowledge/records`, `knowledge/payloads`, and
+`knowledge/operations`; its graph index is an external regenerable cache.
+See [research-memory.md](research-memory.md) for the native interface and resume rules.
+
 Actual project packages are accumulated outside the protocol repository. Set this
 location as an environment-specific `OUTPUT_ROOT`; do not hard-code a personal
 machine path in automation:

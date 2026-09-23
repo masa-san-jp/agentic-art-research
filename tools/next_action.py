@@ -289,7 +289,10 @@ def build_next_action(
     protocol_root: Path | None = None,
     work_root: Path | None = None,
     output_root: Path | None = None,
+    memory_query: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    if memory_query is not None and memory_query.get("at") != now:
+        raise NextActionError("memory query must use the current task clock")
     root_aware = protocol_root is not None or work_root is not None or output_root is not None
     protocol = (protocol_root or root).resolve()
     work = (work_root or root).resolve()
@@ -410,6 +413,7 @@ def build_next_action(
             protocol_root=protocol,
             work_root=work,
             human_decision=human_decision,
+            memory_query=memory_query,
         ),
         "instructions": protocol_sections(protocol_text, list(role_entry.get("protocol_sections") or [])),
         "write_targets": _write_targets(role_entry),
@@ -465,6 +469,7 @@ def main() -> int:
     parser.add_argument("--work-root", type=Path, help="project work root")
     parser.add_argument("--protocol-root", type=Path, help="read-only protocol root")
     parser.add_argument("--output-root", type=Path, help="external successful-output root")
+    parser.add_argument("--memory-query", type=Path, help="explicit external owner/creator/pinned knowledge query JSON")
     args = parser.parse_args()
     try:
         content = stable_json(
@@ -477,6 +482,7 @@ def main() -> int:
                 protocol_root=args.protocol_root.resolve() if args.protocol_root else None,
                 work_root=args.work_root.resolve() if args.work_root else None,
                 output_root=args.output_root.resolve() if args.output_root else None,
+                memory_query=__import__("json").loads(args.memory_query.read_text()) if args.memory_query else None,
             )
         )
     except (NextActionError, InputParseError, task_runtime.TaskRuntimeError,

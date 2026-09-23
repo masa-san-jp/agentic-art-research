@@ -1,0 +1,58 @@
+{
+  "task": "AAK-09",
+  "issue": "https://github.com/masa-san-jp/agentic-art-research/issues/94",
+  "specification_commit": "b0e7c7f8d0a1f756fa708deef4fb380a62e45e0d",
+  "base_commit": "c3e25347b3f36d96e903690ff0274838333f5132",
+  "code_candidate": "046c2380310d208ca52cbca461c95c798328b599",
+  "acceptance": {
+    "AAK-09-AC1": "PASS",
+    "AAK-09-AC2": "PASS",
+    "AAK-09-AC3": "PASS",
+    "AAK-09-AC4": "PASS",
+    "AAK-09-AC5": "PASS"
+  },
+  "verification": {
+    "focused": "9 PASS",
+    "full": "307 PASS; 287.152s",
+    "validator": "PASS",
+    "security": "PASS",
+    "docs": "PASS",
+    "graph": "PASS",
+    "chaos": "PASS",
+    "handoff_release": "PASS; schema_snapshot_ready=true",
+    "local_release": "PASS; not a new remote CI result"
+  },
+  "synthetic_proof": {
+    "code_commit": "046c2380310d208ca52cbca461c95c798328b599",
+    "knowledge_commit": "88ad1c2c152f76b294ed8e8ceaec8cdd309283bf",
+    "marketing_knowledge_commit": "bc146abbf7f40451fcc5b51a3ba5a8922910a68b",
+    "status": "QUALIFIED",
+    "selected_ids": [
+      "PH001"
+    ],
+    "history_status": "FOUND",
+    "metrics": {
+      "grounded_candidates": 1,
+      "independent_roots": 2,
+      "unresolved_candidates": 0,
+      "structural_duplicate_matches": 1
+    },
+    "continuation_accepted": true,
+    "result_sha256": "d87b0465bc8068ba1e84665271d4a71aae7178d4279b51dc03834d9c64f8a169"
+  },
+  "proof_replay": "tools/cumulative_specificity.py --project <external-project> --request <external-request> --output <new-report>",
+  "evidence_kind": "synthetic; native Marketing07 artifact plus native Research memory; not real source observation or AAK02 live acceptance",
+  "integration": "NOT_RUN",
+  "merge": "NOT_MERGED",
+  "log_sha256": {
+    "focused-final": "d481848c97775841c6d270b9e6b0274338791a9ef71679db93e08ac02581edf1",
+    "full": "0c561d29993b6bfd77c407cfbba80a3a251f9e635c9e0be066249f014d5ba6d2",
+    "validate": "7088833cc75ed1dc8dfd634e290945e368e0fea220ee1bbb6fcfb2369dbbba23",
+    "security": "f600a7a46fdf7fdea0a9ee8c39914ac079a6e14553297b367e8a6269a3534367",
+    "docs": "852dd95bdfc1429dae3687694854499b3e4e5d5423021dd8f7cd7feadf0e925b",
+    "graph": "0b44bfe4376a4bece1749d0ffd50df873c86417c7103128d4d9617a70441424f",
+    "chaos": "a5f93958ff8ae09e600154ffe4b293988aee88b9a2223438f2076d82ec90a676",
+    "handoff": "7649f8f1536c028cffd6afffd0af7aba66a98197791599b3e26a02d5c8a9a012",
+    "release": "16019b9410127a4df02efcbb204d5b087dfa0da15e389253d221f44fe6304926"
+  }
+}
