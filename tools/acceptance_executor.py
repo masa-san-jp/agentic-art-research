@@ -157,8 +157,21 @@ def _load_collection(path: Path, key: str | None) -> tuple[int, Any]:
     return len(selected), selected
 
 
-def _gate_result(check: dict[str, Any], *, passed: bool, expected: Any, actual: Any, path: str | None = None, rule: str | None = None) -> dict[str, Any]:
-    return {
+FINDING_LIMIT = 20
+FINDING_LENGTH_LIMIT = 500
+
+
+def _gate_result(
+    check: dict[str, Any],
+    *,
+    passed: bool,
+    expected: Any,
+    actual: Any,
+    path: str | None = None,
+    rule: str | None = None,
+    findings: list[str] | None = None,
+) -> dict[str, Any]:
+    result = {
         "id": check["id"],
         "kind": check["kind"],
         "status": "PASS" if passed else "FAIL",
@@ -169,6 +182,9 @@ def _gate_result(check: dict[str, Any], *, passed: bool, expected: Any, actual: 
         "remediation": None if passed else "Correct the attempt workspace and rerun the typed acceptance gates.",
         "duration_ms": 0,
     }
+    if not passed and findings:
+        result["findings"] = [finding[:FINDING_LENGTH_LIMIT] for finding in findings[:FINDING_LIMIT]]
+    return result
 
 
 def _run_one(check: dict[str, Any], *, protocol_root: Path, validation_root: Path, project_id: str) -> dict[str, Any]:
@@ -180,7 +196,15 @@ def _run_one(check: dict[str, Any], *, protocol_root: Path, validation_root: Pat
     try:
         if kind in {"repository_validate", "project_validate"}:
             findings = validate_repository(validation_root, project_id, protocol_root=protocol_root, work_root=validation_root)
-            return _gate_result(check, passed=not findings, expected=0, actual=len(findings), path=None, rule="ACCEPTANCE-GATE-FAILED")
+            return _gate_result(
+                check,
+                passed=not findings,
+                expected=0,
+                actual=len(findings),
+                path=None,
+                rule="ACCEPTANCE-GATE-FAILED",
+                findings=[finding.render() for finding in findings],
+            )
         if kind == "collection_minimum":
             count, _ = _load_collection(target_path, check.get("collection_key"))
             minimum = int(check.get("minimum", 1))
@@ -235,8 +259,15 @@ def _run_one(check: dict[str, Any], *, protocol_root: Path, validation_root: Pat
             return _gate_result(check, passed=passed, expected=expected or ["COMPLETE", "COMPLETE_WITH_GAPS"], actual=actual)
     except AcceptanceExecutorError:
         raise
-    except Exception:
-        return _gate_result(check, passed=False, expected=check.get("expected", "gate success"), actual="execution error", path=path_value)
+    except Exception as exc:
+        return _gate_result(
+            check,
+            passed=False,
+            expected=check.get("expected", "gate success"),
+            actual="execution error",
+            path=path_value,
+            findings=[f"{type(exc).__name__}: {exc}"],
+        )
     raise AcceptanceExecutorError("ACCEPTANCE-CHECK-UNKNOWN", "acceptance check kind is not supported")
 
 

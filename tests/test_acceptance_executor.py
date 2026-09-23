@@ -82,6 +82,58 @@ class AcceptanceExecutorContractTest(unittest.TestCase):
             encoding="utf-8",
         )
 
+    def test_a_failing_validate_gate_says_what_the_validator_found(self) -> None:
+        """The next attempt gets one retry either way; without the findings it spends it guessing."""
+        path = self.attempt.project / "01_planning/question-register.yaml"
+        path.write_text(
+            "questions:\n"
+            "  - id: Q001\n"
+            "    text: Which visual interval should be tested?\n"
+            "    priority: mandatory\n"
+            "    status: NOT_A_STATUS\n",
+            encoding="utf-8",
+        )
+
+        report = execute_acceptance(
+            protocol_root=REPO_ROOT,
+            attempt_project=self.attempt.project,
+            project_id="project/probe",
+            run_id="HR001",
+            task_id="TASK001",
+            attempt_id="AT001",
+            role="planner",
+            evaluated_at=NOW,
+            checks=[{"id": "AG-TEST-VALIDATE", "kind": "project_validate"}],
+            report_path=self.attempt.root / "acceptance-report.json",
+        )
+
+        gate = next(item for item in report["gates"] if item["id"] == "AG-TEST-VALIDATE")
+        self.assertEqual("FAIL", gate["status"])
+        self.assertTrue(gate["findings"], gate)
+        self.assertTrue(any("NOT_A_STATUS" in finding for finding in gate["findings"]), gate["findings"])
+
+    def test_a_gate_that_cannot_run_says_why_it_could_not(self) -> None:
+        """A worker wrote a quoted record, the gate raised, and the report said only 'execution error'."""
+        path = self.attempt.project / "02_evidence/evidence-ledger.jsonl"
+        path.write_text('"{\\"id\\": \\"E001\\"}"\n', encoding="utf-8")
+
+        report = execute_acceptance(
+            protocol_root=REPO_ROOT,
+            attempt_project=self.attempt.project,
+            project_id="project/probe",
+            run_id="HR001",
+            task_id="TASK001",
+            attempt_id="AT001",
+            role="collector",
+            evaluated_at=NOW,
+            checks=[{"id": "AG-TEST-EVIDENCE", "kind": "collection_minimum", "path": "02_evidence/evidence-ledger.jsonl", "minimum": 1}],
+            report_path=self.attempt.root / "acceptance-report.json",
+        )
+
+        gate = next(item for item in report["gates"] if item["id"] == "AG-TEST-EVIDENCE")
+        self.assertEqual("execution error", gate["actual"])
+        self.assertTrue(gate["findings"], gate)
+
     def test_success_promotes_changeset_and_completes_only_through_the_executor(self) -> None:
         self._edit_question_register()
 
