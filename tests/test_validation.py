@@ -57,6 +57,20 @@ class ValidationErrorContractTest(unittest.TestCase):
         self.assertEqual("access.classification", finding.field)
         self.assertIn("remediation:", finding.render())
 
+    def test_question_status_remediation_names_the_permitted_values(self) -> None:
+        """Pointing at a config file only helps a reader who can open it; three attempts in a row wrote 'open'."""
+        root = self.make_root()
+        project = create_project(root, "bad-status", "Bad Status")
+        (project / "01_planning/question-register.yaml").write_text(
+            "questions:\n  - id: Q001\n    text: Which interval?\n    priority: mandatory\n    status: open\n",
+            encoding="utf-8",
+        )
+
+        findings = validate_repository(root)
+
+        finding = next(item for item in findings if item.rule == "QUESTION-STATUS")
+        self.assertIn("OPEN", finding.remediation)
+
     def test_jsonl_parse_error_reports_file_line_field_rule_and_remediation(self) -> None:
         root = self.make_root()
         project = create_project(root, "invalid-jsonl", "Invalid JSONL")

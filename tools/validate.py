@@ -657,7 +657,7 @@ def _check_question_terminality(
                     f"invalid question status {status!r}",
                     line=line,
                     field=f"{record_id}.status",
-                    remediation="Use a question status from config/vocabularies.yaml.",
+                    remediation=f"Use one of {', '.join(sorted(statuses))} from config/vocabularies.yaml.",
                 )
             )
         if settled and record.get("priority") == "mandatory" and status not in terminal_statuses:
