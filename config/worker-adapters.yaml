@@ -9,3 +9,9 @@ adapters:
     command: [python3, tests/fixtures/workers/fake_worker.py]
     capabilities: [structured-output]
     environment_allowlist: []
+  local:
+    command: [python3, tools/workers/local_model_worker.py, gpt-oss:20b]
+    capabilities: [structured-output]
+    environment_allowlist: []
+    timeout_seconds: 600
+    max_stdout_bytes: 262144
