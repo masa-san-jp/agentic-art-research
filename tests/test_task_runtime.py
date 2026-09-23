@@ -7,6 +7,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from jsonschema import Draft202012Validator
+from referencing import Registry, Resource
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "tools"))
@@ -180,6 +183,28 @@ class TaskRuntimeContractTest(unittest.TestCase):
         self.assertEqual("BLOCKED", runtime["tasks"]["TASK002"]["status"])
         self.assertEqual("DEPENDENCY_FAILED", runtime["tasks"]["TASK002"]["failure"]["class"])
         self.assertIsNone(claim_next(root, "project/runtime-test", "worker", now="2026-08-11T00:00:04+09:00"))
+
+    def test_a_blocked_task_leaves_state_the_validator_still_accepts(self) -> None:
+        """One failed task blocked the rest, and the state it wrote then failed every later project_validate gate."""
+        root = self.make_root()
+        self.init(
+            root,
+            [
+                {"id": "TASK001", "depends_on": [], "max_attempts": 1},
+                {"id": "TASK002", "depends_on": ["TASK001"]},
+            ],
+        )
+        lease = claim_next(root, "project/runtime-test", "worker", now="2026-08-11T00:00:00+09:00")
+        fail(root, "project/runtime-test", "TASK001", "worker", lease["lease_token"], "PERMANENT", "stopped", now="2026-08-11T00:00:01+09:00")
+
+        state = json.loads((root / "projects/runtime-test/07_runtime/research-state.json").read_text(encoding="utf-8"))
+        schema = json.loads((REPO_ROOT / "schemas/research-state.schema.json").read_text(encoding="utf-8"))
+        common = json.loads((REPO_ROOT / "schemas/common.schema.json").read_text(encoding="utf-8"))
+        registry = Registry().with_resources(
+            [(common["$id"], Resource.from_contents(common)), (schema["$id"], Resource.from_contents(schema))]
+        )
+        errors = [error.message for error in Draft202012Validator(schema, registry=registry).iter_errors(state)]
+        self.assertEqual([], errors)
 
     def test_invalid_dag_is_rejected_before_state_is_created(self) -> None:
         root = self.make_root()

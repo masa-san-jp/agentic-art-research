@@ -155,8 +155,9 @@
               "$ref": "common.schema.json#/$defs/nonEmptyString"
             },
             "attempt": {
+              "description": "Attempt the failure was observed on. Zero when the task was blocked by a dependency before it ever ran.",
               "type": "integer",
-              "minimum": 1
+              "minimum": 0
             },
             "occurred_at": {
               "$ref": "common.schema.json#/$defs/timestamp"

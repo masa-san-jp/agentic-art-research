@@ -261,6 +261,7 @@ def _reconcile(runtime: dict[str, Any], events: list[dict[str, Any]], now: str) 
             task["failure"] = {
                 "class": "DEPENDENCY_FAILED",
                 "message": "A required dependency failed or was blocked.",
+                "attempt": int(task.get("attempts", 0)),
                 "occurred_at": now,
             }
             blocked.append(task_id)
@@ -676,9 +677,9 @@ def replay_runtime(root: Path, target: str) -> dict[str, Any]:
         elif event_type == "TASK_SUCCEEDED":
             task.update({"status": "SUCCEEDED", "lease": None, "effect_key": event.get("effect_key"), "failure": None})
         elif event_type == "TASK_BLOCKED":
-            task.update({"status": "BLOCKED", "lease": None, "failure": {"class": "DEPENDENCY_FAILED", "occurred_at": event.get("occurred_at"), "message": "A required dependency failed or was blocked."}})
+            task.update({"status": "BLOCKED", "lease": None, "failure": {"class": "DEPENDENCY_FAILED", "occurred_at": event.get("occurred_at"), "message": "A required dependency failed or was blocked.", "attempt": int(task.get("attempts", 0))}})
         elif event_type in {"TASK_FAILED", "TASK_RETRY_SCHEDULED"}:
-            task.update({"status": event.get("retry_status", "FAILED"), "lease": None, "failure": {"class": event.get("failure_class"), "occurred_at": event.get("occurred_at"), "message": "Task failure recorded in the event log."}})
+            task.update({"status": event.get("retry_status", "FAILED"), "lease": None, "failure": {"class": event.get("failure_class"), "occurred_at": event.get("occurred_at"), "message": "Task failure recorded in the event log.", "attempt": int(event.get("attempt", task.get("attempts", 0)))}})
         elif event_type == "TASK_LEASE_EXPIRED":
             task.update({"status": event.get("retry_status", "PENDING"), "lease": None, "attempts": event.get("attempt", task["attempts"]) - 1, "lease_expiries": int(task.get("lease_expiries", 0)) + 1})
     if runtime is None:
