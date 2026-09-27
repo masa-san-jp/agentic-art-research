@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/source-ref-index.schema.json",
+  "title": "Production handoff source reference index",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["source_project", "references", "category_access"],
+  "properties": {
+    "source_project": {"type": "string", "pattern": "^project/[a-z0-9]+(?:-[a-z0-9]+)*$"},
+    "references": {"type": "array", "items": {"$ref": "#/$defs/reference"}},
+    "category_access": {"type": "array", "items": {"$ref": "#/$defs/categoryAccess"}}
+  },
+  "$defs": {
+    "reasonCode": {"enum": ["NO_SOURCE_FOR_CATEGORY", "SOURCE_HAS_NO_PUBLIC_URL", "URL_NOT_PERMANENT"]},
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "source_path", "record_hash", "summary", "reference_categories", "access_url_reason"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "kind": {"enum": ["decision", "insight", "evidence"]},
+        "source_path": {"type": "string", "minLength": 1},
+        "record_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "summary": {"type": "string", "minLength": 1},
+        "reference_categories": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+        "access_url": {"type": "string", "pattern": "^https://[^\\s#?]+$"},
+        "access_url_reason": {"oneOf": [{"$ref": "#/$defs/reasonCode"}, {"type": "null"}]}
+      }
+    },
+    "categoryAccess": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["category", "source_ref_ids", "access_url", "reason_code"],
+      "properties": {
+        "category": {"type": "string", "minLength": 1},
+        "source_ref_ids": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+        "access_url": {"type": ["string", "null"], "pattern": "^https://[^\\s#?]+$"},
+        "reason_code": {"oneOf": [{"$ref": "#/$defs/reasonCode"}, {"type": "null"}]}
+      }
+    }
+  }
+}

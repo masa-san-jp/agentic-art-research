@@ -28,6 +28,8 @@ ExecPlanは、長時間または複数ファイルにまたがる変更を、別
 
 ### Progress
 
+- [x] (2026-09-28 JST) `HANDOFF-REFERENCE-URL-REASONS-001` / Issue #83: `source-ref-index.schema.json` と exporter の `category_access`、恒久HTTPS URL、閉じた欠落理由コードを追加した。`reference-categories.yaml` の明示対応付けは維持し、推測でカテゴリを補完しない。
+
 - [x] (2026-09-08) AAK-09 qualified. Qualified dependencies: AAK08 code 13c819eb34e91198c3584b8cfd75c81494ab148c (7 focused / 298 full PASS), AAK05 code 765b1a3833602c8d9740dd584211e4ae88795f3d (5 AC / 173 full / native policy PASS), AAK06 f10a4f187966d1d2602a03410e8b3c9aa31fb22e (5 AC / 11 focused PASS), AAK07 7be3d5ff495a91f3ce75159c96e9fc0ec383aa57 (5 AC / 57 full / native completion PASS). These are isolated qualified candidates, not merged integration.
 
 AAK09 implementation: connect immutable owner memory to mechanism comparison; preserve native grounding and repetition thresholds; distinguish own/inherited/external history, source ancestry and explicit continuation; deterministic rule/seed ordering; report reuse/no-reuse coverage and unresolved/repetition metrics without artistic superiority claims. Verify negative input replacement, renamed mechanism, unsupported reference and AI self-citation fixtures.

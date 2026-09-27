@@ -29,8 +29,6 @@ ABSOLUTE_PATH_PATTERN = re.compile(
     re.IGNORECASE,
 )
 URL_PATTERN = re.compile(r"https?://\S+", re.IGNORECASE)
-
-
 def _local_path_hit(text: str) -> re.Match | None:
     spans = [match.span() for match in URL_PATTERN.finditer(text)]
     for match in ABSOLUTE_PATH_PATTERN.finditer(text):
@@ -91,6 +89,69 @@ def _reference_categories(sources: HandoffSources) -> dict[str, list[str]]:
     return result
 
 
+def _access_url_reason(location: Any) -> tuple[str | None, str | None]:
+    """Return a safe access URL and a closed reason when one is unavailable."""
+
+    if not isinstance(location, str) or not location or any(character.isspace() for character in location):
+        return None, "SOURCE_HAS_NO_PUBLIC_URL"
+    parsed = urlsplit(location)
+    if (
+        parsed.scheme == "https"
+        and parsed.hostname
+        and not parsed.username
+        and not parsed.password
+        and not parsed.query
+        and not parsed.fragment
+    ):
+        return location, None
+    if parsed.scheme in {"http", "https"}:
+        return None, "URL_NOT_PERMANENT"
+    return None, "SOURCE_HAS_NO_PUBLIC_URL"
+
+
+def _category_access(
+    sources: HandoffSources,
+    records: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Emit category-level access status, including categories with no source."""
+
+    protocol_root = getattr(sources, "protocol_root", None)
+    policy_path = protocol_root / "config" / "handoff-policy.yaml" if isinstance(protocol_root, Path) else None
+    # The production category vocabulary is owned by the consumer. Keeping
+    # this list in the exporter policy makes the handoff self-describing while
+    # avoiding guesses from a record's prose or source type.
+    policy = load_yaml(policy_path) if policy_path is not None and policy_path.is_file() else {}
+    configured = policy.get("reference_categories", ["CONCEPT", "VISUAL", "METHOD", "MATERIAL", "INSTALLATION", "OTHER"])
+    if not isinstance(configured, list) or not all(isinstance(value, str) and value for value in configured):
+        raise HandoffExportError(f"{policy_path or 'handoff policy'}: reference_categories must be a list of non-empty strings")
+
+    result: list[dict[str, Any]] = []
+    for category in configured:
+        matching = [record for record in records if category in record.get("reference_categories", [])]
+        available = [record for record in matching if record.get("access_url")]
+        if available:
+            result.append({
+                "category": category,
+                "source_ref_ids": [str(record["id"]) for record in matching],
+                "access_url": available[0]["access_url"],
+                "reason_code": None,
+            })
+            continue
+        if not matching:
+            reason = "NO_SOURCE_FOR_CATEGORY"
+        elif any(record.get("access_url_reason") == "URL_NOT_PERMANENT" for record in matching):
+            reason = "URL_NOT_PERMANENT"
+        else:
+            reason = "SOURCE_HAS_NO_PUBLIC_URL"
+        result.append({
+            "category": category,
+            "source_ref_ids": [str(record["id"]) for record in matching],
+            "access_url": None,
+            "reason_code": reason,
+        })
+    return result
+
+
 def source_ref_index(sources: HandoffSources, handoff: dict[str, Any]) -> dict[str, Any]:
     maps = _source_maps(sources)
     categories = _reference_categories(sources)
@@ -125,18 +186,18 @@ def source_ref_index(sources: HandoffSources, handoff: dict[str, Any]) -> dict[s
             # carries that; a decision or an insight lives in this repository
             # and has no external address, so it stays absent rather than
             # inventing one.
-            location = record.get("source_location")
-            if kind == "evidence" and isinstance(location, str) and location and not any(c.isspace() for c in location):
-                parsed = urlsplit(location)
-                # A source locator may be an opaque local catalog identifier.
-                # Do not mislabel it as an externally accessible URL. Preserve
-                # its canonical record hash/path and let the consumer report
-                # absent external access without inventing a remote address.
-                if (parsed.scheme == "https" and parsed.hostname and not parsed.username
-                        and not parsed.password and not parsed.query and not parsed.fragment):
-                    entry["access_url"] = location
+            location = record.get("source_location") if kind == "evidence" else None
+            access_url, reason = _access_url_reason(location)
+            if access_url is not None:
+                entry["access_url"] = access_url
+            entry["access_url_reason"] = reason
             records.append(entry)
-    return {"source_project": sources.project_id, "references": sorted(records, key=lambda item: (item["kind"], item["id"]))}
+    records = sorted(records, key=lambda item: (item["kind"], item["id"]))
+    return {
+        "source_project": sources.project_id,
+        "references": records,
+        "category_access": _category_access(sources, records),
+    }
 
 
 def _git_state(root: Path) -> bool | None:
@@ -229,6 +290,7 @@ def _bundle_files(sources: HandoffSources, handoff: dict[str, Any]) -> dict[str,
         "prototype-plan.schema.json",
         "visual-language.schema.json",
         "production-handoff.schema.json",
+        "source-ref-index.schema.json",
     )
     files: dict[str, bytes] = {
         "production-handoff.yaml": yaml_text(handoff).encode("utf-8"),

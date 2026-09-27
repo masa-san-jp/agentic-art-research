@@ -192,13 +192,35 @@ class HandoffBuildContractTest(unittest.TestCase):
         handoff = {'source_refs':{'evidence_ids':['EV001']}}
         record = source_ref_index(sources, handoff)['references'][0]
         self.assertNotIn('access_url', record)
+        self.assertEqual('SOURCE_HAS_NO_PUBLIC_URL', record['access_url_reason'])
         self.assertEqual(canonical_sha256(evidence), record['record_hash'])
         self.assertEqual('02_evidence/evidence-ledger.jsonl', record['source_path'])
         evidence['source_location'] = 'https://www.moma.org/collection/works/1'
         self.assertEqual(evidence['source_location'], source_ref_index(sources, handoff)['references'][0]['access_url'])
+        self.assertIsNone(source_ref_index(sources, handoff)['references'][0]['access_url_reason'])
         for locator in ('https://user:password@example.org/source', 'https://example.org/source?token=secret', 'https://example.org/source#section', 'file:///private/source'):
             evidence['source_location'] = locator
             self.assertNotIn('access_url', source_ref_index(sources, handoff)['references'][0])
+            expected = 'URL_NOT_PERMANENT' if locator.startswith('https://') else 'SOURCE_HAS_NO_PUBLIC_URL'
+            self.assertEqual(expected, source_ref_index(sources, handoff)['references'][0]['access_url_reason'])
+
+    def test_category_access_records_permanent_urls_and_missing_reasons(self) -> None:
+        root, project = self.make_project()
+        (project / "05_production/reference-categories.yaml").write_text(
+            yaml.safe_dump(
+                {"categories": {"DC001": ["CONCEPT"], "EV001": ["VISUAL"], "EV002": ["METHOD"]}},
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+        build_handoff(root, "project/handoff-build", generated_at=self.generated_at, research_commit=self.commit)
+        output = root / "data" / "handoffs" / "handoff-build"
+        export_handoff(root, "project/handoff-build", output, allow_dirty=True)
+        index = yaml.safe_load((output / "artifacts/source-ref-index.yaml").read_text(encoding="utf-8"))
+        by_category = {item["category"]: item for item in index["category_access"]}
+        self.assertEqual("https://example.invalid/harmony/source-001", by_category["VISUAL"]["access_url"])
+        self.assertIsNone(by_category["VISUAL"]["reason_code"])
+        self.assertEqual("NO_SOURCE_FOR_CATEGORY", by_category["INSTALLATION"]["reason_code"])
 
     def test_export_source_ref_index_uses_contract_keys_and_canonical_hashes(self) -> None:
         root, _ = self.make_project()
