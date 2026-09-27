@@ -30,6 +30,12 @@
       "type": "array",
       "items": {"$ref": "#/$defs/output"}
     },
+    "search_requests": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {"$ref": "#/$defs/searchRequest"},
+      "uniqueItems": true
+    },
     "failure": {
       "anyOf": [
         {"type": "null"},
@@ -91,6 +97,26 @@
         "kind": {"enum": ["ARTIFACT", "PATCH", "REPORT", "REFERENCE", "TEXT", "JSON"]},
         "path": {"$ref": "#/$defs/relativePath"},
         "value": {}
+      }
+    },
+    "searchRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version", "request_id", "project_id", "run_id", "task_id", "attempt_id",
+        "question_id", "strategy_id", "query", "adapter"
+      ],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "request_id": {"type": "string", "pattern": "^SR[A-Za-z0-9_-]{3,}$"},
+        "project_id": {"$ref": "common.schema.json#/$defs/projectId"},
+        "run_id": {"type": "string", "pattern": "^HR[0-9]{3,}$"},
+        "task_id": {"type": "string", "pattern": "^[A-Z][A-Z0-9_-]{2,}$"},
+        "attempt_id": {"type": "string", "pattern": "^AT[A-Za-z0-9_-]{3,}$"},
+        "question_id": {"type": "string", "pattern": "^Q[0-9]{3,}$"},
+        "strategy_id": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+        "query": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+        "adapter": {"enum": ["fake"]}
       }
     },
     "failure": {

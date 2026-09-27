@@ -196,6 +196,8 @@ OUTPUT_ROOT="$(mktemp -d /tmp/agentic-art-output.XXXXXX)"
 
 workerはattempt workspaceの許可された `write_targets` だけを書き換えます。canonical project、protocol、別project、`data/`、output root、runtime namespaceを直接変更できません。workerの変更はacceptance executorの検証後にだけpromoteされます。
 
+Collectorの探索要求はworker resultのtypedな`search_requests`で返します。runtime logはharnessが所有するため、workerはattempt workspace内の`07_runtime/run-log.jsonl`を直接更新せず、harnessがschema検証済みの要求をfake等の許可済みadapterで実行して`SEARCH_ATTEMPT`を記録します。再実行時は同一attempt・同一request hashを重複記録しません。
+
 中断・worker failure・human pauseからは、同じwork/output rootを指定してresumeします。
 
 ```bash

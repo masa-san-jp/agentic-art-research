@@ -18,6 +18,7 @@ from referencing import Registry, Resource
 import acceptance_executor
 import human_decisions
 import next_action
+import search_harness
 import task_runtime
 import worker_adapter
 from _common import atomic_write_text, load_json, load_yaml, stable_json
@@ -635,6 +636,26 @@ class Supervisor:
                     continue
                 if status != "SUCCEEDED":
                     self._handle_failure(task_id, token, "PERMANENT", "worker returned an unsupported status")
+                    continue
+                try:
+                    search_harness.record_search_requests(
+                        result.get("search_requests") or [],
+                        protocol_root=self.protocol_root,
+                        project_root=self.work_root / "projects" / self.project_id.split("/", 1)[1],
+                        project_id=self.project_id,
+                        run_id=self.run_id,
+                        task_id=task_id,
+                        attempt_id=attempt_id,
+                        worker_id=self.worker_id,
+                        occurred_at=self.now(),
+                    )
+                    # SEARCH_ATTEMPT is harness-owned runtime state. Mirror it
+                    # into the candidate only after recording so the gate sees
+                    # the same bytes while the worker still cannot promote a
+                    # runtime change through its changeset.
+                    self._sync_runtime_snapshot(attempt)
+                except search_harness.SearchHarnessError as exc:
+                    self._handle_failure(task_id, token, "VALIDATION", str(exc))
                     continue
                 self._record("ACCEPTANCE", task_id=task_id, attempt_id=attempt_id, result_sha256=result_hash)
                 try:

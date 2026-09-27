@@ -48,6 +48,20 @@ def result(request: dict[str, object], *, status: str = "SUCCEEDED") -> dict[str
                 "timed_out": False,
             },
         }
+    search_requests = []
+    if request.get("role") == "collector":
+        search_requests = [{
+            "schema_version": "1.0.0",
+            "request_id": f"SR-{run_id}-{request['task_id']}-{attempt_id}",
+            "project_id": request["project_id"],
+            "run_id": run_id,
+            "task_id": request["task_id"],
+            "attempt_id": attempt_id,
+            "question_id": "Q001",
+            "strategy_id": "offline-fake",
+            "query": "offline deterministic fixture search",
+            "adapter": "fake",
+        }]
     return {
         "schema_version": "1.0.0",
         "run_id": run_id,
@@ -62,6 +76,7 @@ def result(request: dict[str, object], *, status: str = "SUCCEEDED") -> dict[str
                 "value": {"mode": "offline", "task_id": request["task_id"]},
             }
         ],
+        "search_requests": search_requests,
         "failure": None,
         "human_decision_request": None,
         "diagnostics": {

@@ -100,6 +100,8 @@ DOMAIN_SCHEMAS = (
     "self-repetition-review",
     "self-repetition-scan",
     "run-log-event",
+    "search-attempt-request",
+    "search-attempt-result",
     "acceptance-gate",
     "acceptance-report",
     "acceptance-transaction",
