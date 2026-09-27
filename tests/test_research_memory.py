@@ -9,7 +9,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
-from research_memory import MemoryStore, capture, encoded, hashed, identity, CONTRACT, OWNER
+from research_memory import MemoryStore, capture, encoded, hashed, identity, protocol_commit, CONTRACT, OWNER
 from context_pack import build_context_pack
 from new_project import create_project
 from run_project import run_offline_fixture
@@ -25,7 +25,7 @@ class ResearchMemoryTests(unittest.TestCase):
         temp = tempfile.TemporaryDirectory(); self.addCleanup(temp.cleanup)
         self.root = Path(temp.name)
         self.store_root = self.root / "memory"; self.store_root.mkdir()
-        self.code = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+        self.code = protocol_commit(ROOT)[0]
         gitdir = self.store_root / "objects.git"
         subprocess.run(["git", "init", "--bare", "-q", str(gitdir)], check=True)
         (self.store_root / "store.json").write_text(json.dumps({"owner": OWNER, "creator": "creator-a", "collection": "research-a"}))
@@ -33,6 +33,22 @@ class ResearchMemoryTests(unittest.TestCase):
         commit = subprocess.check_output(["git", "--git-dir", str(gitdir), "-c", "user.name=Synthetic", "-c", "user.email=synthetic@example.invalid", "commit-tree", tree], input=b"synthetic setup").decode().strip()
         subprocess.run(["git", "--git-dir", str(gitdir), "update-ref", "refs/heads/knowledge", commit], check=True)
         self.store = MemoryStore(self.store_root, "creator-a", "research-a", self.code)
+
+    def test_protocol_commit_uses_archive_marker_when_git_metadata_is_absent(self):
+        archive = self.root / "archive"
+        archive.mkdir()
+        commit = "a" * 40
+        (archive / ".archive-commit").write_text(commit + "\n", encoding="utf-8")
+        self.assertEqual((commit, True), protocol_commit(archive))
+
+    def test_protocol_commit_fails_closed_when_archive_provenance_is_unavailable(self):
+        archive = self.root / "archive"
+        archive.mkdir()
+        with self.assertRaisesRegex(ValueError, "protocol commit unavailable"):
+            protocol_commit(archive)
+        (archive / ".archive-commit").write_text("$Format:%H$\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "40-character lowercase SHA"):
+            protocol_commit(archive)
 
     def payload(self):
         kinds = ["evidence", "claim", "insight", "decision", "requirement"]

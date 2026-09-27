@@ -21,6 +21,47 @@ POLICY = load_yaml(ROOT / "config/research-memory.yaml")
 OWNER = POLICY["owner"]
 CONTRACT = POLICY["contract_version"]
 FIELDS = set("contract_version record_id revision origin_instance_id creator_id owner_repository collection_id kind payload_schema payload_ref content_sha256 sources derived_from epistemic_status lifecycle applicability rights access_scope consent_ref created_at reviewed_at valid_until producer supersedes invalidates".split())
+ARCHIVE_COMMIT_FILE = ".archive-commit"
+COMMIT_SHA = re.compile(r"^[0-9a-f]{40}$")
+
+
+def protocol_commit(root=ROOT):
+    """Resolve the exact protocol commit for a checkout or immutable archive.
+
+    A normal checkout is authoritative when ``git rev-parse`` succeeds.  An
+    archive has no Git metadata, so ``git archive``'s export-subst marker is
+    the only acceptable fallback.  Missing or substituted-but-unresolved
+    provenance is an error rather than an empty or guessed commit.
+    """
+    root = Path(root)
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (OSError, subprocess.SubprocessError):
+        result = None
+    if result is not None:
+        commit = result.stdout.strip()
+        if COMMIT_SHA.fullmatch(commit):
+            return commit, False
+
+    marker = root / ARCHIVE_COMMIT_FILE
+    if marker.is_symlink() or not marker.is_file():
+        raise ValueError(
+            "protocol commit unavailable: expected a Git checkout or .archive-commit"
+        )
+    try:
+        commit = marker.read_text(encoding="utf-8").strip()
+    except (OSError, UnicodeError) as exc:
+        raise ValueError("protocol commit unavailable: .archive-commit cannot be read") from exc
+    if not COMMIT_SHA.fullmatch(commit):
+        raise ValueError(
+            "protocol commit unavailable: .archive-commit must contain a 40-character lowercase SHA"
+        )
+    return commit, True
 
 
 def encoded(value):
@@ -201,9 +242,19 @@ class MemoryStore:
             raise ValueError("owner/creator/collection binding mismatch")
         if (self.root / "objects.git").is_symlink():
             raise ValueError("symlink Git store forbidden")
-        actual = subprocess.check_output(["git", "-C", str(ROOT), "rev-parse", "HEAD"], text=True).strip()
-        if actual != code_commit or subprocess.check_output(["git", "-C", str(ROOT), "status", "--porcelain"]):
+        actual, from_archive = protocol_commit(ROOT)
+        if actual != code_commit:
             raise ValueError("execute a clean pinned code checkout")
+        if not from_archive:
+            status = subprocess.run(
+                ["git", "-C", str(ROOT), "status", "--porcelain"],
+                capture_output=True,
+                text=True,
+            )
+            if status.returncode != 0:
+                raise ValueError("cannot verify clean pinned code checkout")
+            if status.stdout:
+                raise ValueError("execute a clean pinned code checkout")
 
     def git(self, *args, body=None, index=None):
         env = os.environ.copy()
