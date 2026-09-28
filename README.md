@@ -198,6 +198,8 @@ workerはattempt workspaceの許可された `write_targets` だけを書き換�
 
 Collectorの探索要求はworker resultのtypedな`search_requests`で返します。runtime logはharnessが所有するため、workerはattempt workspace内の`07_runtime/run-log.jsonl`を直接更新せず、harnessがschema検証済みの要求とquestion-registerのIDを確認し、許可されたadapter（offlineでは`fake`）で実行して`recorded_by: harness.search_harness`付きの`SEARCH_ATTEMPT`を記録します。記録はtask runtimeと同じロック／atomic書込み経路を使い、再実行時は時刻が変わっても同一attempt・同一request hashを重複記録しません。collector gateも当該run/task/attemptとharness provenanceを検証します。
 
+acceptance failure後のretryでは、harnessが直前の`acceptance-report.json`から`retry-feedback` bundleを作り、次のworker requestの`context.retry_feedback`へ自動的に渡します。bundleにはfailed gate、finding、対象path、attempt ID、report ID、report hashが含まれ、初回実行や成功後の次工程には含まれません。
+
 中断・worker failure・human pauseからは、同じwork/output rootを指定してresumeします。
 
 ```bash

@@ -117,6 +117,36 @@ class HarnessSupervisorContractTest(unittest.TestCase):
         events = load_json(self.root / "work/.harness/supervisor/supervisor-probe/HR701.json")["events"]
         self.assertTrue(any(event.get("phase") == "RETRY_WAIT" and event.get("failure_class") == "TRANSIENT" for event in events))
 
+    def test_acceptance_failure_is_injected_into_the_next_attempt_context(self) -> None:
+        calls = {"count": 0}
+        observed: dict[str, object] = {}
+
+        def acceptance_flaky(request_path: Path, *, output_path: Path, **kwargs: object) -> dict[str, object]:
+            request = load_json(request_path)
+            calls["count"] += 1
+            if calls["count"] == 1:
+                attempt_project = Path(request["attempt_workspace"])
+                (attempt_project / "01_planning/question-register.yaml").write_text(
+                    "questions:\n  - id: Q001\n    text: Broken\n    priority: mandatory\n    status: NOT_A_STATUS\n",
+                    encoding="utf-8",
+                )
+                result = success_result(request)
+                atomic_write_text(output_path, stable_json(result))
+                return result
+            observed["request"] = request
+            return self.worker(request_path, output_path=output_path, **kwargs)
+
+        result = self.make_supervisor(worker_runner=acceptance_flaky, max_tasks=4).run()
+        self.assertEqual("SUCCEEDED", result["status"])
+        self.assertEqual(2, calls["count"])
+        request = observed["request"]
+        self.assertIsInstance(request, dict)
+        feedback = request["context"].get("retry_feedback")
+        self.assertIsInstance(feedback, dict)
+        self.assertEqual("AT001", feedback["source_attempt_id"])
+        self.assertEqual("AG-PLANNER-VALIDATE", feedback["findings"][0]["gate_id"])
+        self.assertTrue(feedback["report_sha256"].startswith("sha256:"))
+
     def test_heartbeat_is_recorded_and_shutdown_is_resumable(self) -> None:
         def long_worker(request_path: Path, *, output_path: Path, heartbeat_callback: object, **kwargs: object) -> dict[str, object]:
             request = load_json(request_path)

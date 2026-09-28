@@ -367,6 +367,14 @@ class Supervisor:
             if isinstance(target, dict) and isinstance(target.get("path"), str):
                 targets.append({"path": target["path"], "mode": target.get("mode", "UPDATE")})
         acceptance = action.get("acceptance") or []
+        context = {
+            "summary": str((action.get("context") or {}).get("summary", "")) or "Task context.",
+            "source_refs": list((action.get("context") or {}).get("source_refs") or []),
+            "constraints": list((action.get("context") or {}).get("constraints") or []),
+        }
+        retry_feedback = (action.get("context") or {}).get("retry_feedback")
+        if retry_feedback is not None:
+            context["retry_feedback"] = retry_feedback
         request: dict[str, Any] = {
             "schema_version": "1.0.0",
             "run_id": self.run_id,
@@ -375,11 +383,7 @@ class Supervisor:
             "task_id": action["task_id"],
             "role": action["role"],
             "lease": {"token": action["lease"]["token"], "expires_at": action["lease"]["expires_at"]},
-            "context": {
-                "summary": str((action.get("context") or {}).get("summary", "")) or "Task context.",
-                "source_refs": list((action.get("context") or {}).get("source_refs") or []),
-                "constraints": list((action.get("context") or {}).get("constraints") or []),
-            },
+            "context": context,
             "instructions": instructions,
             "write_targets": targets,
             "acceptance_ids": [f"AT{index:03d}" for index, _ in enumerate(acceptance, 1)],
@@ -558,6 +562,7 @@ class Supervisor:
                     protocol_root=self.protocol_root,
                     work_root=self.work_root,
                     output_root=self.output_root,
+                    run_id=self.run_id,
                 )
                 if action.get("status") not in {"TASK_CLAIMED", "TASK_RESUMED"}:
                     return self._terminal_outcome()

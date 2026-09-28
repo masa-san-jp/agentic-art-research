@@ -102,6 +102,7 @@ DOMAIN_SCHEMAS = (
     "run-log-event",
     "search-attempt-request",
     "search-attempt-result",
+    "retry-feedback",
     "acceptance-gate",
     "acceptance-report",
     "acceptance-transaction",
