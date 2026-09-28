@@ -112,6 +112,7 @@ def _canonical_tasks(root: Path, definitions: Iterable[dict[str, Any]]) -> dict[
             "lease": None,
             "result": None,
             "failure": None,
+            "last_failure": None,
             "effect_key": None,
             "human_decision_request": None,
             "human_decision_response": None,
@@ -680,7 +681,16 @@ def replay_runtime(root: Path, target: str) -> dict[str, Any]:
         elif event_type == "TASK_BLOCKED":
             task.update({"status": "BLOCKED", "lease": None, "failure": {"class": "DEPENDENCY_FAILED", "occurred_at": event.get("occurred_at"), "message": "A required dependency failed or was blocked.", "attempt": int(task.get("attempts", 0))}})
         elif event_type in {"TASK_FAILED", "TASK_RETRY_SCHEDULED"}:
-            task.update({"status": event.get("retry_status", "FAILED"), "lease": None, "failure": {"class": event.get("failure_class"), "occurred_at": event.get("occurred_at"), "message": "Task failure recorded in the event log.", "attempt": int(event.get("attempt", task.get("attempts", 0)))}})
+            failure = {
+                "class": event.get("failure_class"),
+                "occurred_at": event.get("occurred_at"),
+                "message": "Task failure recorded in the event log.",
+                "attempt": int(event.get("attempt", task.get("attempts", 0))),
+            }
+            for key in ("report_id", "report_sha256"):
+                if key in event:
+                    failure[key] = event[key]
+            task.update({"status": event.get("retry_status", "FAILED"), "lease": None, "failure": failure, "last_failure": failure})
         elif event_type == "TASK_LEASE_EXPIRED":
             task.update({"status": event.get("retry_status", "PENDING"), "lease": None, "attempts": event.get("attempt", task["attempts"]) - 1, "lease_expiries": int(task.get("lease_expiries", 0)) + 1})
     if runtime is None:
@@ -795,6 +805,7 @@ def fail(
     message: str,
     *,
     now: str | None = None,
+    failure_details: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     occurred_at = _timestamp(now)
     root = root.resolve()
@@ -805,6 +816,13 @@ def fail(
         raise TaskRuntimeError(f"unknown task failure class: {failure_class}")
     if not isinstance(message, str) or not message.strip():
         raise TaskRuntimeError("failure message must be a non-empty string")
+    if failure_details is not None and (
+        not isinstance(failure_details, dict)
+        or any(not isinstance(key, str) or key not in {"report_id", "report_sha256"} for key in failure_details)
+        or not isinstance(failure_details.get("report_id"), str)
+        or not isinstance(failure_details.get("report_sha256"), str)
+    ):
+        raise TaskRuntimeError("failure details must contain report_id and report_sha256")
 
     def mutate(state: dict[str, Any], events: list[dict[str, Any]]) -> tuple[dict[str, Any], list[dict[str, Any]], Any]:
         runtime = state[TASK_RUNTIME_KEY]
@@ -817,7 +835,11 @@ def fail(
         next_status = "PENDING" if should_retry else "FAILED"
         task["status"] = next_status
         task["lease"] = None
-        task["failure"] = {"class": failure_class, "message": message, "attempt": attempts, "occurred_at": occurred_at}
+        failure = {"class": failure_class, "message": message, "attempt": attempts, "occurred_at": occurred_at}
+        if failure_details is not None:
+            failure.update(failure_details)
+        task["failure"] = failure
+        task["last_failure"] = dict(failure)
         if state.get("current_task") == task_id:
             state["current_task"] = None
         generated.append(
@@ -830,6 +852,7 @@ def fail(
                 failure_class=failure_class,
                 retry_status=next_status,
                 retry_exhausted=not should_retry and failure_class in retryable,
+                **(failure_details or {}),
             )
         )
         _, blocked = _reconcile_new_events(runtime, events, generated, occurred_at)

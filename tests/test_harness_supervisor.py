@@ -13,6 +13,7 @@ sys.path.insert(0, str(REPO_ROOT / "tools"))
 
 import harness_supervisor  # noqa: E402
 import task_runtime  # noqa: E402
+import worker_adapter  # noqa: E402
 from _common import atomic_write_text, load_json, stable_json  # noqa: E402
 from new_project import create_project  # noqa: E402
 
@@ -146,6 +147,112 @@ class HarnessSupervisorContractTest(unittest.TestCase):
         self.assertEqual("AT001", feedback["source_attempt_id"])
         self.assertEqual("AG-PLANNER-VALIDATE", feedback["findings"][0]["gate_id"])
         self.assertTrue(feedback["report_sha256"].startswith("sha256:"))
+
+    def test_retry_request_is_byte_identical_across_shutdown_and_resume(self) -> None:
+        calls = {"count": 0}
+        interrupted: dict[str, bytes] = {}
+        first_supervisor: harness_supervisor.Supervisor | None = None
+
+        def fail_then_interrupt(request_path: Path, *, output_path: Path, **kwargs: object) -> dict[str, object]:
+            request = load_json(request_path)
+            calls["count"] += 1
+            if calls["count"] == 1:
+                attempt_project = Path(request["attempt_workspace"])
+                (attempt_project / "01_planning/question-register.yaml").write_text(
+                    "questions:\n  - id: Q001\n    text: Broken\n    priority: mandatory\n    status: NOT_A_STATUS\n",
+                    encoding="utf-8",
+                )
+                result = success_result(request)
+                atomic_write_text(output_path, stable_json(result))
+                return result
+            interrupted["request"] = request_path.read_bytes()
+            assert first_supervisor is not None
+            first_supervisor.shutdown_requested = True
+            raise worker_adapter.AttemptHeartbeatError("synthetic interruption after request creation")
+
+        first_supervisor = self.make_supervisor(worker_runner=fail_then_interrupt, max_tasks=4)
+        paused = first_supervisor.run()
+        self.assertEqual("SHUTDOWN", paused["status"])
+        before = interrupted["request"]
+        before_request = load_json(self.root / "work/.harness/attempts/HR701/TASK001/AT002/request.json")
+        before_feedback = before_request["context"]["retry_feedback"]
+
+        resumed = self.make_supervisor(worker_runner=self.worker, max_tasks=4).run(resume=True)
+        self.assertEqual("SUCCEEDED", resumed["status"])
+        after = (self.root / "work/.harness/attempts/HR701/TASK001/AT002/request.json").read_bytes()
+        after_request = load_json(self.root / "work/.harness/attempts/HR701/TASK001/AT002/request.json")
+        self.assertEqual(before, after)
+        self.assertEqual(before_feedback, after_request["context"]["retry_feedback"])
+
+    def test_rebuilding_same_failure_feedback_does_not_change_request_context(self) -> None:
+        observed: list[dict[str, object]] = []
+
+        def retry_worker(request_path: Path, *, output_path: Path, **kwargs: object) -> dict[str, object]:
+            request = load_json(request_path)
+            if request["attempt_id"] == "AT001":
+                attempt_project = Path(request["attempt_workspace"])
+                (attempt_project / "01_planning/question-register.yaml").write_text(
+                    "questions:\n  - id: Q001\n    text: Broken\n    priority: mandatory\n    status: NOT_A_STATUS\n",
+                    encoding="utf-8",
+                )
+                result = success_result(request)
+            else:
+                observed.append(request)
+                rebuilt = harness_supervisor.retry_feedback.build_retry_feedback(
+                    protocol_root=REPO_ROOT,
+                    work_root=self.work,
+                    project_id="project/supervisor-probe",
+                    run_id="HR701",
+                    task_id="TASK001",
+                    current_attempt_id="AT002",
+                )
+                self.assertEqual(request["context"]["retry_feedback"], rebuilt)
+                result = self.worker(request_path, output_path=output_path, **kwargs)
+            atomic_write_text(output_path, stable_json(result))
+            return result
+
+        result = self.make_supervisor(worker_runner=retry_worker, max_tasks=4).run()
+        self.assertEqual("SUCCEEDED", result["status"])
+        self.assertEqual(1, len(observed))
+        request_path = self.root / "work/.harness/attempts/HR701/TASK001/AT002/request.json"
+        first_bytes = request_path.read_bytes()
+        first_feedback = observed[0]["context"]["retry_feedback"]
+        request_path.write_bytes(first_bytes)
+        second_request = load_json(request_path)
+        self.assertEqual(first_feedback, second_request["context"]["retry_feedback"])
+        self.assertEqual(first_bytes, request_path.read_bytes())
+
+    def test_invalid_retry_feedback_provenance_blocks_after_claim(self) -> None:
+        def invalid_first(request_path: Path, *, output_path: Path, **kwargs: object) -> dict[str, object]:
+            request = load_json(request_path)
+            attempt_project = Path(request["attempt_workspace"])
+            (attempt_project / "01_planning/question-register.yaml").write_text(
+                "questions:\n  - id: Q001\n    text: Broken\n    priority: mandatory\n    status: NOT_A_STATUS\n",
+                encoding="utf-8",
+            )
+            result = success_result(request)
+            atomic_write_text(output_path, stable_json(result))
+            return result
+
+        def tamper_after_failure(event: dict[str, object]) -> None:
+            if event.get("phase") != "RETRY_WAIT":
+                return
+            report_path = self.root / "work/.harness/attempts/HR701/TASK001/AT001/acceptance-report.json"
+            report = load_json(report_path)
+            failed_gate = next(gate for gate in report["gates"] if gate["status"] == "FAIL")
+            failed_gate["findings"] = ["tampered after acceptance"]
+            atomic_write_text(report_path, stable_json(report))
+
+        result = self.make_supervisor(
+            worker_runner=invalid_first,
+            event_callback=tamper_after_failure,
+            max_tasks=4,
+        ).run()
+        self.assertEqual("BLOCKED", result["status"])
+        self.assertTrue(any(
+            event.get("failure_class") == "HARNESS-RETRY-FEEDBACK"
+            for event in result["events"]
+        ))
 
     def test_heartbeat_is_recorded_and_shutdown_is_resumable(self) -> None:
         def long_worker(request_path: Path, *, output_path: Path, heartbeat_callback: object, **kwargs: object) -> dict[str, object]:

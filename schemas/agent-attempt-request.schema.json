@@ -126,7 +126,7 @@
     "retryFeedback": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["schema_version", "feedback_id", "project_id", "run_id", "task_id", "source_attempt_id", "report_id", "report_sha256", "findings"],
+      "required": ["schema_version", "feedback_id", "project_id", "run_id", "task_id", "source_attempt_id", "report_id", "report_sha256", "findings", "findings_omitted"],
       "properties": {
         "schema_version": {"const": "1.0.0"},
         "feedback_id": {"type": "string", "pattern": "^RF-[0-9a-f]{16}$"},
@@ -141,7 +141,8 @@
           "minItems": 1,
           "maxItems": 20,
           "items": {"$ref": "#/$defs/retryFinding"}
-        }
+        },
+        "findings_omitted": {"type": "integer", "minimum": 0}
       }
     },
     "retryFinding": {

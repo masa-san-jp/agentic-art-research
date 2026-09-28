@@ -142,6 +142,8 @@ def main() -> int:
     parser.add_argument("--run-id", help="harness run ID used to locate the immediately prior acceptance report")
     parser.add_argument("--attempt-id", help="current attempt ID used to locate retry feedback")
     args = parser.parse_args()
+    if args.run_id and not args.protocol_root:
+        parser.error("--protocol-root is required when --run-id is supplied")
     try:
         content = stable_json(
             build_context_pack(

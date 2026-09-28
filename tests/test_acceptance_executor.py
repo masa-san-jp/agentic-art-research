@@ -213,6 +213,9 @@ class AcceptanceExecutorContractTest(unittest.TestCase):
             _tree_digest(self.project, excluded={"07_runtime/research-state.json", "07_runtime/run-log.jsonl"}),
         )
         self.assertTrue(any(gate["status"] == "FAIL" for gate in result["report"]["gates"]))
+        runtime_task = task_runtime.load_runtime(self.work, "project/probe")["tasks"]["TASK001"]
+        self.assertEqual(result["report"]["report_id"], runtime_task["failure"]["report_id"])
+        self.assertEqual(result["report_sha256"], runtime_task["failure"]["report_sha256"])
 
     def test_post_promotion_complete_failure_restores_project_and_runtime_bytes(self) -> None:
         self._edit_question_register()

@@ -12,6 +12,7 @@ from referencing import Registry, Resource
 
 from _common import load_json, stable_json
 from canonical import canonical_sha256
+import task_runtime
 
 
 class RetryFeedbackError(ValueError):
@@ -58,7 +59,7 @@ def _prior_report_path(work_root: Path, run_id: str, task_id: str, current_attem
     return prior_id, report
 
 
-def _finding_rows(report: dict[str, Any]) -> list[dict[str, Any]]:
+def _finding_rows(report: dict[str, Any]) -> tuple[list[dict[str, Any]], int]:
     rows: list[dict[str, Any]] = []
     for gate in report.get("gates", []):
         if not isinstance(gate, dict) or gate.get("status") != "FAIL":
@@ -78,7 +79,12 @@ def _finding_rows(report: dict[str, Any]) -> list[dict[str, Any]]:
                 "remediation": gate.get("remediation"),
                 "finding": finding[:500],
             })
-    return rows
+    rows.sort(key=lambda row: (
+        str(row.get("gate_id") or ""),
+        str(row.get("path") or ""),
+        str(row.get("finding") or ""),
+    ))
+    return rows[:20], max(0, len(rows) - 20)
 
 
 def build_retry_feedback(
@@ -111,10 +117,25 @@ def build_retry_feedback(
         raise RetryFeedbackError("RETRY-FEEDBACK-PROVENANCE", "acceptance report identity does not match the retry")
     if report.get("status") != "FAIL":
         return None
-    findings = _finding_rows(report)
+    report_hash = canonical_sha256(report)
+    try:
+        runtime = task_runtime.load_runtime(work_root.resolve(), project_id)
+        task = (runtime.get("tasks") or {}).get(task_id)
+        failure = task.get("last_failure", task.get("failure")) if isinstance(task, dict) else None
+    except Exception as exc:
+        raise RetryFeedbackError("RETRY-FEEDBACK-PROVENANCE", "task runtime failure provenance is unavailable") from exc
+    if not isinstance(failure, dict) or any(
+        failure.get(key) != expected
+        for key, expected in {
+            "attempt": _attempt_number(source_attempt_id),
+            "report_id": report.get("report_id"),
+            "report_sha256": report_hash,
+        }.items()
+    ):
+        raise RetryFeedbackError("RETRY-FEEDBACK-PROVENANCE", "acceptance report hash is not recorded for the failed attempt")
+    findings, findings_omitted = _finding_rows(report)
     if not findings:
         raise RetryFeedbackError("RETRY-FEEDBACK-REPORT", "failed acceptance report has no failed gates")
-    report_hash = canonical_sha256(report)
     payload: dict[str, Any] = {
         "schema_version": "1.0.0",
         "project_id": project_id,
@@ -124,6 +145,7 @@ def build_retry_feedback(
         "report_id": report["report_id"],
         "report_sha256": report_hash,
         "findings": findings,
+        "findings_omitted": findings_omitted,
     }
     payload["feedback_id"] = "RF-" + hashlib.sha256(stable_json(payload).encode("utf-8")).hexdigest()[:16]
     _validate(protocol_root.resolve(), "retry-feedback", {**payload})

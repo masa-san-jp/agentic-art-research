@@ -532,6 +532,7 @@ def complete_attempt(
             "VALIDATION",
             "Typed acceptance gate failed.",
             now=evaluated_at,
+            failure_details={"report_id": report["report_id"], "report_sha256": report_hash},
         )
         return {"report": report, "report_sha256": report_hash, "task": task_result, "promoted": False}
 
