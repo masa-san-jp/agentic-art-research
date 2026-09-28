@@ -2730,6 +2730,7 @@ def validate_repository(
         "project_validate",
         "collection_minimum",
         "run_event_minimum",
+        "harness_search_minimum",
         "stopping_evaluate",
         "hypothesis_selection",
         "medium_decision",

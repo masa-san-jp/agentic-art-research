@@ -13,9 +13,11 @@ sys.path.insert(0, str(REPO_ROOT / "tools"))
 
 from new_project import create_project  # noqa: E402
 from search_harness import SearchHarnessError, record_search_requests  # noqa: E402
+import task_runtime  # noqa: E402
 
 
 NOW = "2026-08-25T12:00:00+09:00"
+REPLAY_NOW = "2026-08-25T12:00:01+09:00"
 
 
 def request(*, attempt_id: str = "AT001", request_id: str = "SR001") -> dict[str, object]:
@@ -43,6 +45,11 @@ class SearchHarnessContractTest(unittest.TestCase):
         (self.work / "projects").mkdir()
         shutil.copytree(REPO_ROOT / "config", self.work / "config")
         self.project = create_project(self.work, "probe", "Probe", protocol_root=REPO_ROOT)
+        (self.project / "01_planning/question-register.yaml").write_text(
+            "questions:\n  - id: Q001\n    text: Which direction should continue?\n    priority: mandatory\n    status: OPEN\n",
+            encoding="utf-8",
+        )
+        task_runtime.initialize_runtime(self.work, "project/probe", initialized_at=NOW)
         self.addCleanup(shutil.rmtree, self.root, True)
 
     def test_fake_search_is_typed_and_idempotent(self) -> None:
@@ -67,7 +74,7 @@ class SearchHarnessContractTest(unittest.TestCase):
             task_id="TASK002",
             attempt_id="AT001",
             worker_id="worker-a",
-            occurred_at=NOW,
+            occurred_at=REPLAY_NOW,
         )
         self.assertEqual(first, second)
         self.assertEqual(before, (self.project / "07_runtime/run-log.jsonl").read_bytes())
@@ -77,6 +84,21 @@ class SearchHarnessContractTest(unittest.TestCase):
         self.assertEqual("worker-a", record["worker_id"])
         self.assertTrue(record["request_sha256"].startswith("sha256:"))
         self.assertTrue(record["result_sha256"].startswith("sha256:"))
+        self.assertEqual("harness.search_harness", record["recorded_by"])
+
+    def test_unknown_question_is_rejected_before_logging(self) -> None:
+        value = request()
+        value["question_id"] = "Q999"
+        with self.assertRaisesRegex(SearchHarnessError, "SEARCH-QUESTION-REGISTER"):
+            record_search_requests(
+                [value], protocol_root=REPO_ROOT, project_root=self.project,
+                project_id="project/probe", run_id="HR701", task_id="TASK002", attempt_id="AT001",
+                worker_id="worker-a", occurred_at=NOW,
+            )
+        self.assertFalse(any(
+            json.loads(line).get("event_type") == "SEARCH_ATTEMPT"
+            for line in (self.project / "07_runtime/run-log.jsonl").read_text(encoding="utf-8").splitlines()
+        ))
 
     def test_same_request_id_with_changed_payload_is_rejected(self) -> None:
         record_search_requests(
@@ -101,7 +123,10 @@ class SearchHarnessContractTest(unittest.TestCase):
                 project_id="project/probe", run_id="HR701", task_id="TASK002", attempt_id="AT001",
                 worker_id="worker-a", occurred_at=NOW,
             )
-        self.assertEqual([], (self.project / "07_runtime/run-log.jsonl").read_text(encoding="utf-8").splitlines())
+        self.assertFalse(any(
+            json.loads(line).get("event_type") == "SEARCH_ATTEMPT"
+            for line in (self.project / "07_runtime/run-log.jsonl").read_text(encoding="utf-8").splitlines()
+        ))
 
 
 if __name__ == "__main__":

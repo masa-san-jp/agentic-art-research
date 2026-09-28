@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import fcntl
 import hashlib
 import json
 from datetime import datetime
@@ -12,8 +11,8 @@ from typing import Any, Iterable
 from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
 
-import log_event
-from _common import load_json, read_jsonl
+import task_runtime
+from _common import load_json, load_yaml
 from canonical import canonical_sha256
 
 
@@ -110,39 +109,49 @@ def execute_search_request(
     return result
 
 
+def _question_ids(project_root: Path) -> set[str]:
+    register = load_yaml(project_root.resolve() / "01_planning" / "question-register.yaml") or {}
+    questions = register.get("questions") if isinstance(register, dict) else None
+    if not isinstance(questions, list):
+        raise SearchHarnessError("SEARCH-QUESTION-REGISTER", "question-register.yaml must contain questions")
+    return {
+        item["id"]
+        for item in questions
+        if isinstance(item, dict) and isinstance(item.get("id"), str) and item["id"]
+    }
+
+
 def _event_id(request: dict[str, Any]) -> str:
     digest = hashlib.sha256(_request_hash(request).encode("ascii")).hexdigest()[:24]
     return f"SEARCH-{digest}"
 
 
+_EVENT_CONTENT_KEYS = (
+    "event_type", "run_id", "task_id", "attempt_id", "request_id", "question_id",
+    "strategy_id", "worker_id", "request_sha256", "execution_status", "result_sha256",
+    "result_count", "recorded_by",
+)
+
+
 def _same_event(existing: dict[str, Any], expected: dict[str, Any]) -> bool:
-    return all(existing.get(key) == value for key, value in expected.items())
+    """Compare durable request/result identity, not the timestamp of replay."""
+
+    return all(existing.get(key) == expected.get(key) for key in _EVENT_CONTENT_KEYS)
 
 
-def _append_event_idempotently(log_path: Path, event: dict[str, Any]) -> dict[str, Any]:
-    log_path.parent.mkdir(parents=True, exist_ok=True)
-    with log_path.open("a+", encoding="utf-8") as handle:
-        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
-        handle.seek(0)
-        existing = read_jsonl(log_path)
-        for prior in existing:
-            if prior.get("event_type") != "SEARCH_ATTEMPT":
-                continue
-            if prior.get("request_id") == event["request_id"]:
-                if _same_event(prior, event):
-                    fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
-                    return prior
-                raise SearchHarnessError("SEARCH-DUPLICATE-CONFLICT", "request_id already has a different recorded request")
-            if prior.get("attempt_id") == event["attempt_id"] and prior.get("request_sha256") == event["request_sha256"]:
-                if _same_event(prior, event):
-                    fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
-                    return prior
-                raise SearchHarnessError("SEARCH-DUPLICATE-CONFLICT", "attempt and request hash have conflicting records")
-        handle.seek(0, 2)
-        handle.write(json.dumps(event, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n")
-        handle.flush()
-        fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
-    return event
+def _append_event_idempotently(existing: list[dict[str, Any]], event: dict[str, Any]) -> dict[str, Any] | None:
+    for prior in existing:
+        if prior.get("event_type") != "SEARCH_ATTEMPT":
+            continue
+        if prior.get("request_id") == event["request_id"]:
+            if _same_event(prior, event):
+                return prior
+            raise SearchHarnessError("SEARCH-DUPLICATE-CONFLICT", "request_id already has a different recorded request")
+        if prior.get("attempt_id") == event["attempt_id"] and prior.get("request_sha256") == event["request_sha256"]:
+            if _same_event(prior, event):
+                return prior
+            raise SearchHarnessError("SEARCH-DUPLICATE-CONFLICT", "attempt and request hash have conflicting records")
+    return None
 
 
 def record_search_requests(
@@ -161,6 +170,7 @@ def record_search_requests(
 
     request_list = list(requests)
     seen: set[str] = set()
+    question_ids = _question_ids(project_root)
     executed: list[tuple[dict[str, Any], dict[str, Any], str]] = []
     for request in request_list:
         if not isinstance(request, dict):
@@ -169,6 +179,8 @@ def record_search_requests(
         if request_id in seen:
             raise SearchHarnessError("SEARCH-DUPLICATE-CONFLICT", "a result contains the same request_id more than once")
         seen.add(str(request_id))
+        if request.get("question_id") not in question_ids:
+            raise SearchHarnessError("SEARCH-QUESTION-REGISTER", "question_id is not present in question-register.yaml")
         result = execute_search_request(
             request,
             protocol_root=protocol_root,
@@ -181,7 +193,6 @@ def record_search_requests(
         )
         executed.append((request, result, _request_hash(request)))
 
-    log_path = project_root.resolve() / "07_runtime" / "run-log.jsonl"
     events: list[dict[str, Any]] = []
     for request, result, request_hash in executed:
         event = {
@@ -199,9 +210,25 @@ def record_search_requests(
             "execution_status": result["status"],
             "result_sha256": result["result_sha256"],
             "result_count": result["result_count"],
+            "recorded_by": "harness.search_harness",
         }
-        events.append(_append_event_idempotently(log_path, event))
-    return events
+        events.append(event)
+
+    def mutate(state: dict[str, Any], existing: list[dict[str, Any]]) -> tuple[dict[str, Any], list[dict[str, Any]], list[dict[str, Any]]]:
+        new_events: list[dict[str, Any]] = []
+        recorded: list[dict[str, Any]] = []
+        working = list(existing)
+        for event in events:
+            prior = _append_event_idempotently(working, event)
+            if prior is not None:
+                recorded.append(prior)
+                continue
+            new_events.append(event)
+            working.append(event)
+            recorded.append(event)
+        return state, new_events, recorded
+
+    return task_runtime._mutate(project_root.resolve(), mutate)
 
 
 __all__ = ["SearchHarnessError", "execute_search_request", "record_search_requests"]

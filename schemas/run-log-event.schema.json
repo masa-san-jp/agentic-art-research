@@ -21,6 +21,7 @@
     "source_id": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
     "evidence_id": {"type": "string", "pattern": "^EV[0-9]{3,}$"},
     "worker_id": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+    "recorded_by": {"enum": ["harness.search_harness"]},
     "note": {"$ref": "common.schema.json#/$defs/nonEmptyString"}
   },
   "allOf": [

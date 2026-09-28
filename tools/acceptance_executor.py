@@ -33,6 +33,7 @@ CHECK_KINDS = {
     "project_validate",
     "collection_minimum",
     "run_event_minimum",
+    "harness_search_minimum",
     "stopping_evaluate",
     "hypothesis_selection",
     "medium_decision",
@@ -187,7 +188,10 @@ def _gate_result(
     return result
 
 
-def _run_one(check: dict[str, Any], *, protocol_root: Path, validation_root: Path, project_id: str) -> dict[str, Any]:
+def _run_one(
+    check: dict[str, Any], *, protocol_root: Path, validation_root: Path, project_id: str,
+    run_id: str, task_id: str, attempt_id: str,
+) -> dict[str, Any]:
     kind = check["kind"]
     path_value = check.get("path")
     target_path = validation_root / "projects" / _project_id_path(project_id) / path_value if path_value else None
@@ -215,6 +219,29 @@ def _run_one(check: dict[str, Any], *, protocol_root: Path, validation_root: Pat
             count = sum(1 for record in records if record.get("event_type") == event_type)
             minimum = int(check.get("minimum", 1))
             return _gate_result(check, passed=count >= minimum, expected={"event_type": event_type, "minimum": minimum}, actual=count, path=path_value)
+        if kind == "harness_search_minimum":
+            records = read_jsonl(target_path)
+            event_type = check.get("event_type")
+            matches = [
+                record for record in records
+                if record.get("event_type") == event_type
+                and record.get("run_id") == run_id
+                and record.get("task_id") == task_id
+                and record.get("attempt_id") == attempt_id
+                and record.get("recorded_by") == "harness.search_harness"
+                and isinstance(record.get("request_id"), str)
+                and isinstance(record.get("request_sha256"), str)
+                and isinstance(record.get("result_sha256"), str)
+                and isinstance(record.get("worker_id"), str)
+            ]
+            minimum = int(check.get("minimum", 1))
+            return _gate_result(
+                check,
+                passed=len(matches) >= minimum,
+                expected={"event_type": event_type, "minimum": minimum, "harness_recorded": True},
+                actual=len(matches),
+                path=path_value,
+            )
         if kind == "stopping_evaluate":
             evaluation = stopping_policy.evaluate_project(validation_root, project_id)
             return _gate_result(check, passed=isinstance(evaluation, dict), expected="evaluation", actual=evaluation.get("status") if isinstance(evaluation, dict) else None)
@@ -305,7 +332,17 @@ def execute_acceptance(
             if gate.get("kind") not in CHECK_KINDS:
                 raise AcceptanceExecutorError("ACCEPTANCE-CHECK-UNKNOWN", "acceptance check kind is not supported")
             _validate_schema(protocol_root.resolve(), "acceptance-gate", gate)
-            gates.append(_run_one(gate, protocol_root=protocol_root.resolve(), validation_root=validation_root, project_id=target))
+            gates.append(
+                _run_one(
+                    gate,
+                    protocol_root=protocol_root.resolve(),
+                    validation_root=validation_root,
+                    project_id=target,
+                    run_id=run_id,
+                    task_id=task_id,
+                    attempt_id=attempt_id,
+                )
+            )
         status = "PASS" if all(gate["status"] == "PASS" for gate in gates) else "FAIL"
         payload = {
             "schema_version": "1.0.0",

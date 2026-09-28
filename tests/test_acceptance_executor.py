@@ -112,6 +112,33 @@ class AcceptanceExecutorContractTest(unittest.TestCase):
         self.assertTrue(gate["findings"], gate)
         self.assertTrue(any("NOT_A_STATUS" in finding for finding in gate["findings"]), gate["findings"])
 
+    def test_preseed_search_event_without_harness_provenance_fails(self) -> None:
+        self._edit_question_register()
+        (self.attempt.project / "07_runtime/run-log.jsonl").write_text(
+            '{"event_id":"MANUAL-SEARCH","event_type":"SEARCH_ATTEMPT","question_id":"Q001","strategy_id":"fixture"}\n',
+            encoding="utf-8",
+        )
+        report = execute_acceptance(
+            protocol_root=REPO_ROOT,
+            attempt_project=self.attempt.project,
+            project_id="project/probe",
+            run_id="HR001",
+            task_id="TASK001",
+            attempt_id="AT001",
+            role="collector",
+            evaluated_at=NOW,
+            checks=[{
+                "id": "AG-TEST-HARNESS-SEARCH",
+                "kind": "harness_search_minimum",
+                "path": "07_runtime/run-log.jsonl",
+                "event_type": "SEARCH_ATTEMPT",
+                "minimum": 1,
+            }],
+        )
+        gate = report["gates"][0]
+        self.assertEqual("FAIL", gate["status"])
+        self.assertEqual(0, gate["actual"])
+
     def test_a_gate_that_cannot_run_says_why_it_could_not(self) -> None:
         """A worker wrote a quoted record, the gate raised, and the report said only 'execution error'."""
         path = self.attempt.project / "02_evidence/evidence-ledger.jsonl"

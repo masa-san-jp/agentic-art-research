@@ -638,22 +638,28 @@ class Supervisor:
                     self._handle_failure(task_id, token, "PERMANENT", "worker returned an unsupported status")
                     continue
                 try:
-                    search_harness.record_search_requests(
-                        result.get("search_requests") or [],
-                        protocol_root=self.protocol_root,
-                        project_root=self.work_root / "projects" / self.project_id.split("/", 1)[1],
-                        project_id=self.project_id,
-                        run_id=self.run_id,
-                        task_id=task_id,
-                        attempt_id=attempt_id,
-                        worker_id=self.worker_id,
-                        occurred_at=self.now(),
-                    )
-                    # SEARCH_ATTEMPT is harness-owned runtime state. Mirror it
-                    # into the candidate only after recording so the gate sees
-                    # the same bytes while the worker still cannot promote a
-                    # runtime change through its changeset.
-                    self._sync_runtime_snapshot(attempt)
+                    search_requests = result.get("search_requests") or []
+                    if search_requests and attempt.role != "collector":
+                        raise search_harness.SearchHarnessError(
+                            "SEARCH-ROLE", "only the configured collector role may submit search_requests"
+                        )
+                    if attempt.role == "collector":
+                        search_harness.record_search_requests(
+                            search_requests,
+                            protocol_root=self.protocol_root,
+                            project_root=self.work_root / "projects" / self.project_id.split("/", 1)[1],
+                            project_id=self.project_id,
+                            run_id=self.run_id,
+                            task_id=task_id,
+                            attempt_id=attempt_id,
+                            worker_id=self.worker_id,
+                            occurred_at=self.now(),
+                        )
+                        # SEARCH_ATTEMPT is harness-owned runtime state. Mirror it
+                        # into the candidate only after recording so the gate sees
+                        # the same bytes while the worker still cannot promote a
+                        # runtime change through its changeset.
+                        self._sync_runtime_snapshot(attempt)
                 except search_harness.SearchHarnessError as exc:
                     self._handle_failure(task_id, token, "VALIDATION", str(exc))
                     continue

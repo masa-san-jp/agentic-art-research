@@ -37,6 +37,20 @@ def _schema(protocol_root: Path, name: str) -> Draft202012Validator:
 
 
 def success_result(request: dict[str, object]) -> dict[str, object]:
+    search_requests = []
+    if request.get("role") == "collector":
+        search_requests = [{
+            "schema_version": "1.0.0",
+            "request_id": f"SR-{request['run_id']}-{request['task_id']}-{request['attempt_id']}",
+            "project_id": request["project_id"],
+            "run_id": request["run_id"],
+            "task_id": request["task_id"],
+            "attempt_id": request["attempt_id"],
+            "question_id": "Q001",
+            "strategy_id": "offline-fake",
+            "query": "offline deterministic fixture search",
+            "adapter": "fake",
+        }]
     return {
         "schema_version": "1.0.0",
         "run_id": request["run_id"],
@@ -45,6 +59,7 @@ def success_result(request: dict[str, object]) -> dict[str, object]:
         "summary": "Deterministic E2E worker completed.",
         "effect_key": f"attempt/{request['attempt_id']}",
         "outputs": [],
+        "search_requests": search_requests,
         "failure": None,
         "human_decision_request": None,
         "diagnostics": {"stderr": "", "exit_code": 0, "signal": None, "timed_out": False},
