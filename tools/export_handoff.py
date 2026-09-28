@@ -12,8 +12,9 @@ from typing import Any
 from urllib.parse import urlsplit
 
 import yaml
+from jsonschema import Draft202012Validator
 
-from _common import ROOT, load_yaml
+from _common import ROOT, load_json, load_yaml
 from canonical import canonical_sha256
 from handoff_common import HandoffInputError, HandoffSources, collection_yaml, load_handoff_sources, yaml_text
 from validate import validate_repository
@@ -89,8 +90,11 @@ def _reference_categories(sources: HandoffSources) -> dict[str, list[str]]:
     return result
 
 
-def _access_url_reason(location: Any) -> tuple[str | None, str | None]:
+def _access_url_reason(kind: str, location: Any) -> tuple[str | None, str | None]:
     """Return a safe access URL and a closed reason when one is unavailable."""
+
+    if kind != "evidence":
+        return None, "INTERNAL_RECORD"
 
     if not isinstance(location, str) or not location or any(character.isspace() for character in location):
         return None, "SOURCE_HAS_NO_PUBLIC_URL"
@@ -138,7 +142,8 @@ def _category_access(
             })
             continue
         if not matching:
-            reason = "NO_SOURCE_FOR_CATEGORY"
+            unmapped = [record for record in records if record.get("category_reason_code") == "CATEGORY_NOT_MAPPED"]
+            reason = "CATEGORY_NOT_MAPPED" if unmapped else "NO_SOURCE_FOR_CATEGORY"
         elif any(record.get("access_url_reason") == "URL_NOT_PERMANENT" for record in matching):
             reason = "URL_NOT_PERMANENT"
         else:
@@ -182,12 +187,14 @@ def source_ref_index(sources: HandoffSources, handoff: dict[str, Any]) -> dict[s
                 "summary": _summary(kind, record),
                 "reference_categories": categories.get(record_id, ["OTHER"]),
             }
+            if record_id not in categories:
+                entry["category_reason_code"] = "CATEGORY_NOT_MAPPED"
             # Production asks where a reference can be read. Evidence already
             # carries that; a decision or an insight lives in this repository
             # and has no external address, so it stays absent rather than
             # inventing one.
             location = record.get("source_location") if kind == "evidence" else None
-            access_url, reason = _access_url_reason(location)
+            access_url, reason = _access_url_reason(kind, location)
             if access_url is not None:
                 entry["access_url"] = access_url
             entry["access_url_reason"] = reason
@@ -292,6 +299,16 @@ def _bundle_files(sources: HandoffSources, handoff: dict[str, Any]) -> dict[str,
         "production-handoff.schema.json",
         "source-ref-index.schema.json",
     )
+    source_index = source_ref_index(sources, handoff)
+    source_index_schema_path = sources.protocol_root / "schemas" / "source-ref-index.schema.json"
+    source_index_errors = sorted(
+        Draft202012Validator(load_json(source_index_schema_path)).iter_errors(source_index),
+        key=lambda error: list(error.absolute_path),
+    )
+    if source_index_errors:
+        error = source_index_errors[0]
+        location = "/" + "/".join(str(part) for part in error.absolute_path)
+        raise HandoffExportError(f"source reference index does not satisfy its schema at {location or '/'}: {error.message}")
     files: dict[str, bytes] = {
         "production-handoff.yaml": yaml_text(handoff).encode("utf-8"),
         "artifacts/production-hypotheses.yaml": collection_yaml(sources.hypotheses_document, "hypotheses").encode("utf-8"),
@@ -300,7 +317,7 @@ def _bundle_files(sources: HandoffSources, handoff: dict[str, Any]) -> dict[str,
         "artifacts/acceptance-tests.yaml": collection_yaml(sources.acceptance_tests_document, "acceptance_tests").encode("utf-8"),
         "artifacts/visual-language.yaml": yaml_text(sources.visual_language_document).encode("utf-8"),
         "artifacts/prototype-plans.yaml": collection_yaml(sources.prototype_document, "prototype_plans").encode("utf-8"),
-        "artifacts/source-ref-index.yaml": yaml_text(source_ref_index(sources, handoff)).encode("utf-8"),
+        "artifacts/source-ref-index.yaml": yaml_text(source_index).encode("utf-8"),
         "artifacts/creative-direction.md": creative_path.read_bytes(),
     }
     # The plan a person reads opens with what is being made, what it argues and
