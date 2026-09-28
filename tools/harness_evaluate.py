@@ -60,6 +60,20 @@ def _result(
     status: str = "SUCCEEDED",
     failure_class: str | None = None,
 ) -> dict[str, Any]:
+    search_requests = []
+    if request.get("role") == "collector" and status == "SUCCEEDED":
+        search_requests = [{
+            "schema_version": "1.0.0",
+            "request_id": f"SR-{request['run_id']}-{request['task_id']}-{request['attempt_id']}",
+            "project_id": request["project_id"],
+            "run_id": request["run_id"],
+            "task_id": request["task_id"],
+            "attempt_id": request["attempt_id"],
+            "question_id": "Q001",
+            "strategy_id": "offline-fake",
+            "query": "offline deterministic harness evaluation search",
+            "adapter": "fake",
+        }]
     return {
         "schema_version": "1.0.0",
         "run_id": request["run_id"],
@@ -68,6 +82,7 @@ def _result(
         "summary": "Deterministic harness evaluation worker result.",
         "effect_key": f"attempt/{request['attempt_id']}" if status == "SUCCEEDED" else None,
         "outputs": [],
+        "search_requests": search_requests,
         "failure": None if status == "SUCCEEDED" else {"class": failure_class or "WORKER-EXIT", "message": "synthetic deterministic fault"},
         "human_decision_request": None,
         "diagnostics": {"stderr": "", "exit_code": 0 if status == "SUCCEEDED" else 7, "signal": None, "timed_out": False},
