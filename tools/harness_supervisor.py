@@ -18,6 +18,7 @@ from referencing import Registry, Resource
 import acceptance_executor
 import human_decisions
 import next_action
+import retry_feedback
 import search_harness
 import task_runtime
 import worker_adapter
@@ -367,6 +368,14 @@ class Supervisor:
             if isinstance(target, dict) and isinstance(target.get("path"), str):
                 targets.append({"path": target["path"], "mode": target.get("mode", "UPDATE")})
         acceptance = action.get("acceptance") or []
+        context = {
+            "summary": str((action.get("context") or {}).get("summary", "")) or "Task context.",
+            "source_refs": list((action.get("context") or {}).get("source_refs") or []),
+            "constraints": list((action.get("context") or {}).get("constraints") or []),
+        }
+        retry_feedback = (action.get("context") or {}).get("retry_feedback")
+        if retry_feedback is not None:
+            context["retry_feedback"] = retry_feedback
         request: dict[str, Any] = {
             "schema_version": "1.0.0",
             "run_id": self.run_id,
@@ -375,11 +384,7 @@ class Supervisor:
             "task_id": action["task_id"],
             "role": action["role"],
             "lease": {"token": action["lease"]["token"], "expires_at": action["lease"]["expires_at"]},
-            "context": {
-                "summary": str((action.get("context") or {}).get("summary", "")) or "Task context.",
-                "source_refs": list((action.get("context") or {}).get("source_refs") or []),
-                "constraints": list((action.get("context") or {}).get("constraints") or []),
-            },
+            "context": context,
             "instructions": instructions,
             "write_targets": targets,
             "acceptance_ids": [f"AT{index:03d}" for index, _ in enumerate(acceptance, 1)],
@@ -550,15 +555,19 @@ class Supervisor:
                 preview = task_runtime.peek_next(self.work_root, self.project_id, self.worker_id, now=self.now())
                 if preview is None:
                     return self._terminal_outcome()
-                action = next_action.build_next_action(
-                    self.work_root,
-                    self.project_id,
-                    self.worker_id,
-                    self.now(),
-                    protocol_root=self.protocol_root,
-                    work_root=self.work_root,
-                    output_root=self.output_root,
-                )
+                try:
+                    action = next_action.build_next_action(
+                        self.work_root,
+                        self.project_id,
+                        self.worker_id,
+                        self.now(),
+                        protocol_root=self.protocol_root,
+                        work_root=self.work_root,
+                        output_root=self.output_root,
+                        run_id=self.run_id,
+                    )
+                except retry_feedback.RetryFeedbackError as exc:
+                    raise SupervisorError("HARNESS-RETRY-FEEDBACK", str(exc)) from exc
                 if action.get("status") not in {"TASK_CLAIMED", "TASK_RESUMED"}:
                     return self._terminal_outcome()
                 task_id = action["task_id"]
@@ -590,7 +599,10 @@ class Supervisor:
                 result_path = attempt.root / "result.json"
                 now = self.now()
                 if not request_path.exists():
-                    request = self._request(action, attempt, attempt_id, now)
+                    try:
+                        request = self._request(action, attempt, attempt_id, now)
+                    except retry_feedback.RetryFeedbackError as exc:
+                        raise SupervisorError("HARNESS-RETRY-FEEDBACK", str(exc)) from exc
                     atomic_write_text(request_path, stable_json(request))
                 else:
                     request = load_json(request_path)
@@ -712,7 +724,7 @@ class Supervisor:
                         self._record("SHUTDOWN", status="SHUTDOWN", failure_class=exc.rule)
                     else:
                         self._record("TERMINAL", status="BLOCKED", failure_class=exc.rule)
-                if exc.rule == "HARNESS-SHUTDOWN":
+                if exc.rule in {"HARNESS-SHUTDOWN", "HARNESS-RETRY-FEEDBACK"}:
                     return self._journal or {"status": "SHUTDOWN", "resume_command": _resume_command(self.project_id, self.run_id)}
                 raise
             except (worker_adapter.AttemptHeartbeatError, worker_adapter.WorkerAdapterError) as exc:

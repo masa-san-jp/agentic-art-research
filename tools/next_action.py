@@ -290,6 +290,7 @@ def build_next_action(
     work_root: Path | None = None,
     output_root: Path | None = None,
     memory_query: dict[str, Any] | None = None,
+    run_id: str | None = None,
 ) -> dict[str, Any]:
     if memory_query is not None and memory_query.get("at") != now:
         raise NextActionError("memory query must use the current task clock")
@@ -365,6 +366,7 @@ def build_next_action(
     task_id = str(claim["task_id"])
     runtime = task_runtime.load_runtime(work, target)
     task = dict(runtime["tasks"][task_id])
+    current_attempt_id = f"AT{int(task.get('attempts', 0)):03d}" if run_id is not None else None
     # The runtime keeps only what it needs to schedule, so the role the plan
     # declared is not in it. Reading the role from the runtime silently fell
     # back to the id table and handed the agent another role's instructions.
@@ -414,6 +416,8 @@ def build_next_action(
             work_root=work,
             human_decision=human_decision,
             memory_query=memory_query,
+            run_id=run_id,
+            attempt_id=current_attempt_id,
         ),
         "instructions": protocol_sections(protocol_text, list(role_entry.get("protocol_sections") or [])),
         "write_targets": _write_targets(role_entry),
@@ -470,7 +474,10 @@ def main() -> int:
     parser.add_argument("--protocol-root", type=Path, help="read-only protocol root")
     parser.add_argument("--output-root", type=Path, help="external successful-output root")
     parser.add_argument("--memory-query", type=Path, help="explicit external owner/creator/pinned knowledge query JSON")
+    parser.add_argument("--run-id", help="harness run ID used to include retry feedback in the context")
     args = parser.parse_args()
+    if args.run_id and not args.protocol_root:
+        parser.error("--protocol-root is required when --run-id is supplied")
     try:
         content = stable_json(
             build_next_action(
@@ -483,6 +490,7 @@ def main() -> int:
                 work_root=args.work_root.resolve() if args.work_root else None,
                 output_root=args.output_root.resolve() if args.output_root else None,
                 memory_query=__import__("json").loads(args.memory_query.read_text()) if args.memory_query else None,
+                run_id=args.run_id,
             )
         )
     except (NextActionError, InputParseError, task_runtime.TaskRuntimeError,

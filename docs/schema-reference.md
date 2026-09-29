@@ -112,6 +112,8 @@ workerが探索を必要とする場合、resultの`search_requests`へ`schemas/
 Attempt workspaceのsnapshotは `schemas/attempt-workspace-manifest.schema.json`、差分は
 `schemas/attempt-changeset.schema.json` が正本である。manifestの対象はrelative pathだけで、file type、mode、size、SHA-256を保持する。changesetのoperationは`ADD`、`MODIFY`、`DELETE`、`RENAME`に限定し、before/after manifest hashと変更ファイルのhashを持つ。`07_runtime`のharness-owned targetはworker changesetへ入れず、roleのworker write target、protected-root boundary、baseline lock、promotionは実行系の正本である。
 
+acceptance reportが`FAIL`のとき、次のattemptだけに`schemas/retry-feedback.schema.json`のbundleを渡す。bundleは直前attemptのreportから抽出したgate ID、finding、対象path、rule、remediationと、source attempt、report ID、canonical report hashを持つ。失敗時にはreport ID/hashをtask runtimeのfailure記録へ保存し、`tools/retry_feedback.py`はreport schema、project/run/task/attempt identity、runtimeに保存されたreport ID/hash、failed gateとの対応を検証してから生成する。不一致やprovenance欠落はfail closedである。findingはgate/path/findingの決定的順序で最大20件に切り詰め、`findings_omitted`へ省略数を記録する。初回attemptやPASS reportには生成せず、同じreportからのbundleはbyte同一でworker requestの`context.retry_feedback`へ載せる。CLIで`--run-id`を使う場合は`--protocol-root`を必須とする。
+
 `MAJOR`または`CRITICAL`の制作仮説上の不確実性は、少なくとも一つの`prototype_plan_ids`か、空でない`external_validation_reason`を持つ。handoffの`prototype_plan_ids`自体は、重大な不確実性がない場合または外部検証へ明示的に委ねる場合は空配列でよい。`open_gaps`は各項目に`blocking`を持ち、`READY` handoffではblocking gapを許可しない。
 
 handoff hashは`tools/canonical.py`のcanonical JSON（`integrity`除外、sorted keys、compact UTF-8）から再計算し、payloadは`config/handoff-policy.yaml`の262,144 bytes上限を超えてはならない。

@@ -75,11 +75,12 @@ def build_context_pack(
     work_root: Path | None = None,
     human_decision: dict[str, Any] | None = None,
     memory_query: dict[str, Any] | None = None,
+    run_id: str | None = None,
+    attempt_id: str | None = None,
 ) -> dict[str, Any]:
     # Context files are project-owned and therefore always read from the work
     # root.  protocol_root is part of the shared API even though this pack has
     # no protocol-owned source files to read.
-    del protocol_root
     root = (work_root or root).resolve()
     if role not in ROLE_SOURCE_PATHS:
         raise ValueError(f"unknown role: {role}")
@@ -97,6 +98,18 @@ def build_context_pack(
     }
     if human_decision is not None:
         pack["human_decision"] = dict(human_decision)
+    if run_id is not None and attempt_id is not None:
+        from retry_feedback import build_retry_feedback
+        feedback = build_retry_feedback(
+            protocol_root=(protocol_root or root).resolve(),
+            work_root=root,
+            project_id=target,
+            run_id=run_id,
+            task_id=task_id,
+            current_attempt_id=attempt_id,
+        )
+        if feedback is not None:
+            pack["retry_feedback"] = feedback
     if memory_query is not None:
         from research_memory import query_memory
         pack["prior_knowledge"] = query_memory(memory_query)
@@ -126,7 +139,11 @@ def main() -> int:
     parser.add_argument("--work-root", type=Path, help="project work root")
     parser.add_argument("--protocol-root", type=Path, help="read-only protocol root (reserved for shared context)")
     parser.add_argument("--memory-query", type=Path, help="explicit external owner/creator/pinned knowledge query JSON")
+    parser.add_argument("--run-id", help="harness run ID used to locate the immediately prior acceptance report")
+    parser.add_argument("--attempt-id", help="current attempt ID used to locate retry feedback")
     args = parser.parse_args()
+    if args.run_id and not args.protocol_root:
+        parser.error("--protocol-root is required when --run-id is supplied")
     try:
         content = stable_json(
             build_context_pack(
@@ -137,6 +154,8 @@ def main() -> int:
                 protocol_root=args.protocol_root.resolve() if args.protocol_root else None,
                 work_root=args.work_root.resolve() if args.work_root else None,
                 memory_query=__import__("json").loads(args.memory_query.read_text()) if args.memory_query else None,
+                run_id=args.run_id,
+                attempt_id=args.attempt_id,
             )
         )
     except (FileNotFoundError, InputParseError, ValueError) as exc:

@@ -161,8 +161,33 @@
             },
             "occurred_at": {
               "$ref": "common.schema.json#/$defs/timestamp"
+            },
+            "report_id": {
+              "type": "string",
+              "pattern": "^AR-[0-9a-f]{16}$"
+            },
+            "report_sha256": {
+              "$ref": "common.schema.json#/$defs/sha256"
             }
           }
+        },
+        "last_failure": {
+          "anyOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "required": ["class", "message", "attempt", "occurred_at"],
+              "additionalProperties": false,
+              "properties": {
+                "class": {"$ref": "common.schema.json#/$defs/taskFailureClass"},
+                "message": {"$ref": "common.schema.json#/$defs/nonEmptyString"},
+                "attempt": {"type": "integer", "minimum": 0},
+                "occurred_at": {"$ref": "common.schema.json#/$defs/timestamp"},
+                "report_id": {"type": "string", "pattern": "^AR-[0-9a-f]{16}$"},
+                "report_sha256": {"$ref": "common.schema.json#/$defs/sha256"}
+              }
+            }
+          ]
         },
         "effect_key": {
           "type": [
