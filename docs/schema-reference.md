@@ -107,6 +107,8 @@ Agent attemptは `schemas/agent-attempt-request.schema.json` と
 
 `tools/worker_adapter.py`はprovider-neutralなargvを`shell=False`で起動し、stdinへrequest JSONを1 objectとして渡す。stdoutはresult JSON一つ、stderrは上限付き診断であり、adapterは`task_runtime`を更新しない。adapter設定の正本は`config/worker-adapters.yaml`で、認証情報や特定providerのSDK設定を置かない。workerのstdout/stderr、result、診断にはsecret、lease token、credential値、absolute pathを残さず、検出時はfail closedする。
 
+workerが探索を必要とする場合、resultの`search_requests`へ`schemas/search-attempt-request.schema.json`に適合する要求を返す。workerは`07_runtime/run-log.jsonl`へ書き込まない。`tools/harness_supervisor.py`がcollector roleに限定して要求のproject/run/task/attempt identity、question-registerのID、schemaを検証し、許可されたsearch adapter（offline fixtureでは`fake`）を実行して、`SEARCH_ATTEMPT`へrequest hash、result hash、worker、attempt、時刻、`recorded_by`を記録する。記録はtask runtimeと同じmutation lock／atomic書込み経路を通る。同じattemptの同じrequest hashは再実行時刻が変わっても既存イベントを返し、異なる内容の同じrequest IDは拒否する。runtime記録はattempt changesetへ入れず、acceptance実行前にharnessがattemptのruntime snapshotへ反映する。collector gateは、bareな事前投入イベントではなく、当該run/task/attemptとharness provenanceを持つ記録だけを数える。
+
 Attempt workspaceのsnapshotは `schemas/attempt-workspace-manifest.schema.json`、差分は
 `schemas/attempt-changeset.schema.json` が正本である。manifestの対象はrelative pathだけで、file type、mode、size、SHA-256を保持する。changesetのoperationは`ADD`、`MODIFY`、`DELETE`、`RENAME`に限定し、before/after manifest hashと変更ファイルのhashを持つ。`07_runtime`のharness-owned targetはworker changesetへ入れず、roleのworker write target、protected-root boundary、baseline lock、promotionは実行系の正本である。
 

@@ -37,6 +37,20 @@ def _schema(protocol_root: Path, name: str) -> Draft202012Validator:
 
 
 def success_result(request: dict[str, object]) -> dict[str, object]:
+    search_requests = []
+    if request.get("role") == "collector":
+        search_requests = [{
+            "schema_version": "1.0.0",
+            "request_id": f"SR-{request['run_id']}-{request['task_id']}-{request['attempt_id']}",
+            "project_id": request["project_id"],
+            "run_id": request["run_id"],
+            "task_id": request["task_id"],
+            "attempt_id": request["attempt_id"],
+            "question_id": "Q001",
+            "strategy_id": "offline-fake",
+            "query": "offline deterministic fixture search",
+            "adapter": "fake",
+        }]
     return {
         "schema_version": "1.0.0",
         "run_id": request["run_id"],
@@ -45,6 +59,7 @@ def success_result(request: dict[str, object]) -> dict[str, object]:
         "summary": "Deterministic E2E worker completed.",
         "effect_key": f"attempt/{request['attempt_id']}",
         "outputs": [],
+        "search_requests": search_requests,
         "failure": None,
         "human_decision_request": None,
         "diagnostics": {"stderr": "", "exit_code": 0, "signal": None, "timed_out": False},
@@ -69,7 +84,7 @@ class HarnessE2EContractTest(unittest.TestCase):
             if path.is_file() and ".git" not in path.relative_to(root).parts
         }
 
-    def _seed_project_after_bootstrap(self, run_id: str) -> None:
+    def _seed_project_after_bootstrap(self, run_id: str, *, include_search_event: bool = True) -> None:
         bootstrap(
             protocol_root=REPO_ROOT,
             work_root=self.work,
@@ -163,8 +178,9 @@ class HarnessE2EContractTest(unittest.TestCase):
         last.update({"from_status": "READY_FOR_PRODUCTION", "to_status": "VALIDATING"})
         log_lines[-1] = json.dumps(last)
         run_log.write_text("\n".join(log_lines) + "\n", encoding="utf-8")
-        with run_log.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps({"event_id": "E2E-SEARCH", "event_type": "SEARCH_ATTEMPT", "question_id": "Q001", "strategy_id": "fixture"}) + "\n")
+        if include_search_event:
+            with run_log.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps({"event_id": "E2E-SEARCH", "event_type": "SEARCH_ATTEMPT", "question_id": "Q001", "strategy_id": "fixture"}) + "\n")
 
     def worker(self, request_path: Path, *, output_path: Path, **kwargs: object) -> dict[str, object]:
         result = success_result(load_json(request_path))
@@ -225,6 +241,32 @@ class HarnessE2EContractTest(unittest.TestCase):
         self.assertEqual(repeated["outcome_sha256"], repeated_manifest["outcome_sha256"])
         self.assertEqual([], list(_schema(REPO_ROOT, "harness-run").iter_errors(repeated_manifest)))
         self.assertEqual(self.protocol_before, self._snapshot(REPO_ROOT))
+
+    def test_clean_project_gets_collector_search_from_harness_without_preseed(self) -> None:
+        self._seed_project_after_bootstrap("HR705", include_search_event=False)
+        result = run_request(
+            protocol_root=REPO_ROOT,
+            work_root=self.work,
+            output_root=self.output,
+            run_id="HR705",
+            request_path=self.request,
+            adapter="fake",
+            now=NOW,
+            max_tasks=20,
+        )
+        self.assertEqual("COMPLETE", result["status"], result)
+        run_log = self.work / "projects/harness-study/07_runtime/run-log.jsonl"
+        searches = [
+            record for record in (json.loads(line) for line in run_log.read_text(encoding="utf-8").splitlines())
+            if record.get("event_type") == "SEARCH_ATTEMPT"
+        ]
+        self.assertGreaterEqual(len(searches), 1)
+        self.assertTrue(all(record.get("run_id") == "HR705" for record in searches))
+        self.assertTrue(all(record.get("attempt_id", "").startswith("AT") for record in searches))
+        self.assertTrue(all(record.get("request_sha256", "").startswith("sha256:") for record in searches))
+        for changeset in (self.work / ".harness/attempts/HR705").rglob("changeset.json"):
+            value = load_json(changeset)
+            self.assertFalse(any(change["path"] == "07_runtime" or change["path"].startswith("07_runtime/") for change in value["changes"]))
 
     def test_human_pause_and_worker_failure_never_create_partial_output(self) -> None:
         paused = run_request(

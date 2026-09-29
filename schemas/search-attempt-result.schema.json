@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/search-attempt-result.schema.json",
+  "title": "Harness search attempt result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "request_id", "status", "started_at", "finished_at", "result_sha256", "result_count"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "request_id": {"type": "string", "pattern": "^SR[A-Za-z0-9_-]{3,}$"},
+    "status": {"enum": ["SUCCEEDED", "FAILED"]},
+    "started_at": {"$ref": "common.schema.json#/$defs/timestamp"},
+    "finished_at": {"$ref": "common.schema.json#/$defs/timestamp"},
+    "result_sha256": {"$ref": "common.schema.json#/$defs/sha256"},
+    "result_count": {"type": "integer", "minimum": 0},
+    "failure": {"type": ["string", "null"], "minLength": 1}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "SUCCEEDED"}}, "required": ["status"]},
+      "then": {"properties": {"failure": {"type": "null"}}}
+    },
+    {
+      "if": {"properties": {"status": {"const": "FAILED"}}, "required": ["status"]},
+      "then": {"properties": {"failure": {"type": "string"}}}
+    }
+  ]
+}

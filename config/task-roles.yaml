@@ -46,7 +46,7 @@ roles:
     acceptance_checks:
       - {id: AG-COLLECTOR-VALIDATE, kind: project_validate}
       - {id: AG-COLLECTOR-EVIDENCE, kind: collection_minimum, path: "02_evidence/evidence-ledger.jsonl", minimum: 1}
-      - {id: AG-COLLECTOR-SEARCH, kind: run_event_minimum, path: "07_runtime/run-log.jsonl", event_type: SEARCH_ATTEMPT, minimum: 1}
+      - {id: AG-COLLECTOR-SEARCH, kind: harness_search_minimum, path: "07_runtime/run-log.jsonl", event_type: SEARCH_ATTEMPT, minimum: 1}
       - {id: AG-COLLECTOR-STOPPING, kind: stopping_evaluate}
 
   curator:
