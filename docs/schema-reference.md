@@ -140,7 +140,7 @@ handoff-bundle/
     └── creative-direction.md
 ```
 
-`manifest.yaml` はbundle内の全ファイルのraw-byte hashとfile-set hashを持つ。`source-ref-index.yaml` は `references` 配列にdecision、insight、evidenceのID、project-relative source path、`record_hash`、安全な短いsummaryを持ち、原証拠本文を複製しない。`record_hash`は元record全体のcanonical SHA-256で、ゼロ値や欠落は出力しない。
+`manifest.yaml` はbundle内の全ファイルのraw-byte hashとfile-set hashを持つ。`source-ref-index.yaml` は `references` 配列にdecision、insight、evidenceのID、project-relative source path、`record_hash`、安全な短いsummaryを持ち、原証拠本文を複製しない。`record_hash`は元record全体のcanonical SHA-256で、ゼロ値や欠落は出力しない。制作参照として公開URLを出せないrecordには `access_url_reason`（`SOURCE_HAS_NO_PUBLIC_URL` または `URL_NOT_PERMANENT`）を必ず付け、カテゴリにsource自体が無い場合は `category_access.reason_code: NO_SOURCE_FOR_CATEGORY` を付ける。各カテゴリの `category_access` は恒久HTTPS URLの有無と理由を集約する。
 
 ## Research signal export
 
