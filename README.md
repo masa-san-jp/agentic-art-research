@@ -349,3 +349,8 @@ AAK-08のowner Git保存・再読込・条件付き再利用は[research-memory]
 ## 累積知識と研究の固有性
 
 AAK-09の[累積比較](docs/cumulative-specificity.md)は、owner artifact/knowledge snapshotとnative mechanismを照合し、seedによる同順位選択、本人/継承/外部作品の区別、出典系列、明示継続の差分を記録します。履歴未読はUNAVAILABLEのままです。
+
+
+## 用語としての用例
+
+「Agentic Art Researchで、あるテーマの証拠を制作要件へ変換する」とは、入力signalから仮説と判断を記録し、受入条件を確認した production-handoff をProductionへ渡すことです。例えば美術史上の参考事例を採用するときも、単なる着想の列挙ではなく、どの証拠からどの要件へ至ったかを追跡します。ここでいう「handoff完了」は制作物の完成を意味しません。実行の境界と操作は上記の「実行モデル」に従います。
