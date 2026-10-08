@@ -40,3 +40,4 @@ paths:
   prior_art: 03_knowledge/prior-art.jsonl
   rights: 06_governance/rights-register.yaml
   log: 07_runtime/run-log.jsonl
+  excerpts: 02_evidence/excerpts.jsonl

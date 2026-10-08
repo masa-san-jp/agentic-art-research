@@ -96,3 +96,100 @@ class ResearchElementsTest(unittest.TestCase):
         link.symlink_to(self.project)
         with self.assertRaisesRegex(ValueError, 'symlinks'):
             Engine(link)
+
+    def small_plan(self, **budget):
+        path = self.project / '01_planning/research-plan.yaml'
+        plan = yaml.safe_load(path.read_text())
+        plan['element_research'] = {'question_count': 1, 'search_limit': 2}
+        plan['minimums'] = {'evidence': 2, 'claims': 2, 'insights': 1, 'decisions': 1,
+                            'requirements': 0, 'reason': 'Synthetic bounded exploratory qualification.'}
+        plan['budget'].update(budget)
+        path.write_text(yaml.safe_dump(plan, sort_keys=False))
+
+    def fake(self, request):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('fake_research', ROOT / 'tests/fixtures/workers/fake_research_answerer.py')
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module.answer(request)
+
+    def until_search(self):
+        self.small_plan()
+        report = self.engine.next(now=NOW)
+        while report['next_action']['request']['contract_version'] != 'search-request/v1':
+            report = self.engine.answer(self.fake(report['next_action']['request']), now=NOW)
+        return report['next_action']['request']
+
+    def test_search_hash_dedup_and_exact_excerpt_retry(self):
+        import hashlib
+        request = self.until_search()
+        answer = self.fake(request)
+        answer['results'][1]['body'] = answer['results'][0]['body']
+        report = self.engine.answer(answer, now=NOW)
+        request = report['next_action']['request']
+        self.assertTrue(request['element_id'].startswith('relevance.'))
+        self.assertEqual({'question', 'title', 'body'}, set(request['inputs']))
+        report = self.engine.answer(self.fake(request), now=NOW)
+        request = report['next_action']['request']
+        report = self.engine.answer(self.reply(request, 'Changed quotation.'), now=NOW)
+        self.assertEqual(2, report['next_action']['request']['attempt'])
+        self.assertEqual(request['element_id'], report['next_action']['request']['element_id'])
+        self.assertIn('exact_excerpt:source_url', [f['check'] for f in report['next_action']['request']['previous_failure']])
+        request = report['next_action']['request']
+        self.engine.answer(self.fake(request), now=NOW)
+        ledger = [json.loads(line) for line in (self.project / '02_evidence/source-ledger.jsonl').read_text().splitlines()]
+        self.assertEqual(2, len(ledger))
+        self.assertEqual(ledger[0]['url'], ledger[1]['duplicate_of'])
+        self.assertEqual('sha256:' + hashlib.sha256(ledger[0]['body'].encode()).hexdigest(), ledger[0]['content_hash'])
+        evidence = (self.project / '02_evidence/evidence-ledger.jsonl').read_text().splitlines()
+        self.assertEqual(1, len(evidence))
+
+    def test_empty_searches_stop_at_saturation(self):
+        self.small_plan()
+        report = self.engine.next(now=NOW)
+        searches = 0
+        while report['next_action']:
+            request = report['next_action']['request']
+            answer = self.fake(request)
+            if request['contract_version'] == 'search-request/v1':
+                searches += 1
+                answer['results'] = []
+            report = self.engine.answer(answer, now=NOW)
+        self.assertEqual(2, searches)
+        questions = yaml.safe_load((self.project / '01_planning/question-register.yaml').read_text())['questions']
+        self.assertEqual('UNRESOLVED', questions[0]['status'])
+        self.assertEqual('evidence_saturation', questions[0]['terminal_reason'])
+
+    def test_source_cap_and_existing_search_conflict(self):
+        self.small_plan(max_total_sources=1)
+        report = self.engine.next(now=NOW)
+        while report['next_action']['request']['contract_version'] != 'search-request/v1':
+            report = self.engine.answer(self.fake(report['next_action']['request']), now=NOW)
+        request = report['next_action']['request']
+        self.assertEqual(1, request['limit'])
+        report = self.engine.answer(self.fake(request), now=NOW)
+        self.assertEqual(2, report['next_action']['request']['attempt'])
+        self.assertIn('search_limit', [f['check'] for f in report['next_action']['request']['previous_failure']])
+
+    def test_runtime_budget_blocks_without_consuming_element(self):
+        self.small_plan(max_runtime_minutes=1)
+        report = self.engine.next(now=NOW)
+        report = self.engine.next(now='2026-10-08T00:01:00Z')
+        self.assertEqual('BLOCKED', report['status'])
+        self.assertEqual(0, report['accepted_count'])
+        self.assertEqual('runtime_budget', report['blocked']['last_failure'][0]['check'])
+
+    def test_utf8_windows_preserve_source_and_bound_inputs(self):
+        from research_element_driver import chunks
+        body = ('選択を先送りする。' * 1000)
+        windows = list(chunks(body, 2000))
+        self.assertEqual(body, ''.join(text for text, _ in windows))
+        for text, start in windows:
+            self.assertLessEqual(len(text.encode()), 2000)
+            self.assertEqual(text, body[start:start+len(text)])
+
+    def test_parent_wire_schemas_are_closed_and_versioned(self):
+        from research_element_contracts import CONTRACTS, validator
+        for name in CONTRACTS:
+            self.assertEqual(name+'/v1', validator(name).schema['$id'])
+            self.assertIs(False, validator(name).schema['additionalProperties'])

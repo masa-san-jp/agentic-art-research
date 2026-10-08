@@ -1198,7 +1198,7 @@ Replace role-sized research generation with `tools/research_elements.py next|ans
 ### Progress
 
 - [x] Envelope engine, checkpoints, retry isolation and program projections (6 focused tests).
-- [ ] Questions, search requests, source relevance and exact excerpts.
+- [x] Questions, search requests, source relevance and exact excerpts (12 focused tests).
 - [ ] Observations, typed claims, pair enumeration and support/opposition.
 - [ ] Insights, decisions, rejection reasons and ledger-bound prior art differences.
 - [ ] Full local quality gates. Owner-profile live acceptance remains separate from synthetic qualification.

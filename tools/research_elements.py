@@ -208,6 +208,8 @@ class Engine:
                 value = answer['results']
             else:
                 failures = check_answer(request, answer, state['ledger'], state['answers'])
+                if request['element_id'].startswith('excerpt.') and isinstance(value := answer['value'], str) and value not in request['inputs']['body']:
+                    failures.append({'check': 'excerpt_window', 'reason': 'Copy a passage from the supplied body window.'})
                 value = answer['value']
             state['history'].append({'element_id': request['element_id'], 'attempt': request['attempt'],
                                      'answer_hash': answer_hash, 'occurred_at': now, 'failures': failures})
