@@ -1,7 +1,7 @@
 version: 9
-updated_at: "2026-10-08T10:28:53+00:00"
+updated_at: "2026-10-08T12:12:28+00:00"
 current_milestone: G7
-next_task: ELEMENT-RESEARCH-122
+next_task: null
 last_completed_task: AAK-02-NATIVE-AUTHORING
 terminal: false
 blocked_by: [LIVE-ACCEPTANCE-NOT-RUN]
@@ -65,17 +65,15 @@ resume_from:
     - tests/test_harness.py
     - docs/agent-runtime-guide.md
     - docs/operations.md
-  action: ELEMENT-RESEARCH-122 code 9dcc70521babd67b7353cef3044742bd39c60a04 is verified; orchestrator reviews local commits and runs owner-profile Stage B CLI live acceptance outside Git. Do not mark DONE before LIVE-ACCEPTANCE-NOT-RUN is resolved.
+  action: ELEMENT-RESEARCH-122 review code b3f60fc33d913aa84a8e2dbcb2866d6428e4abaf is verified; orchestrator reviews local commits and runs owner-profile Stage B CLI live acceptance outside Git. Do not mark DONE before LIVE-ACCEPTANCE-NOT-RUN is resolved.
 last_verification:
   result: CODE_VERIFIED_LIVE_NOT_RUN
-  code_commit: 9dcc70521babd67b7353cef3044742bd39c60a04
-  command: $SHARED_PYTHON compileall/full unittest/validate/graph; .venv/bin/python
-    full unittest/validate/graph/security/docs; focused element and fixture unittest; git
-    diff --check
-  detail: 'Both final full suites: 400 tests, exit 0. Focused elements: 25, exit 0;
-    fixture matrix: 3, exit 0. Synthetic CLI: 24 envelopes, exit 0. Required compile/validator/graph
-    and supplementary security/docs/diff checks exit 0. Owner live acceptance NOT_RUN;
-    preliminary failures and interrupted dirty-checkout run are retained in PLANS.md.'
+  code_commit: b3f60fc33d913aa84a8e2dbcb2866d6428e4abaf
+  command: $SHARED_PYTHON compileall/full unittest/validate/graph; .venv/bin/python full unittest/validate/graph/security/docs;
+    focused element and fixture unittest; external default and small CLI smoke; git diff --check
+  detail: 'Review: both full suites 410 tests, exit 0; elements 35, matrix 3, exit 0. Default fake CLI 118 first-attempt
+    requests (106 element, 12 search), external validation exit 0; small CLI 24. All prior gates passed. Owner live
+    acceptance NOT_RUN. Preliminary implementation fixture failures are retained in PLANS.md.'
 
 
 aak02_native_authoring:
@@ -96,10 +94,11 @@ element_research_122:
   project: repository-maintenance; synthetic cli-elements only
   status: CODE_VERIFIED_LIVE_NOT_RUN
   branch: agent/122-element-research
-  code_candidate: 9dcc70521babd67b7353cef3044742bd39c60a04
-  code_tree: 56ecf9bffc3886960c808b6984a41fe8b6e26bbb
+  code_candidate: b3f60fc33d913aa84a8e2dbcb2866d6428e4abaf
+  code_tree: 6e935535bc1efe1112a83d7b42a219a64efec724
   parent_contract_commit: 337c33211d6048d934b2db0dcf749cd25cb2e617
   changed_paths:
+  - AGENTS.md
   - PLANS.md
   - README.md
   - config/research-elements.yaml
@@ -108,6 +107,7 @@ element_research_122:
   - execution/handoff.md
   - execution/state.yaml
   - execution/task-queue.yaml
+  - schemas/common.schema.json
   - schemas/element-answer.schema.json
   - schemas/element-request.schema.json
   - schemas/research-element-rights.schema.json
@@ -115,44 +115,186 @@ element_research_122:
   - schemas/research-elements.schema.json
   - schemas/research-excerpt.schema.json
   - schemas/research-plan.schema.json
+  - schemas/research-request.schema.json
   - schemas/retrieved-source.schema.json
   - schemas/search-answer.schema.json
   - schemas/search-request.schema.json
+  - templates/project/01_planning/research-plan.yaml
+  - tests/fixtures/harness/request.yaml
   - tests/fixtures/workers/fake_research_answerer.py
+  - tests/test_acceptance_executor.py
+  - tests/test_attempt_workspace.py
   - tests/test_context_pack.py
+  - tests/test_harness_supervisor.py
+  - tests/test_human_decisions.py
+  - tests/test_next_action.py
   - tests/test_research_elements.py
+  - tests/test_research_memory.py
+  - tests/test_retry_feedback.py
+  - tests/test_search_harness.py
+  - tools/accept_research_request.py
   - tools/context_pack.py
+  - tools/harness.py
+  - tools/harness_e2e.py
+  - tools/harness_supervisor.py
+  - tools/new_project.py
+  - tools/next_action.py
   - tools/research_element_checks.py
   - tools/research_element_contracts.py
   - tools/research_element_driver.py
   - tools/research_element_validation.py
   - tools/research_elements.py
+  - tools/research_routing.py
   - tools/validate.py
   final_full_verification:
     shared:
       exit_code: 0
-      tests: 400
-      seconds: 1972.77
-      log_sha256: b4d7076c30d4e904e46b12e98c362a325e021592fae03e715c42926407ba9f7e
+      tests: 410
+      seconds: 1139.396
+      log_sha256: 19b5c396d52d9194428f25f8cea4b0786adacd2141865323c3bef44abb307e6b
     local:
       exit_code: 0
-      tests: 400
-      seconds: 1863.277
-      log_sha256: ab9edec1d747055b6bfc4fd0d3a26cc11730a780d32606c56406050903365048
+      tests: 410
+      seconds: 1155.697
+      log_sha256: a64e3e257325c426462766b3d329d78983f993f98de46be69f5f8d581eec0cad
   preliminary_local:
     exit_code: 143
     status: PRELIMINARY-LOCAL-RUN-TERMINATED
     passed_lines: 162
     failed_lines: 2
     error_lines: 1
-    reason: Superseded dirty-checkout run stalled in the failed snapshot test (apparently formatting its
-      large difference); terminated only after both final 400-test suites completed successfully.
-      No completed-suite count or pass is claimed.
+    reason: Superseded dirty-checkout run stalled in the failed snapshot test (apparently formatting its large difference);
+      terminated only after both final 400-test suites completed successfully. No completed-suite count or pass
+      is claimed.
   remaining:
   - LIVE-ACCEPTANCE-NOT-RUN
-  next_start: Owner-profile Stage A proposition in a fresh external project; CLI next/answer
-    with actual public retrieval; confirm grounded ledger and owner output acceptance.
+  next_start: Owner-profile Stage A proposition in a fresh external project; CLI next/answer with actual public
+    retrieval; confirm grounded ledger and owner output acceptance.
   sensitive_information_added: false
-  external_artifacts: Synthetic CLI/element-test temporary projects cleaned; interrupted legacy-test OS-temp cleanup unverified; no actual research/production
-    output or public artifact created.
+  external_artifacts: Synthetic CLI/element/full-suite project directories cleaned normally; isolated full-suite
+    temporary roots contain only empty runtime lock files. Prior interrupted legacy-test OS-temp cleanup remains
+    unverified. No actual research/production output or public artifact created.
   github_writes: false
+  previous_qualification:
+    code_candidate: 9dcc70521babd67b7353cef3044742bd39c60a04
+    code_tree: 56ecf9bffc3886960c808b6984a41fe8b6e26bbb
+    final_full_verification:
+      shared:
+        exit_code: 0
+        tests: 400
+        seconds: 1972.77
+        log_sha256: b4d7076c30d4e904e46b12e98c362a325e021592fae03e715c42926407ba9f7e
+      local:
+        exit_code: 0
+        tests: 400
+        seconds: 1863.277
+        log_sha256: ab9edec1d747055b6bfc4fd0d3a26cc11730a780d32606c56406050903365048
+  review_changed_paths:
+  - AGENTS.md
+  - PLANS.md
+  - README.md
+  - config/research-elements.yaml
+  - docs/contracts/research-elements-provenance.md
+  - docs/research-elements.md
+  - execution/handoff.md
+  - execution/state.yaml
+  - execution/task-queue.yaml
+  - schemas/common.schema.json
+  - schemas/research-elements-config.schema.json
+  - schemas/research-elements.schema.json
+  - schemas/research-plan.schema.json
+  - schemas/research-request.schema.json
+  - templates/project/01_planning/research-plan.yaml
+  - tests/fixtures/harness/request.yaml
+  - tests/fixtures/workers/fake_research_answerer.py
+  - tests/test_acceptance_executor.py
+  - tests/test_attempt_workspace.py
+  - tests/test_harness_supervisor.py
+  - tests/test_human_decisions.py
+  - tests/test_next_action.py
+  - tests/test_research_elements.py
+  - tests/test_research_memory.py
+  - tests/test_retry_feedback.py
+  - tests/test_search_harness.py
+  - tools/accept_research_request.py
+  - tools/harness.py
+  - tools/harness_e2e.py
+  - tools/harness_supervisor.py
+  - tools/new_project.py
+  - tools/next_action.py
+  - tools/research_element_checks.py
+  - tools/research_element_driver.py
+  - tools/research_elements.py
+  - tools/research_routing.py
+  review_commits:
+  - 5f105c0a0c78ff1aa23e857e92736a43b800a9e9
+  - b3f60fc33d913aa84a8e2dbcb2866d6428e4abaf
+  focused_verification:
+    elements:
+      exit_code: 0
+      tests: 35
+      seconds: 18.494
+    fixture_matrix:
+      exit_code: 0
+      tests: 3
+      seconds: 31.277
+  default_cli:
+    status: COMPLETED
+    requests: 118
+    counts:
+      question: 4
+      query: 12
+      search: 12
+      relevance: 8
+      excerpt: 8
+      observation: 8
+      claim: 8
+      claim-type: 8
+      pair: 16
+      insight: 4
+      decision-question: 4
+      option: 8
+      adopt: 4
+      reject: 4
+      prior-work: 2
+      difference: 8
+    external_validation_exit: 0
+    quality_status: INCOMPLETE
+    project_completed: false
+    exit_code: 0
+    log_sha256: 276f4f0bc44e96af147c3a940677c06814e0fd29f025f6d95096c08540aa685c
+  small_cli:
+    status: COMPLETED
+    requests: 24
+    quality_status: INCOMPLETE
+    project_completed: false
+    exit_code: 0
+  acceptance_commands:
+  - command: $SHARED_PYTHON -m compileall -q tools tests
+    exit_code: 0
+  - command: $SHARED_PYTHON -m unittest discover -s tests -v
+    exit_code: 0
+  - command: .venv/bin/python -m unittest discover -s tests -v
+    exit_code: 0
+  - command: $SHARED_PYTHON tools/validate.py --check
+    exit_code: 0
+  - command: .venv/bin/python tools/validate.py --check
+    exit_code: 0
+  - command: $SHARED_PYTHON tools/build_graph.py --check
+    exit_code: 0
+  - command: .venv/bin/python tools/build_graph.py --check
+    exit_code: 0
+  - command: $SHARED_PYTHON -m unittest discover -s tests -p test_research_elements.py -v
+    exit_code: 0
+  - command: $SHARED_PYTHON -m unittest discover -s tests -p test_fixture_matrix.py -v
+    exit_code: 0
+  - command: .venv/bin/python tools/security_check.py --check
+    exit_code: 0
+  - command: .venv/bin/python tools/docs_check.py --check
+    exit_code: 0
+  - command: git diff --check
+    exit_code: 0
+  - command: $SHARED_PYTHON /tmp/issue122_review_default_cli.py
+    exit_code: 0
+  - command: $SHARED_PYTHON /tmp/issue122_cli_smoke.py
+    exit_code: 0
