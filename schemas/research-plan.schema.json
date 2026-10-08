@@ -100,7 +100,7 @@
           },
           "role": {
             "$ref": "common.schema.json#/$defs/nonEmptyString",
-            "$comment": "誰がこのタスクを実行するか。config/task-roles.yaml の roles のキー。宣言が無いタスクは同ファイルの対応表で解決する。"
+            "$comment": "\u8ab0\u304c\u3053\u306e\u30bf\u30b9\u30af\u3092\u5b9f\u884c\u3059\u308b\u304b\u3002config/task-roles.yaml \u306e roles \u306e\u30ad\u30fc\u3002\u5ba3\u8a00\u304c\u7121\u3044\u30bf\u30b9\u30af\u306f\u540c\u30d5\u30a1\u30a4\u30eb\u306e\u5bfe\u5fdc\u8868\u3067\u89e3\u6c7a\u3059\u308b\u3002"
           }
         }
       }
@@ -131,6 +131,25 @@
         },
         "reason": {
           "$ref": "common.schema.json#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "element_research": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "question_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "options_per_decision": {
+          "type": "integer",
+          "minimum": 2
+        },
+        "search_limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
         }
       }
     }

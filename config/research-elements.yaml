@@ -1,0 +1,42 @@
+version: 1
+max_attempts: 5
+question_count: 4
+options_per_decision: 2
+search_strategies:
+- primary
+- counterexample
+- independent-secondary
+search_limit: 10
+input_bytes: 4096
+body_chunk_bytes: 2000
+max_search_body_bytes: 1048576
+max_search_answer_bytes: 10485760
+forbidden:
+- ∩
+- 無し
+- 未記入
+pair_relations:
+- supports
+- opposes
+- unrelated
+rights_default:
+  rights_status: unknown
+  redistribution: unknown
+  sensitivity: PUBLIC_CITABLE
+rights_by_url: {}
+paths:
+  state: 07_runtime/research-elements.json
+  lock: 07_runtime/research-elements.lock
+  questions: 01_planning/question-register.yaml
+  sources: 02_evidence/source-ledger.jsonl
+  evidence: 02_evidence/evidence-ledger.jsonl
+  observations: 03_knowledge/observations.jsonl
+  claims: 03_knowledge/claims.jsonl
+  relationships: 03_knowledge/relationships.jsonl
+  contradictions: 03_knowledge/contradictions.jsonl
+  insights: 04_decisions/insight-register.yaml
+  decisions: 04_decisions/decision-log.yaml
+  rejected: 04_decisions/rejected-options.yaml
+  prior_art: 03_knowledge/prior-art.jsonl
+  rights: 06_governance/rights-register.yaml
+  log: 07_runtime/run-log.jsonl

@@ -1,9 +1,9 @@
 version: 9
 updated_at: "2026-09-08T00:13:50.243233+00:00"
 current_milestone: G6
-next_task: null
+next_task: ELEMENT-RESEARCH-122
 last_completed_task: AAK-02-NATIVE-AUTHORING
-terminal: true
+terminal: false
 blocked_by: []
 resume_from:
   read:

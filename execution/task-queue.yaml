@@ -537,3 +537,16 @@ tasks:
       - python3 -m unittest discover -s tests -v
       - git diff --check
     completion: v1.1 visual-language mechanisms are grounded by resolvable proposition and reference IDs; self-repetition-scan/v2 reads mechanism metadata, scopes declared creator history, reports unavailable history as UNKNOWN with HISTORY_ROOT_UNAVAILABLE, legacy v1 and visual-language v1.0 remain readable, and all 289 local tests plus child gates pass. PR #87 is merged to main as 1e8390e6ac7286c23a971d19a8797be4851cf086; its remote check was not started because of an account billing limit.
+
+  - id: ELEMENT-RESEARCH-122
+    milestone: G7
+    title: Qualify standalone Stage B element research
+    status: IN_PROGRESS
+    depends_on: []
+    issue_refs: ["agentic-art-research#122"]
+    acceptance: Fake answerer runs questions through ledger-bound prior-art differences one element at a time; separate owner-profile live acceptance is recorded without fabrication.
+    checks:
+      - .venv/bin/python -m unittest discover -s tests -v
+      - .venv/bin/python tools/validate.py --check
+      - .venv/bin/python tools/build_graph.py --check
+      - git diff --check

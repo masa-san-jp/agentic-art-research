@@ -1188,3 +1188,32 @@ Pending native qualification and rerun under an explicit new code pin.
 Actual fork testing also exposed opaque catalog URNs being exported as HTTPS access URLs. Preserve hashed provenance and omit unavailable external access; Production owns category availability and gap handling. Original465 candidate remains preserved, this follow-up is separately qualified.
 
 Qualification outcome: code2304261b0c009b9f8690f2d5afbd76a53304c8a9 passed all required owner gates. Six actual-agent runs and main integration remain parent AAK02 responsibilities; no physical or public execution is claimed.
+
+## Issue #122 ExecPlan: Stage B research elements
+
+### Purpose / Big Picture
+
+Replace role-sized research generation with `tools/research_elements.py next|answer --project <external-dir>`. Workers return a single parent-compatible element value; search agents return retrieved URL/title/body envelopes. Programs own IDs, budgets, pinning, exact quotations, assembly and completion checks. Parent run.py integration and Stage C remain separate. Actual projects, profiles and retrieved bodies stay outside this protocol Git.
+
+### Progress
+
+- [x] Envelope engine, checkpoints, retry isolation and program projections (6 focused tests).
+- [ ] Questions, search requests, source relevance and exact excerpts.
+- [ ] Observations, typed claims, pair enumeration and support/opposition.
+- [ ] Insights, decisions, rejection reasons and ledger-bound prior art differences.
+- [ ] Full local quality gates. Owner-profile live acceptance remains separate from synthetic qualification.
+
+### Surprises & Discoveries
+
+- The parent source at commit `337c33211d6048d934b2db0dcf749cd25cb2e617` supplies closed wire schemas and mechanical checks. Existing research task runtime has separate leases and whole-role acceptance; the requested standalone CLI must not falsely complete those tasks.
+
+### Decision Log
+
+- Use an opt-in standalone Stage B engine; retain legacy acceptance and production-brief generation until owner live acceptance. No silent lowering of project completion minimums.
+- Copy the four parent wire schemas verbatim and mechanical checks with provenance. Use a dynamic deterministic research driver rather than import parent run.py.
+- Freeze creative intent, constraints, plan and policy at run start; reject changed inputs and foreign output edits. Persist answers before deriving files so interrupted materialization is recoverable.
+- Network browsing is prohibited by the orchestration instruction for this implementation session. A real live run cannot be substituted by fictional sources or the fake answerer.
+
+### Outcomes
+
+In progress. Target issue: masa-san-jp/agentic-art-research#122; branch agent/122-element-research; base `ba1f2d2426073fd2dcb4d235fb5bf72d558de6ea`. Verification: requested shared interpreter compileall, unittest, validator and graph; repository-local unittest and validator; focused element tests and git diff --check. Next step: implement envelope engine and deterministic projection.
