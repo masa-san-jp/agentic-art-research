@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/research-excerpt.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "element_id",
+    "evidence_id",
+    "question_id",
+    "source_url",
+    "content_hash",
+    "quote",
+    "start",
+    "end"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^EX[0-9]{3,}$"
+    },
+    "element_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "evidence_id": {
+      "type": "string",
+      "pattern": "^EV[0-9]{3,}$"
+    },
+    "question_id": {
+      "type": "string",
+      "pattern": "^Q[0-9]{3,}$"
+    },
+    "source_url": {
+      "type": "string",
+      "minLength": 1
+    },
+    "content_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "quote": {
+      "type": "string",
+      "minLength": 1
+    },
+    "start": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "end": {
+      "type": "integer",
+      "minimum": 1
+    }
+  }
+}

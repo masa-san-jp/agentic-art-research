@@ -2890,7 +2890,18 @@ def validate_repository(
                     remediation="Use an existing project slug or project/<slug> target.",
                 )
             )
+    from research_element_validation import check_project as check_element_project, require_schema as require_element_schema
+    element_config_path = protocol / "config/research-elements.yaml"
+    if element_config_path.exists():
+        try:
+            require_element_schema(protocol, "research-elements-config", load_yaml(element_config_path))
+        except (ValueError, OSError) as exc:
+            findings.append(Finding(_relative_path(root, element_config_path), "ELEMENT-CONFIG", str(exc),
+                                    remediation="Restore the bounded research element policy and canonical paths."))
     for project in selected_projects:
+        for rule, message in check_element_project(project, protocol):
+            findings.append(Finding(_relative_path(root, project / "07_runtime/research-elements.json"), rule, message,
+                                    remediation="Repair the failed element or restore its pinned input; do not hand-edit generated ledgers."))
         relative_project = project.relative_to(root)
         entries: dict[str, RecordEntry] = {}
         extension_values: dict[str, Any] = {}

@@ -4,15 +4,14 @@ import json
 import hashlib
 from itertools import combinations
 import yaml
-from _common import stable_json
 from research_element_contracts import require_message
 
 
 def managed_empty_files(config):
     keys = {'questions': 'questions', 'insights': 'insights', 'decisions': 'decisions',
-            'rejected': 'rejected_options', 'rights': 'rights'}
+            'rejected': 'rejected_options', 'rights': 'rights', 'uncertainties': 'uncertainties', 'reviews': 'reviews'}
     return {path: {keys[key]: []} if key in keys else None
-            for key, path in config['paths'].items() if key not in ('state', 'lock', 'log')}
+            for key, path in config['paths'].items() if key not in ('state', 'lock', 'log', 'repetition_report')}
 
 
 def element(state, identifier, instruction, inputs, *, choices=None, boolean=False, checks=(), max_chars=240):
@@ -34,36 +33,42 @@ def schedule(state, records):
         qid = f'Q{index+1:03}'
         identifier = f'question.{qid}'
         yield element(state, identifier, '命題について調べる問いを1文で返してください。',
-                      {'proposition': state['inputs']['00_intake/creative-intent.md'],
+                      {'proposition': state['proposition'],
                        'question_number': index+1,
                        'previous_questions': [q['question'] for q in records['questions']]},
-                      checks=['ends_with_question', 'one_sentence', 'not_similar:0.8'])
+                      checks=['ends_with_question', 'one_sentence', 'not_similar:0.8'], max_chars=120)
         records['questions'].append({'id': qid, 'question': answers[identifier], 'priority': 'mandatory', 'status': 'OPEN',
                                      'stop_condition': {'sufficient_answers': state['budget']['sufficient_answers'],
                                         'max_search_strategies': min(len(state['config']['search_strategies']), state['stopping']['max_search_strategies_per_question']),
                                         'max_sources_reviewed': state['stopping']['max_sources_reviewed_per_question']}})
     yield from collect(state, records)
     yield from analyze(state, records)
+    yield from decide(state, records)
 
 
 def advance(state):
-    records = {key: [] for key in state['config']['paths'] if key not in ('state', 'lock')}
+    records = {key: [] for key in state['config']['paths'] if key not in ('state', 'lock', 'repetition_report')}
     pending = None
     for request in schedule(state, records):
         if request['element_id'] not in state['answers']:
             pending = request
             break
+    if state['status'] == 'BLOCKED':
+        for q in records['questions']:
+            if q['status'] == 'OPEN':
+                q.update(status='UNRESOLVED', terminal_reason=state['blocked']['last_failure'][0]['check'])
     if state['status'] != 'BLOCKED':
         state.update(pending=pending, status='WAITING' if pending else 'COMPLETED')
     keys = {'questions': 'questions', 'insights': 'insights', 'decisions': 'decisions',
-            'rejected': 'rejected_options', 'rights': 'rights'}
+            'rejected': 'rejected_options', 'rights': 'rights', 'uncertainties': 'uncertainties', 'reviews': 'reviews'}
+    state['record_counts'] = {key: len(rows) for key, rows in records.items()}
+    state['question_gaps'] = [q['id'] for q in records['questions'] if q['status'] == 'UNRESOLVED']
     state['files'] = {state['config']['paths'][key]: yaml.safe_dump({keys[key]: rows}, allow_unicode=True, sort_keys=False)
                       if key in keys else ''.join(json.dumps(r, ensure_ascii=False, sort_keys=True)+'\n' for r in rows)
                       for key, rows in records.items() if key != 'log'}
     state['files'][state['config']['paths']['log']] = state['baseline_log'] + ''.join(
         json.dumps(event, ensure_ascii=False, sort_keys=True)+'\n' for event in records['log'])
-    if not pending:
-        state['completion'] = {'stage': 'B', 'status': 'INCOMPLETE', 'reason': 'Driver milestones still in progress; production gates are unchanged.'}
+
 
 
 def chunks(body, limit):
@@ -89,14 +94,13 @@ def event(state, records, kind, identifier, **fields):
 
 
 def collect(state, records):
-    from research_elements import digest
-    from stopping_policy import metrics_from_events
     answers, config = state['answers'], state['config']
     # Register every retrieved body, including irrelevant results and aliases.
     hash_owner = {}
-    for index, (url, source) in enumerate(state['ledger'].items(), 1):
+    for source in sorted(state['ledger'].values(), key=lambda row: row['id']):
+        url = source['url']
         rights = config['rights_by_url'].get(url, config['rights_default'])
-        records['sources'].append({**source, 'id': f'SRC{index:03}',
+        records['sources'].append({**source,
                                   'duplicate_of': hash_owner.get(source['content_hash']), **rights})
         hash_owner.setdefault(source['content_hash'], url)
     evidence_by_hash = {}
@@ -142,7 +146,11 @@ def collect(state, records):
                 source_id = next(r['id'] for r in records['sources'] if r['url'] == source['url'])
                 event(state, records, 'SOURCE_REVIEWED', search_id, question_id=qid, source_id=source_id)
                 # All windows are offered separately; no source is silently truncated.
-                for part, (body, offset) in enumerate(chunks(source['body'], config['body_chunk_bytes']), 1):
+                metadata_bytes = max(len(json.dumps(inputs, ensure_ascii=False).encode()) for inputs in (
+                    {'question': q['question'], 'title': source['title'], 'body': ''},
+                    {'question': q['question'], 'body': '', 'source_url': source['url']}))
+                window_bytes = min(config['body_chunk_bytes'], config['input_bytes'] - metadata_bytes)
+                for part, (body, offset) in enumerate(chunks(source['body'], window_bytes), 1):
                     prefix_source = f'{qid}.{source_id}.{part}'
                     relevance_id = f'relevance.{prefix_source}'
                     yield element(state, relevance_id, 'この取得本文は問いに関係しますか。はい/いいえと理由1文を返してください。',
@@ -242,3 +250,84 @@ def analyze(state, records):
             records['contradictions'].append({'id': f"CT{len(records['contradictions'])+1:03}",
                 'claim_ids': [left['id'], right['id']], 'description': f"{left['statement']} / {right['statement']}",
                 'status': 'OPEN', 'resolution': None})
+
+
+def decide(state, records):
+    answers = state['answers']
+    group_size = state['config']['insight_group_size']
+    for q in records['questions']:
+        claims = [c for c in records['claims'] if c['scope'] == q['id']]
+        for start in range(0, len(claims), group_size):
+            group = claims[start:start+group_size]
+            iid = f"IN{len(records['insights'])+1:03}"
+            identifier = f'insight.{iid}'
+            yield element(state, identifier, 'この主張から得られる洞察を1文で返してください。対立がある場合は断定を避けてください。',
+                          {'question': q['question'], 'claims': [{k: c[k] for k in ('id', 'statement', 'epistemic_status')} for c in group]},
+                          checks=['one_sentence'])
+            opposing = list(dict.fromkeys(cid for c in group for cid in c['opposing_claims']))
+            records['insights'].append({'id': iid, 'statement': answers[identifier],
+                'claim_ids': [c['id'] for c in group], 'opposing_claim_ids': opposing,
+                'epistemic_status': 'CONTESTED' if opposing else 'WEAK',
+                # This is the research implication itself. Stage C authors the work content.
+                'production_implication': answers[identifier]})
+    for insight in records['insights']:
+        did = f"DC{len(records['decisions'])+1:03}"
+        question_id = f'decision-question.{did}'
+        yield element(state, question_id, 'この洞察を作品に生かすために決める問いを1文で返してください。',
+                      {'insight': insight['statement']}, checks=['ends_with_question', 'one_sentence'], max_chars=120)
+        options = {}
+        for index in range(state['config']['options_per_decision']):
+            option_id = f'{did}-option-{index+1}'
+            identifier = f'option.{option_id}'
+            yield element(state, identifier, 'この判断の問いへの選択肢を1つ、既出と異なる内容で返してください。',
+                          {'question': answers[question_id], 'insight': insight['statement'], 'previous_options': list(options.values())},
+                          checks=['one_sentence', 'not_similar_to:previous_options'], max_chars=160)
+            options[option_id] = answers[identifier]
+        adoption_id = f'adopt.{did}'
+        yield element(state, adoption_id, '洞察に基づいて採用する選択肢のIDを1つ選んでください。',
+                      {'question': answers[question_id], 'insight': insight['statement'], 'options': options}, choices=list(options))
+        selected = answers[adoption_id]
+        rejected = []
+        for option_id, option in options.items():
+            if option_id == selected:
+                continue
+            identifier = f'reject.{option_id}'
+            yield element(state, identifier, 'この選択肢を採用しない理由を1文で返してください。',
+                          {'insight': insight['statement'], 'selected': options[selected], 'rejected': option}, checks=['one_sentence'])
+            rid = f"RO{len(records['rejected'])+1:03}"
+            records['rejected'].append({'id': rid, 'title': option, 'reason': answers[identifier], 'decision_ids': [did]})
+            rejected.append(rid)
+        uncertainty_id = f"U{len(records['uncertainties'])+1:03}"
+        uncertainty = ('Research-grounded selection; production and viewer validation have not been performed.'
+                       + (' Opposing claims remain unresolved.' if insight['opposing_claim_ids'] else ''))
+        records['uncertainties'].append({'id': uncertainty_id, 'statement': uncertainty, 'status': 'OPEN',
+            'severity': 'MAJOR' if insight['opposing_claim_ids'] else 'MINOR', 'decision_ids': [did],
+            'review_trigger': 'Stage C production design and prototype validation.'})
+        evidence_ids = list(dict.fromkeys(eid for c in records['claims'] if c['id'] in insight['claim_ids'] for eid in c['evidence_ids']))
+        records['decisions'].append({'id': did, 'question': answers[question_id], 'selected_option': options[selected],
+            'rejected_options': [o for key, o in options.items() if key != selected], 'rejected_option_ids': rejected,
+            'insight_ids': [insight['id']], 'evidence_ids': evidence_ids,
+            'reason': f"{selected} selected under {insight['id']}: {insight['statement']}",
+            'uncertainty': uncertainty, 'uncertainty_ids': [uncertainty_id],
+            'review_trigger': 'Stage C production design and prototype validation.', 'authority': 'agent-recommended', 'status': 'ADOPTED'})
+    # Inspect each evidence-backed source; a generic article is never invented into a work title.
+    for evidence in records['evidence']:
+        source = state['ledger'][evidence['source_location']]
+        quotes = [e['quote'] for e in records['excerpts'] if e['evidence_id'] == evidence['id']]
+        identifier = f"prior-work.{evidence['id']}"
+        yield element(state, identifier, 'この取得資料には比較する先行作品が記述されていますか。はい/いいえと理由1文を返してください。',
+                      {'title': source['title'], 'quotes': quotes[:state['config']['insight_group_size']]}, boolean=True, checks=['one_sentence'])
+        if not answers[identifier]['answer']:
+            continue
+        # Title and URL are pinned retrieval metadata; no URL generation request.
+        for decision in records['decisions']:
+            if evidence['id'] not in decision['evidence_ids']:
+                continue
+            identifier = f"difference.{evidence['id']}.{decision['id']}"
+            yield element(state, identifier, 'この資料の先行作品と採用案の違いを1文で返してください。資料にない事実は加えないでください。',
+                          {'title': source['title'], 'quote': quotes[0],
+                           'selected_option': decision['selected_option']}, checks=['one_sentence', 'contains_source_terms:quote,selected_option'])
+            records['prior_art'].append({'id': f"PA{len(records['prior_art'])+1:03}",
+                'work_title': source['title'], 'source_url': source['url'], 'difference': answers[identifier],
+                'relation_to_proposal': f"Evidence {evidence['id']} for decision {decision['id']}.",
+                'rights_status': evidence['rights_status'], 'access_class': evidence['sensitivity']})

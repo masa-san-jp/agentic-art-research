@@ -163,6 +163,10 @@ WORK_ROOT="${WORK_ROOT:-$(mktemp -d /tmp/agentic-art-work.XXXXXX)}"
 
 受理されるprojectは `RESEARCH_ONLY` で始まり、`task_runtime` も初期化されます。同じ依頼の再実行は `ALREADY_APPLIED` になり、既存projectを上書きしません。
 
+## 要素単位の研究（段階 B）
+
+`tools/research_elements.py next|answer --project <external-project-dir>` で、1件の依頼に1つの値を返す研究単体CLIを利用できます。検索は利用中のエージェントが実行し、本文hash・引用・台帳・ファイル生成はプログラムが処理します。[手順と完了状態](docs/research-elements.md)を参照してください。親runとの接続、段階C、production-briefは後続工程です。
+
 ## 実行モデル
 
 | root | 役割 | 置くもの |

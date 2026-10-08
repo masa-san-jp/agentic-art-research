@@ -15,6 +15,7 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import tempfile
 
 from _common import ROOT, atomic_write_text, load_json, load_yaml, stable_json
 from research_element_contracts import check_answer, require_message
@@ -55,6 +56,8 @@ class Engine:
             raise ValueError(f'{project}: manifest.yaml is required')
         self.project = path
         self.config = load_yaml(ROOT / 'config/research-elements.yaml')
+        from research_element_validation import require_schema
+        require_schema(ROOT, 'research-elements-config', self.config)
         self.path = self.safe(self.config['paths']['state'])
 
     def safe(self, relative):
@@ -77,15 +80,29 @@ class Engine:
             'manifest.yaml', '00_intake/creative-intent.md', '00_intake/constraints.yaml',
             '01_planning/research-plan.yaml')}
 
-    def initialize(self, now, run_id):
+    def initialize(self, now, run_id, history_root=None, rights_table=None):
         from completion_quality import load_completion_quality_policy
         if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{0,127}', run_id):
             raise ValueError('Unsafe run ID')
         inputs = self.inputs()
+        intent = inputs['00_intake/creative-intent.md'].strip()
+        section = re.search(r'^## (?:現時点の中心命題|中心の問い|Central question)\s*\n(.*?)(?=^## |\Z)', intent, re.M | re.S)
+        proposition = section.group(1).strip() if section else intent
+        if not proposition or len(proposition.encode('utf-8')) > 2000:
+            raise ValueError('00_intake/creative-intent.md: provide a concise Stage A proposition (at most 2000 UTF-8 bytes)')
+        if any(word in proposition for word in [*self.config['forbidden'], '未確認']):
+            raise ValueError('00_intake/creative-intent.md: a filled Stage A proposition is required')
         plan = load_yaml(self.safe('01_planning/research-plan.yaml'))
         from search_harness import _validate
         _validate(ROOT, 'research-plan', plan)
         config = deepcopy(self.config)
+        if rights_table is not None:
+            from research_element_validation import require_schema
+            table = load_json(rights_table)
+            require_schema(ROOT, 'research-element-rights', table)
+            config['rights_by_url'] = table
+        from research_element_validation import require_schema
+        require_schema(ROOT, 'research-elements-config', config)
         config.update(plan.get('element_research', {}))
         policy = load_yaml(ROOT / 'config/stopping-policy.yaml')['defaults']
         quality = load_completion_quality_policy(ROOT, plan)
@@ -101,11 +118,14 @@ class Engine:
             raise ValueError('Protocol source commit unavailable')
         state = {'contract_version': 'research-elements/v1', 'run_id': run_id, 'project_id': plan['project_id'],
                  'source_commit': commit, 'started_at': now, 'last_now': now,
-                 'inputs': inputs, 'config': config, 'stopping': policy, 'budget': budget,
+                 'inputs': inputs, 'proposition': proposition, 'config': config, 'stopping': policy, 'budget': budget,
                  'minimums': quality.minimums, 'required_records': list(quality.required_records),
                  'vocabulary': load_yaml(ROOT / 'config/vocabularies.yaml'),
                  'answers': {}, 'ledger': {}, 'history': [], 'attempt': 1, 'previous_failure': None,
                  'status': 'WAITING', 'pending': None, 'files': {}, 'previous_files': {},
+                 'history_root': str(history_root.resolve()) if history_root else None,
+                 'history_snapshot': self.history_snapshot(history_root) if history_root else {},
+                 'security_patterns': load_yaml(ROOT / 'config/access-policy.yaml')['secret_patterns'],
                  'baseline_log': self.safe(config['paths']['log']).read_text(encoding='utf-8')}
         from research_element_driver import managed_empty_files
         for relative, empty in managed_empty_files(config).items():
@@ -123,16 +143,22 @@ class Engine:
 
     def read(self):
         state = load_json(self.path)
+        from research_element_validation import require_schema
+        require_schema(ROOT, 'research-elements', state)
         if state.get('contract_version') != 'research-elements/v1':
             raise ValueError(f'{self.path}: unsupported checkpoint')
         if self.inputs() != state['inputs']:
             raise ValueError('Project input changed since the run started')
+        if state['history_root'] and self.history_snapshot(Path(state['history_root'])) != state['history_snapshot']:
+            raise ValueError('History inputs changed since the run started')
         for url, source in state['ledger'].items():
             if source['url'] != url or source['content_hash'] != digest(source['body']):
                 raise ValueError('Pinned source body/hash mismatch')
         return state
 
     def save(self, state):
+        from research_element_validation import require_schema
+        require_schema(ROOT, 'research-elements', state)
         atomic_write_text(self.path, stable_json(state))
         os.chmod(self.path, 0o600)
 
@@ -153,6 +179,8 @@ class Engine:
         from research_element_driver import advance
         state['previous_files'] = state['files'] or state['previous_files']
         advance(state)
+        if state['pending'] is None:
+            self.finish(state)
         self.save(state)  # Authoritative answers first; next() repairs interrupted projections.
         self.materialize(state)
 
@@ -173,16 +201,20 @@ class Engine:
                     {'check': 'runtime_budget', 'reason': 'Project runtime budget exhausted.'}]})
             self.advance(state)
 
-    def next(self, *, now, run_id='research'):
+    def next(self, *, now, run_id='research', history_root=None, rights_table=None):
         timestamp(now)
         with self.locked():
             if self.path.exists():
                 state = self.read()
+                if history_root is not None and str(history_root.resolve()) != state['history_root']:
+                    raise ValueError('History root differs from the saved run')
+                if rights_table is not None and load_json(rights_table) != state['config']['rights_by_url']:
+                    raise ValueError('Rights table differs from the saved run')
                 self.materialize(state)
                 self.check_time(state, now)
                 self.save(state)
             else:
-                state = self.initialize(now, run_id)
+                state = self.initialize(now, run_id, history_root.resolve() if history_root else None, rights_table)
                 self.advance(state)
             return self.report(state)
 
@@ -226,10 +258,68 @@ class Engine:
                 if kind == 'search':
                     for source in value:
                         if source['url'] not in state['ledger']:
-                            state['ledger'][source['url']] = {**source, 'acquired_at': now, 'content_hash': digest(source['body'])}
+                            state['ledger'][source['url']] = {**source, 'id': f"SRC{len(state['ledger'])+1:03}", 'acquired_at': now, 'content_hash': digest(source['body'])}
                 state.update(attempt=1, previous_failure=None)
             self.advance(state)
             return self.report(state)
+
+    def history_snapshot(self, root):
+        from self_repetition import ARTIFACT_NAMES
+        if not root.is_dir() or root.is_symlink():
+            raise ValueError('--history-root must be an available real directory')
+        names = {Path(name).name for name in ARTIFACT_NAMES} | {'manifest.yaml'}
+        files = {}
+        for path in sorted(root.rglob('*')):
+            if path.is_file() and path.name in names:
+                if path.resolve() != path or root.resolve() not in path.resolve().parents:
+                    raise ValueError('History input contains a symlink')
+                files[path.relative_to(root).as_posix()] = digest(path.read_text(encoding='utf-8'))
+        return files
+
+    def finish(self, state):
+        from completion_quality import CompletionQualityPolicy, quality_failures
+        config = state['config']
+        # Reuse the native scanner, including its creator scope and risk thresholds.
+        if 'repetition_scan' not in state and state['record_counts']['claims']:
+            if state['history_root']:
+                from self_repetition import scan_projects, CONTRACT_VERSION_V2
+                with tempfile.TemporaryDirectory() as directory:
+                    candidate = Path(directory)
+                    atomic_write_text(candidate / 'manifest.yaml', state['inputs']['manifest.yaml'])
+                    atomic_write_text(candidate / config['paths']['claims'], state['files'][config['paths']['claims']])
+                    state['repetition_scan'] = scan_projects(candidate, Path(state['history_root']),
+                        repository='masa-san-jp/agentic-art-research', source_commit=state['source_commit'],
+                        now=state['last_now'], contract_version=CONTRACT_VERSION_V2)
+                    # An empty corpus cannot measure the creator's prior practice.
+                    if not state['repetition_scan']['scanned_project_count']:
+                        state['repetition_scan'].update(risk_level='UNKNOWN',
+                            assessment='No comparable creator history is available.', mitigation='Provide comparable history before handoff.')
+            else:
+                state['repetition_scan'] = {'risk_level': 'UNKNOWN', 'history_access': {
+                    'status': 'UNAVAILABLE', 'reason_code': 'HISTORY_ROOT_UNAVAILABLE'},
+                    'assessment': 'Creator history was not supplied; repetition is unmeasured.',
+                    'mitigation': 'Supply explicit creator history and rescan before handoff.', 'matches': []}
+        reviews = []
+        scan = state.get('repetition_scan')
+        if scan:
+            state['files'][config['paths']['repetition_report']] = stable_json(scan)
+            if scan['risk_level'] != 'UNKNOWN':
+                # Existing report refs or the explicit pinned corpus identify the comparison basis.
+                refs = sorted({match['prior_signal_ref'] for match in scan['matches']}) or [
+                    'history-sha256:' + digest(canonical(state['history_snapshot'])).split(':', 1)[1]]
+                reviews = [{'id': 'SR001', 'scope': 'Stage B claim-level creator history (Stage C mechanism scan remains required)',
+                    'prior_work_refs': refs, 'risk_level': scan['risk_level'], 'assessment': scan['assessment'],
+                    'mitigation': scan['mitigation'], 'reviewed_at': state['last_now']}]
+        state['files'][config['paths']['reviews']] = __import__('yaml').safe_dump({'reviews': reviews}, allow_unicode=True, sort_keys=False)
+        counts = {key: state['record_counts'].get(key, 0) for key in state['minimums']}
+        counts.update(rejected_options=state['record_counts']['rejected'], uncertainty=state['record_counts']['uncertainties'],
+                      prior_art=state['record_counts']['prior_art'], self_repetition_review=len(reviews))
+        failures = quality_failures(CompletionQualityPolicy(state['minimums'], tuple(state['required_records'])), counts)
+        state['completion'] = {'stage': 'B', 'status': 'INCOMPLETE' if failures or state['status'] == 'BLOCKED' else (
+            'COMPLETE_WITH_GAPS' if state['question_gaps'] or state['record_counts']['contradictions'] or state['record_counts']['uncertainties'] else 'COMPLETE'),
+            'counts': counts, 'quality_failures': failures, 'unresolved_questions': state['question_gaps'],
+            'next_start': 'Stage C and the existing production-brief / native project acceptance gates.',
+            'project_completed': False}
 
     def check_search(self, state, request, answer):
         failures = []
@@ -245,10 +335,16 @@ class Engine:
         if len(set(urls)) != len(urls):
             fail('unique_urls', 'Return each URL once.')
         for source in results:
+            if any(re.search(spec['pattern'], source['title']+'\n'+source['body']) for spec in state['security_patterns']):
+                fail('secret_output', 'Retrieved content matches a prohibited credential pattern.')
             if not valid_url(source['url']):
                 fail('url_shape', 'Use HTTP(S) without embedded credentials.')
             if not source['title'].strip() or not source['body'].strip():
                 fail('non_empty', 'Return a non-empty title and retrieved body.')
+            question = state['answers']['question.' + request['element_id'].split('.')[1]]
+            base = len(json.dumps({'question': question, 'body': '', 'source_url': source['url']}, ensure_ascii=False).encode())
+            if base + 256 > state['config']['input_bytes']:
+                fail('source_metadata_bytes', 'Source metadata leaves insufficient room for a bounded body window.')
             if len(source['body'].encode()) > state['config']['max_search_body_bytes']:
                 fail('body_bytes', 'Retrieved body exceeds the configured byte budget.')
             old = state['ledger'].get(source['url'])
@@ -262,13 +358,15 @@ def main():
     parser.add_argument('command', choices=['next', 'answer'])
     parser.add_argument('--project', type=Path, required=True)
     parser.add_argument('--run-id', default='research', help='identity for a new run')
+    parser.add_argument('--history-root', type=Path, help='explicit creator-scoped historical projects (new run only)')
+    parser.add_argument('--rights-table', type=Path, help='explicit URL-keyed verified rights JSON table (new run only)')
     parser.add_argument('--now', help='RFC3339; defaults to current UTC time')
     args = parser.parse_args()
     try:
         now = args.now or datetime.now(timezone.utc).isoformat(timespec='seconds')
         engine = Engine(args.project)
         if args.command == 'next':
-            result = engine.next(now=now, run_id=args.run_id)
+            result = engine.next(now=now, run_id=args.run_id, history_root=args.history_root, rights_table=args.rights_table)
         else:
             # Bound stdin before JSON decoding; never invoke a provider or network.
             raw = sys.stdin.buffer.read(engine.config['max_search_answer_bytes'] + 1)

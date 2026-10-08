@@ -1200,7 +1200,7 @@ Replace role-sized research generation with `tools/research_elements.py next|ans
 - [x] Envelope engine, checkpoints, retry isolation and program projections (6 focused tests).
 - [x] Questions, search requests, source relevance and exact excerpts (12 focused tests).
 - [x] Observations, typed claims, pair enumeration and support/opposition (14 focused tests).
-- [ ] Insights, decisions, rejection reasons and ledger-bound prior art differences.
+- [x] Insights, decisions, rejection reasons and ledger-bound prior art differences (23 focused tests, including native validator/graph).
 - [ ] Full local quality gates. Owner-profile live acceptance remains separate from synthetic qualification.
 
 ### Surprises & Discoveries
@@ -1216,4 +1216,7 @@ Replace role-sized research generation with `tools/research_elements.py next|ans
 
 ### Outcomes
 
-In progress. Target issue: masa-san-jp/agentic-art-research#122; branch agent/122-element-research; base `ba1f2d2426073fd2dcb4d235fb5bf72d558de6ea`. Verification: requested shared interpreter compileall, unittest, validator and graph; repository-local unittest and validator; focused element tests and git diff --check. Next step: implement envelope engine and deterministic projection.
+In progress. Target issue: masa-san-jp/agentic-art-research#122; branch agent/122-element-research; base `ba1f2d2426073fd2dcb4d235fb5bf72d558de6ea`. Verification: requested shared interpreter compileall, unittest, validator and graph; repository-local unittest and validator; focused element tests and git diff --check. Next step: run all quality gates, record live NOT_RUN, and hand off the local commits for orchestrator review.
+
+- 2026-10-08: Stage B engine qualification uses 24 single-value/search envelopes for the bounded fake run. Native validator/graph accept the assembled research records. Source IDs are checkpoint-owned, so JSON key ordering or a later lexically earlier URL cannot rename accepted source elements.
+- 2026-10-08: The standalone CLI does not claim existing task leases or complete the native project. Insights retain conservative epistemic status; selection rationale transcribes the accepted insight/option, while rejection rationale is separately inferred. Unknown rights reject material adoption; absent history does not count as a measured repetition review.

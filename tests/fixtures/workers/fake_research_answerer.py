@@ -28,6 +28,20 @@ def answer(request):
         value = 'SOURCE_CLAIM'
     elif identifier.startswith('pair.'):
         value = 'opposes'
+    elif identifier.startswith('insight.'):
+        value = 'Deferred choice and a fixed image suggest a tension over collective revision.'
+    elif identifier.startswith('decision-question.'):
+        value = 'Should collective revision remain possible in the shared image?'
+    elif identifier.startswith('option.'):
+        value = 'Keep the shared image open to collective revision.' if identifier.endswith('-1') else 'Lock the final composition once the exhibition opens.'
+    elif identifier.startswith('adopt.'):
+        value = request['answer_format']['choices'][0]
+    elif identifier.startswith('reject.'):
+        value = 'Locking the final composition prevents the deferred choice from remaining available.'
+    elif identifier.startswith('prior-work.'):
+        value = {'answer': True, 'reason': 'The synthetic title describes a comparison work.'}
+    elif identifier.startswith('difference.'):
+        value = 'The fixed image closes revision while the selected shared image keeps deferred choice open.'
     else:
         raise ValueError('Unknown fake element ' + identifier)
     return {**envelope, 'contract_version': 'element-answer/v1', 'value': value}

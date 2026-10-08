@@ -213,7 +213,7 @@ class ResearchElementsTest(unittest.TestCase):
         report, requests = self.run_fake()
         kinds = [r['element_id'].split('.')[0] for r in requests]
         self.assertEqual(['question', 'query', 'search', 'relevance', 'excerpt', 'relevance', 'excerpt',
-                          'observation', 'observation', 'claim', 'claim-type', 'claim', 'claim-type', 'pair'], kinds)
+                          'observation', 'observation', 'claim', 'claim-type', 'claim', 'claim-type', 'pair'], kinds[:14])
         def rows(path):
             return [json.loads(line) for line in (self.project / path).read_text().splitlines()]
         claims = rows('03_knowledge/claims.jsonl')
@@ -237,3 +237,157 @@ class ResearchElementsTest(unittest.TestCase):
         self.assertEqual(['CL001'], claims[1]['supporting_claims'])
         self.assertEqual('', (self.project / '03_knowledge/contradictions.jsonl').read_text())
         self.assertNotIn('VERIFIED', [c['epistemic_status'] for c in claims])
+
+    def test_fake_pipeline_reaches_decisions_and_prior_art_with_minimal_inputs(self):
+        from research_element_validation import check_project
+        from _common import read_jsonl
+        from search_harness import _validate
+        self.small_plan()
+        report, requests = self.run_fake()
+        self.assertEqual('COMPLETED', report['status'])
+        self.assertEqual(24, report['accepted_count'])
+        self.assertFalse(report['completion']['project_completed'])
+        self.assertEqual('INCOMPLETE', report['completion']['status'])  # Missing historical corpus is not a measured review.
+        self.assertEqual([], check_project(self.project.resolve(), ROOT))
+        for request in requests:
+            if 'inputs' in request:
+                self.assertLessEqual(len(json.dumps(request['inputs'], ensure_ascii=False).encode()), 4096)
+            self.assertNotIn('write_targets', request)
+        for key, name in [('insights', 'insight'), ('decisions', 'decision'), ('rejected_options', 'rejected-option'), ('uncertainties', 'uncertainty')]:
+            filename = {'insights': 'insight-register', 'decisions': 'decision-log', 'rejected_options': 'rejected-options', 'uncertainties': 'uncertainty-register'}[key]
+            for row in yaml.safe_load((self.project / f'04_decisions/{filename}.yaml').read_text())[key]:
+                _validate(ROOT, name, row)
+        state = load_json(self.engine.path)
+        for prior in read_jsonl(self.project / '03_knowledge/prior-art.jsonl'):
+            _validate(ROOT, 'prior-art', prior)
+            self.assertIn(prior['source_url'], state['ledger'])
+        self.assertEqual('UNKNOWN', state['repetition_scan']['risk_level'])
+        self.assertTrue(all(r['material_adoption'] == 'REJECTED' for r in yaml.safe_load((self.project / '06_governance/rights-register.yaml').read_text())['rights']))
+
+    def test_checkpoint_validator_catches_excerpt_and_ledger_mutation(self):
+        from research_element_validation import check_project
+        self.small_plan()
+        self.run_fake()
+        path = self.project / '02_evidence/excerpts.jsonl'
+        rows = [json.loads(line) for line in path.read_text().splitlines()]
+        rows[0]['quote'] = 'Invented evidence'
+        path.write_text(''.join(json.dumps(r)+'\n' for r in rows))
+        rules = {rule for rule, _ in check_project(self.project.resolve(), ROOT)}
+        self.assertIn('ELEMENT-EXACT-EXCERPT', rules)
+        self.assertIn('ELEMENT-PROJECTION', rules)
+
+    def test_explicit_history_reuses_native_scan_and_pins_changes(self):
+        import shutil
+        history = Path(self.temp.name).resolve() / 'history'
+        shutil.copytree(ROOT / 'tests/fixtures/self-repetition/history', history)
+        self.small_plan()
+        self.engine.next(now=NOW, history_root=history)
+        report, _ = self.run_fake()
+        state = load_json(self.engine.path)
+        self.assertEqual('AVAILABLE', state['repetition_scan']['history_access']['status'])
+        self.assertNotEqual('UNKNOWN', state['repetition_scan']['risk_level'])
+        self.assertEqual(4, state['repetition_scan']['scanned_project_count'])
+        self.assertEqual(1, report['completion']['counts']['self_repetition_review'])
+        self.assertEqual('COMPLETE_WITH_GAPS', report['completion']['status'])
+        artifact = next(history.rglob('creative-direction.md'))
+        artifact.write_text(artifact.read_text()+'\nchanged')
+        with self.assertRaisesRegex(ValueError, 'History inputs changed'):
+            self.engine.next(now=NOW)
+
+    def test_search_rejects_pinned_content_changes_and_credentials(self):
+        request = self.until_search()
+        answer = self.fake(request)
+        answer['results'][0]['url'] = 'https://user:password@example.invalid/source'
+        report = self.engine.answer(answer, now=NOW)
+        self.assertIn('url_shape', [f['check'] for f in report['next_action']['request']['previous_failure']])
+        request = report['next_action']['request']
+        answer = self.fake(request)
+        answer['results'][0]['body'] = 'Bearer ' + 'x'*30
+        report = self.engine.answer(answer, now=NOW)
+        self.assertIn('secret_output', [f['check'] for f in report['next_action']['request']['previous_failure']])
+        self.assertEqual({}, load_json(self.engine.path)['ledger'])
+
+    def test_invalid_config_and_private_rights_table_are_rejected(self):
+        from research_element_validation import require_schema
+        from copy import deepcopy
+        config = deepcopy(self.engine.config)
+        config['paths']['sources'] = '../outside.jsonl'
+        with self.assertRaisesRegex(ValueError, 'const failed'):
+            require_schema(ROOT, 'research-elements-config', config)
+        table = Path(self.temp.name) / 'rights.json'
+        table.write_text(json.dumps({'https://example.invalid/choice': {'rights_status': 'unknown', 'redistribution': 'unknown', 'sensitivity': 'PRIVATE_RAW'}}))
+        with self.assertRaisesRegex(ValueError, 'const failed'):
+            self.engine.next(now=NOW, rights_table=table)
+
+    def test_legacy_artifacts_and_unfilled_proposition_are_not_overwritten(self):
+        (self.project / '03_knowledge/claims.jsonl').write_text('{"id":"CL001"}\n')
+        with self.assertRaisesRegex(ValueError, 'existing research cannot be overwritten'):
+            self.engine.next(now=NOW)
+        (self.project / '03_knowledge/claims.jsonl').write_text('')
+        (self.project / '00_intake/creative-intent.md').write_text('未記入。')
+        with self.assertRaisesRegex(ValueError, 'filled Stage A'):
+            self.engine.next(now=NOW)
+
+    def test_source_ids_survive_json_key_sorting_and_new_earlier_url(self):
+        self.small_plan()
+        path = self.project / '01_planning/research-plan.yaml'
+        plan = yaml.safe_load(path.read_text())
+        plan['minimums'].update(evidence=3, claims=3)
+        path.write_text(yaml.safe_dump(plan))
+        report = self.engine.next(now=NOW)
+        searches = 0
+        while report['next_action']:
+            request = report['next_action']['request']
+            if request['contract_version'] == 'search-request/v1':
+                searches += 1
+                if searches == 2:
+                    answer = self.fake(request)
+                    answer['results'] = [{'url': 'https://example.invalid/aaaa', 'title': 'Earlier alphabetic URL',
+                                          'body': 'Collective revision allows the shared image to change after a deferred choice.'}]
+                    report = self.engine.answer(answer, now=NOW)
+                    pending = report['next_action']['request']
+                    self.assertIn('SRC003', pending['element_id'])
+                    self.assertEqual(pending, self.engine.next(now=NOW)['next_action']['request'])
+                    ledger = load_json(self.engine.path)['ledger']
+                    self.assertEqual('SRC001', ledger['https://example.invalid/choice']['id'])
+                    self.assertEqual('SRC003', ledger['https://example.invalid/aaaa']['id'])
+                    break
+            report = self.engine.answer(self.fake(request), now=NOW)
+
+    def test_search_body_conflict_retries_only_the_pending_search(self):
+        self.small_plan()
+        path = self.project / '01_planning/research-plan.yaml'
+        plan = yaml.safe_load(path.read_text())
+        plan['minimums'].update(evidence=3, claims=3)
+        path.write_text(yaml.safe_dump(plan))
+        report = self.engine.next(now=NOW)
+        searches = 0
+        while report['next_action']:
+            request = report['next_action']['request']
+            answer = self.fake(request)
+            if request['contract_version'] == 'search-request/v1':
+                searches += 1
+                if searches == 2:
+                    answer['results'][0]['body'] += ' Changed.'
+                    report = self.engine.answer(answer, now=NOW)
+                    self.assertEqual(request['element_id'], report['next_action']['request']['element_id'])
+                    self.assertEqual(2, report['next_action']['request']['attempt'])
+                    self.assertIn('source_conflict', [f['check'] for f in report['next_action']['request']['previous_failure']])
+                    self.assertNotIn('Changed.', load_json(self.engine.path)['ledger']['https://example.invalid/choice']['body'])
+                    break
+            report = self.engine.answer(answer, now=NOW)
+
+    def test_materialized_research_validates_with_existing_repository_gates(self):
+        import shutil
+        from validate import validate_repository
+        from build_graph import build_graph
+        self.small_plan()
+        self.run_fake()
+        root = Path(self.temp.name).resolve()
+        for name in ('config', 'schemas'):
+            shutil.copytree(ROOT / name, root / name)
+        (root / 'data').mkdir()
+        findings = validate_repository(root, 'project/elements', protocol_root=ROOT)
+        self.assertEqual([], [(f.rule, f.message) for f in findings])
+        graph = build_graph(root)
+        self.assertTrue(any(node['id'] == 'DC001' for node in graph['nodes']))

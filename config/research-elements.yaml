@@ -41,3 +41,7 @@ paths:
   rights: 06_governance/rights-register.yaml
   log: 07_runtime/run-log.jsonl
   excerpts: 02_evidence/excerpts.jsonl
+  uncertainties: 04_decisions/uncertainty-register.yaml
+  reviews: 04_decisions/self-repetition-review.yaml
+  repetition_report: 07_runtime/element-repetition-scan.json
+insight_group_size: 2

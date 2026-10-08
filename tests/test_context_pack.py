@@ -43,6 +43,15 @@ class ContextPackContractTest(unittest.TestCase):
                 self.assertEqual(ACCEPTANCE_TESTS_PATH, pack["acceptance_tests"]["path"])
                 self.assertEqual(list(declared), [item["path"] for item in pack["evidence"]])
 
+    def test_worker_envelope_receives_proposition_and_source_refs(self) -> None:
+        root = self.make_root()
+        project = create_project(root, "context-proposition", "Context Proposition")
+        (project / "00_intake/creative-intent.md").write_text("A shared image keeps a deferred choice visible.")
+        pack = build_context_pack(root, "project/context-proposition", "TASK001", "analyst")
+        self.assertIn("A shared image keeps a deferred choice visible.", pack["summary"])
+        self.assertEqual("00_intake/creative-intent.md", pack["source_refs"][0])
+        self.assertEqual(1, pack["source_refs"].count("00_intake/creative-intent.md"))
+
     def test_task_selection_is_minimal_and_deterministic(self) -> None:
         root = self.make_root()
         create_project(root, "context-task", "Context Task")
