@@ -223,11 +223,16 @@ class Engine:
         with self.locked():
             state = self.read()
             self.materialize(state)
-            answer_hash = digest(canonical(answer))
-            # Replay is exact and does not consume retries or write twice.
-            if any(item['answer_hash'] == answer_hash for item in state['history']):
-                return self.report(state)
+            was_waiting = state['status'] == 'WAITING'
             self.check_time(state, now)
+            if was_waiting and state['status'] == 'BLOCKED':
+                return self.report(state)
+            answer_hash = digest(canonical(answer))
+            # Replay is exact and has no second effect, but cannot grant a
+            # fresh request after the absolute runtime deadline.
+            if any(item['answer_hash'] == answer_hash for item in state['history']):
+                self.save(state)
+                return self.report(state)
             if state['status'] != 'WAITING':
                 raise ValueError('Run is not waiting for an answer')
             request = state['pending']

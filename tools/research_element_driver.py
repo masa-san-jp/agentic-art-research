@@ -145,7 +145,8 @@ def collect(state, records):
                 seen.add(body_hash)
                 source_id = next(r['id'] for r in records['sources'] if r['url'] == source['url'])
                 event(state, records, 'SOURCE_REVIEWED', search_id, question_id=qid, source_id=source_id)
-                # All windows are offered separately; no source is silently truncated.
+                # Offer successive windows until one relevant passage is pinned.
+                # The full retrieved body remains in the ledger.
                 metadata_bytes = max(len(json.dumps(inputs, ensure_ascii=False).encode()) for inputs in (
                     {'question': q['question'], 'title': source['title'], 'body': ''},
                     {'question': q['question'], 'body': '', 'source_url': source['url']}))
@@ -185,6 +186,9 @@ def collect(state, records):
                     if body_hash not in found:
                         found.add(body_hash)
                         event(state, records, 'ANSWER_FOUND', excerpt_id, question_id=qid, evidence_id=evidence['id'])
+                    # One source/question produces one excerpt, observation and
+                    # claim. Long pages must not multiply the all-pairs workload.
+                    break
             new_count = len(found) - before
             saturation = saturation + 1 if new_count == 0 else 0
             event(state, records, 'EVIDENCE_ROUND', search_id, question_id=qid, new_evidence_count=new_count)

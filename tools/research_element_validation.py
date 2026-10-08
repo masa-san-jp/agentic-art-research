@@ -3,15 +3,45 @@ from functools import lru_cache
 import json
 from pathlib import Path
 from jsonschema import Draft202012Validator, FormatChecker
+from jsonschema.exceptions import SchemaError
 from referencing import Registry, Resource
 from _common import load_json, read_jsonl
 
 
 @lru_cache(maxsize=32)
 def schema_validator(root, name):
-    resources = [load_json(path) for path in sorted((root / 'schemas').glob('*.json'))]
-    registry = Registry().with_resources((s['$id'], Resource.from_contents(s)) for s in resources)
-    schema = load_json(root / 'schemas' / f'{name}.schema.json')
+    # Load only this schema's local reference closure. A broken unrelated
+    # domain schema must remain a native SCHEMA-META finding, not crash the
+    # optional element validator before that finding can be returned.
+    resources = {}
+    def collect(filename):
+        if filename in resources:
+            return
+        path = root / 'schemas' / filename
+        schema = load_json(path)
+        if schema.get('$schema') != Draft202012Validator.META_SCHEMA['$id'] or not isinstance(schema.get('$id'), str):
+            raise ValueError(f'{filename}: invalid or missing schema metadata')
+        try:
+            Draft202012Validator.check_schema(schema)
+        except SchemaError as exc:
+            raise ValueError(f'{filename}: invalid schema ({exc.validator})') from exc
+        resources[filename] = schema
+        def references(value):
+            if isinstance(value, dict):
+                ref = value.get('$ref', '').split('#', 1)[0]
+                if ref:
+                    if '/' in ref or not ref.endswith('.schema.json'):
+                        raise ValueError(f'{path.name}: unsupported nonlocal schema reference')
+                    collect(ref)
+                for child in value.values():
+                    references(child)
+            elif isinstance(value, list):
+                for child in value:
+                    references(child)
+        references(schema)
+    collect(f'{name}.schema.json')
+    registry = Registry().with_resources((s['$id'], Resource.from_contents(s)) for s in resources.values())
+    schema = resources[f'{name}.schema.json']
     Draft202012Validator.check_schema(schema)
     return Draft202012Validator(schema, registry=registry, format_checker=FormatChecker())
 

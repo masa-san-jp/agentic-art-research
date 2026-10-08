@@ -174,7 +174,9 @@ class ResearchElementsTest(unittest.TestCase):
     def test_runtime_budget_blocks_without_consuming_element(self):
         self.small_plan(max_runtime_minutes=1)
         report = self.engine.next(now=NOW)
-        report = self.engine.next(now='2026-10-08T00:01:00Z')
+        request = report['next_action']['request']
+        report = self.engine.answer(self.fake(request), now='2026-10-08T00:01:00Z')
+        self.assertEqual(report, self.engine.next(now='2026-10-08T00:01:00Z'))
         self.assertEqual('BLOCKED', report['status'])
         self.assertEqual(0, report['accepted_count'])
         self.assertEqual('runtime_budget', report['blocked']['last_failure'][0]['check'])
@@ -391,3 +393,38 @@ class ResearchElementsTest(unittest.TestCase):
         self.assertEqual([], [(f.rule, f.message) for f in findings])
         graph = build_graph(root)
         self.assertTrue(any(node['id'] == 'DC001' for node in graph['nodes']))
+
+    def test_long_source_yields_one_excerpt_and_claim_for_the_question(self):
+        self.small_plan(max_total_sources=1)
+        path = self.project / '01_planning/research-plan.yaml'
+        plan = yaml.safe_load(path.read_text())
+        plan['minimums'].update(evidence=1, claims=1)
+        path.write_text(yaml.safe_dump(plan))
+        sentence = 'Deferred choice keeps the shared image open to revision.'
+        body = sentence * 100
+        def long_source(request, answer):
+            if request['contract_version'] == 'search-request/v1':
+                answer['results'] = answer['results'][:1]
+                answer['results'][0]['body'] = body
+            elif request['element_id'].startswith('relevance.'):
+                answer['value'] = {'answer': True, 'reason': sentence}
+            elif request['element_id'].startswith('excerpt.'):
+                answer['value'] = sentence
+        _, requests = self.run_fake(long_source)
+        self.assertEqual(1, sum(r['element_id'].startswith('relevance.') for r in requests))
+        self.assertEqual(1, len((self.project / '02_evidence/excerpts.jsonl').read_text().splitlines()))
+        self.assertEqual(1, len((self.project / '03_knowledge/claims.jsonl').read_text().splitlines()))
+        self.assertEqual(body, load_json(self.engine.path)['ledger']['https://example.invalid/choice']['body'])
+
+    def test_replayed_answer_cannot_bypass_absolute_runtime_budget(self):
+        self.small_plan(max_runtime_minutes=1)
+        request = self.engine.next(now=NOW)['next_action']['request']
+        answer = self.fake(request)
+        report = self.engine.answer(answer, now=NOW)
+        pending_id = report['next_action']['request']['element_id']
+        report = self.engine.answer(answer, now='2026-10-08T00:01:00Z')
+        self.assertEqual('BLOCKED', report['status'])
+        self.assertEqual(1, report['accepted_count'])
+        self.assertIsNone(report['next_action'])
+        self.assertEqual(pending_id, report['blocked']['element_id'])
+        self.assertEqual('runtime_budget', report['blocked']['last_failure'][0]['check'])
