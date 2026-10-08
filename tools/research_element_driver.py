@@ -2,7 +2,7 @@
 from __future__ import annotations
 import json
 import hashlib
-from math import ceil
+from itertools import combinations
 import yaml
 from _common import stable_json
 from research_element_contracts import require_message
@@ -43,6 +43,7 @@ def schedule(state, records):
                                         'max_search_strategies': min(len(state['config']['search_strategies']), state['stopping']['max_search_strategies_per_question']),
                                         'max_sources_reviewed': state['stopping']['max_sources_reviewed_per_question']}})
     yield from collect(state, records)
+    yield from analyze(state, records)
 
 
 def advance(state):
@@ -189,3 +190,55 @@ def collect(state, records):
                           'material_adoption': 'REJECTED' if row['rights_status'] == 'unknown' else 'REVIEW_REQUIRED',
                           'reason': 'Retrieved text is research evidence; no permission to adopt or redistribute material is inferred.'}
                          for row in records['evidence']]
+
+
+def analyze(state, records):
+    answers = state['answers']
+    for excerpt in records['excerpts']:
+        oid = f"OB{len(records['observations'])+1:03}"
+        identifier = f'observation.{oid}'
+        question = next(q['question'] for q in records['questions'] if q['id'] == excerpt['question_id'])
+        yield element(state, identifier, 'この抜き書きから観察できることを1文で返してください。',
+                      {'question': question, 'quote': excerpt['quote']},
+                      checks=['one_sentence', 'contains_source_terms:quote'])
+        records['observations'].append({'id': oid, 'statement': answers[identifier],
+            'scope': excerpt['question_id'], 'evidence_ids': [excerpt['evidence_id']]})
+    for observation in records['observations']:
+        cid = f"CL{len(records['claims'])+1:03}"
+        identifier = f'claim.{cid}'
+        yield element(state, identifier, 'この観察が根拠となる主張を1文で返してください。',
+                      {'observation': observation['statement']},
+                      checks=['one_sentence', 'contains_source_terms:observation'])
+        type_id = f'claim-type.{cid}'
+        yield element(state, type_id, 'この主張の種類を1つ選んでください。',
+                      {'claim': answers[identifier], 'observation': observation['statement']},
+                      choices=state['vocabulary']['claim_types'])
+        kind = answers[type_id]
+        # Retrieved text is not independent verification. Preserve epistemic caution.
+        status = 'HYPOTHESIS' if kind == 'HYPOTHESIS' else 'WEAK'
+        records['claims'].append({'id': cid, 'statement': answers[identifier], 'type': kind,
+            'evidence_ids': observation['evidence_ids'], 'supporting_claims': [], 'opposing_claims': [],
+            'scope': observation['scope'], 'epistemic_status': status})
+    # Earlier-to-later order makes the support graph acyclic; opposition is symmetric.
+    for left, right in combinations(records['claims'], 2):
+        identifier = f"pair.{left['id']}.{right['id']}"
+        yield element(state, identifier, '左の主張は右の主張を支持、対立、無関係のどれにしますか。1つ選んでください。',
+                      {'left': left['statement'], 'right': right['statement']},
+                      choices=state['config']['pair_relations'])
+        relation = answers[identifier]
+        if relation == 'unrelated':
+            continue
+        records['relationships'].append({'id': f"RL{len(records['relationships'])+1:03}",
+            'from_id': left['id'], 'to_id': right['id'],
+            'type': 'refers_to' if relation == 'supports' else 'contrasts_with',
+            'rationale': f"{left['id']} {relation} {right['id']} (element {identifier}).",
+            'evidence_ids': list(dict.fromkeys(left['evidence_ids'] + right['evidence_ids']))})
+        if relation == 'supports':
+            right['supporting_claims'].append(left['id'])
+        else:
+            left['opposing_claims'].append(right['id'])
+            right['opposing_claims'].append(left['id'])
+            left['epistemic_status'] = right['epistemic_status'] = 'CONTESTED'
+            records['contradictions'].append({'id': f"CT{len(records['contradictions'])+1:03}",
+                'claim_ids': [left['id'], right['id']], 'description': f"{left['statement']} / {right['statement']}",
+                'status': 'OPEN', 'resolution': None})

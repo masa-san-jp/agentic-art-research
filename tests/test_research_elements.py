@@ -193,3 +193,47 @@ class ResearchElementsTest(unittest.TestCase):
         for name in CONTRACTS:
             self.assertEqual(name+'/v1', validator(name).schema['$id'])
             self.assertIs(False, validator(name).schema['additionalProperties'])
+
+    def run_fake(self, mutate=None):
+        report = self.engine.next(now=NOW)
+        requests = []
+        while report['next_action']:
+            request = report['next_action']['request']
+            requests.append(request)
+            answer = self.fake(request)
+            if mutate:
+                mutate(request, answer)
+            report = self.engine.answer(answer, now=NOW)
+            self.assertNotEqual('BLOCKED', report['status'], report)
+        return report, requests
+
+    def test_claim_pairs_opposition_and_caution_are_program_assembled(self):
+        from search_harness import _validate
+        self.small_plan()
+        report, requests = self.run_fake()
+        kinds = [r['element_id'].split('.')[0] for r in requests]
+        self.assertEqual(['question', 'query', 'search', 'relevance', 'excerpt', 'relevance', 'excerpt',
+                          'observation', 'observation', 'claim', 'claim-type', 'claim', 'claim-type', 'pair'], kinds)
+        def rows(path):
+            return [json.loads(line) for line in (self.project / path).read_text().splitlines()]
+        claims = rows('03_knowledge/claims.jsonl')
+        self.assertEqual(['CL002'], claims[0]['opposing_claims'])
+        self.assertEqual(['CL001'], claims[1]['opposing_claims'])
+        self.assertEqual({'CONTESTED'}, {c['epistemic_status'] for c in claims})
+        for name, path in [('claim', '03_knowledge/claims.jsonl'), ('observation', '03_knowledge/observations.jsonl'),
+                           ('relationship', '03_knowledge/relationships.jsonl'), ('contradiction', '03_knowledge/contradictions.jsonl')]:
+            for row in rows(path):
+                _validate(ROOT, name, row)
+        self.assertEqual(1, len(rows('03_knowledge/contradictions.jsonl')))
+
+    def test_support_assembly_does_not_create_claim_cycles(self):
+        self.small_plan()
+        def supports(request, answer):
+            if request['element_id'].startswith('pair.'):
+                answer['value'] = 'supports'
+        self.run_fake(supports)
+        claims = [json.loads(line) for line in (self.project / '03_knowledge/claims.jsonl').read_text().splitlines()]
+        self.assertEqual([], claims[0]['supporting_claims'])
+        self.assertEqual(['CL001'], claims[1]['supporting_claims'])
+        self.assertEqual('', (self.project / '03_knowledge/contradictions.jsonl').read_text())
+        self.assertNotIn('VERIFIED', [c['epistemic_status'] for c in claims])

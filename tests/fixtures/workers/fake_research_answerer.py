@@ -20,6 +20,14 @@ def answer(request):
         value = {'answer': True, 'reason': request['inputs']['body']}
     elif identifier.startswith('excerpt.'):
         value = request['inputs']['body']
+    elif identifier.startswith('observation.'):
+        value = request['inputs']['quote']
+    elif identifier.startswith('claim.'):
+        value = request['inputs']['observation']
+    elif identifier.startswith('claim-type.'):
+        value = 'SOURCE_CLAIM'
+    elif identifier.startswith('pair.'):
+        value = 'opposes'
     else:
         raise ValueError('Unknown fake element ' + identifier)
     return {**envelope, 'contract_version': 'element-answer/v1', 'value': value}
