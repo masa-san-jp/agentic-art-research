@@ -541,12 +541,14 @@ tasks:
   - id: ELEMENT-RESEARCH-122
     milestone: G7
     title: Qualify standalone Stage B element research
-    status: IN_PROGRESS
+    status: BLOCKED
     depends_on: []
     issue_refs: ["agentic-art-research#122"]
-    acceptance: Fake answerer runs questions through ledger-bound prior-art differences one element at a time; separate owner-profile live acceptance is recorded without fabrication.
+    acceptance: Fake answerer runs questions through ledger-bound prior-art differences one element at a time; owner-profile live acceptance with actually retrieved public sources and grounded ledger claims/decisions must pass before DONE.
     checks:
       - .venv/bin/python -m unittest discover -s tests -v
       - .venv/bin/python tools/validate.py --check
       - .venv/bin/python tools/build_graph.py --check
       - git diff --check
+    completion: Code 9dcc70521babd67b7353cef3044742bd39c60a04 qualified with both full 400-test suites, focused 25 tests, synthetic CLI 24 requests and required native checks.
+    blocked_reason: LIVE-ACCEPTANCE-NOT-RUN; no external browsing authorized in this implementation session.

@@ -1,12 +1,16 @@
 version: 9
-updated_at: "2026-09-08T00:13:50.243233+00:00"
-current_milestone: G6
-next_task: ELEMENT-RESEARCH-122
+updated_at: "2026-10-08T10:28:53+00:00"
+current_milestone: G7
+next_task: null
 last_completed_task: AAK-02-NATIVE-AUTHORING
 terminal: false
-blocked_by: []
+blocked_by: [LIVE-ACCEPTANCE-NOT-RUN]
 resume_from:
   read:
+    - docs/research-elements.md
+    - docs/contracts/research-elements-provenance.md
+    - tools/research_elements.py
+    - tests/test_research_elements.py
     - AGENTS.md
     - docs/20260811-agentic-art-research-system-design-specification.md
     - docs/20260811-agentic-art-research-repository-execution-plan.md
@@ -61,11 +65,18 @@ resume_from:
     - tests/test_harness.py
     - docs/agent-runtime-guide.md
     - docs/operations.md
-  action: AAK09 qualified at 046c2380310d208ca52cbca461c95c798328b599; 9 focused / 307 full / native gates PASS. Evidence execution/aak-09-verification.json. Parent continues Production AAK10; no Research task remains ready. Main and AAK02 live NOT_RUN.
+  action: ELEMENT-RESEARCH-122 code 9dcc70521babd67b7353cef3044742bd39c60a04 is verified; orchestrator reviews local commits and runs owner-profile Stage B CLI live acceptance outside Git. Do not mark DONE before LIVE-ACCEPTANCE-NOT-RUN is resolved.
 last_verification:
-  result: PASS_WITH_ENVIRONMENT_NOTE
-  command: /private/tmp/aap-production-py312/bin/python -m unittest discover -s tests -v; validate/security/docs/chaos/graph/handoff gates; git diff --check
-  detail: 289 tests PASS。validator、security、docs、chaos、graph、handoff release gate、git diff --checkがPASS。v2のcreator-scoped history、visual-language mechanism grounding、履歴root不在時のUNKNOWN/HISTORY_ROOT_UNAVAILABLEをfocused testsで検証した。PR #87はmainへmerge済み（1e8390e6ac7286c23a971d19a8797be4851cf086）。GitHub validateはbilling制限でジョブ未開始だったため、成功として扱わず環境注記を保持する。
+  result: CODE_VERIFIED_LIVE_NOT_RUN
+  code_commit: 9dcc70521babd67b7353cef3044742bd39c60a04
+  command: $SHARED_PYTHON compileall/full unittest/validate/graph; .venv/bin/python
+    full unittest/validate/graph/security/docs; focused element and fixture unittest; git
+    diff --check
+  detail: 'Both final full suites: 400 tests, exit 0. Focused elements: 25, exit 0;
+    fixture matrix: 3, exit 0. Synthetic CLI: 24 envelopes, exit 0. Required compile/validator/graph
+    and supplementary security/docs/diff checks exit 0. Owner live acceptance NOT_RUN;
+    preliminary failures and interrupted dirty-checkout run are retained in PLANS.md.'
+
 
 aak02_native_authoring:
   owner: codex-aak02-native-authoring
@@ -79,3 +90,69 @@ aak02_native_authoring:
   code_candidate: 2304261b0c009b9f8690f2d5afbd76a53304c8a9
   evidence: execution/aak-02-native-authoring-verification.json
   pull_request: https://github.com/masa-san-jp/agentic-art-research/pull/97
+
+element_research_122:
+  task_id: ELEMENT-RESEARCH-122
+  project: repository-maintenance; synthetic cli-elements only
+  status: CODE_VERIFIED_LIVE_NOT_RUN
+  branch: agent/122-element-research
+  code_candidate: 9dcc70521babd67b7353cef3044742bd39c60a04
+  code_tree: 56ecf9bffc3886960c808b6984a41fe8b6e26bbb
+  parent_contract_commit: 337c33211d6048d934b2db0dcf749cd25cb2e617
+  changed_paths:
+  - PLANS.md
+  - README.md
+  - config/research-elements.yaml
+  - docs/contracts/research-elements-provenance.md
+  - docs/research-elements.md
+  - execution/handoff.md
+  - execution/state.yaml
+  - execution/task-queue.yaml
+  - schemas/element-answer.schema.json
+  - schemas/element-request.schema.json
+  - schemas/research-element-rights.schema.json
+  - schemas/research-elements-config.schema.json
+  - schemas/research-elements.schema.json
+  - schemas/research-excerpt.schema.json
+  - schemas/research-plan.schema.json
+  - schemas/retrieved-source.schema.json
+  - schemas/search-answer.schema.json
+  - schemas/search-request.schema.json
+  - tests/fixtures/workers/fake_research_answerer.py
+  - tests/test_context_pack.py
+  - tests/test_research_elements.py
+  - tools/context_pack.py
+  - tools/research_element_checks.py
+  - tools/research_element_contracts.py
+  - tools/research_element_driver.py
+  - tools/research_element_validation.py
+  - tools/research_elements.py
+  - tools/validate.py
+  final_full_verification:
+    shared:
+      exit_code: 0
+      tests: 400
+      seconds: 1972.77
+      log_sha256: b4d7076c30d4e904e46b12e98c362a325e021592fae03e715c42926407ba9f7e
+    local:
+      exit_code: 0
+      tests: 400
+      seconds: 1863.277
+      log_sha256: ab9edec1d747055b6bfc4fd0d3a26cc11730a780d32606c56406050903365048
+  preliminary_local:
+    exit_code: 143
+    status: PRELIMINARY-LOCAL-RUN-TERMINATED
+    passed_lines: 162
+    failed_lines: 2
+    error_lines: 1
+    reason: Superseded dirty-checkout run stalled in the failed snapshot test (apparently formatting its
+      large difference); terminated only after both final 400-test suites completed successfully.
+      No completed-suite count or pass is claimed.
+  remaining:
+  - LIVE-ACCEPTANCE-NOT-RUN
+  next_start: Owner-profile Stage A proposition in a fresh external project; CLI next/answer
+    with actual public retrieval; confirm grounded ledger and owner output acceptance.
+  sensitive_information_added: false
+  external_artifacts: Synthetic CLI/element-test temporary projects cleaned; interrupted legacy-test OS-temp cleanup unverified; no actual research/production
+    output or public artifact created.
+  github_writes: false
