@@ -225,6 +225,7 @@ def _materialize(
         request["project"]["creator_id"],
         created_at=request["requested_at"],
         protocol_root=protocol_root,
+        research_route=request.get("research_route"),
     )
     try:
         manifest_path = project / "manifest.yaml"

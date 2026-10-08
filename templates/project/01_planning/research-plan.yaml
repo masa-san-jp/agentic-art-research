@@ -1,4 +1,5 @@
 version: 1
+research_route: __RESEARCH_ROUTE__
 project_id: project/__PROJECT_SLUG__
 objective: null
 required_outputs:
@@ -19,7 +20,9 @@ status: DRAFT
 #   evidence: 0
 #   reason: "Small exploratory study with an explicitly bounded scope."
 
-# 1タスク = 1起動を基本にする。1つの起動で読み切れる量に割るための構成であって、
+# 以下の TASK001〜009 は research_route: legacy を明示した互換経路だけで使う。
+# 新規調査は research_elements が既定。段階 B の受入完了後に旧経路を外す。
+# 旧経路は1タスク = 1起動を基本にする。1つの起動で読み切れる量に割るための構成であって、
 # 工程を細かくすること自体が目的ではない。
 #
 # collector は質問1件ずつに割る。質問が3件より多いプロジェクトは、

@@ -13,17 +13,34 @@ def answer(request):
             {'url': 'https://example.invalid/finality', 'title': 'Synthetic final work',
              'body': 'A fixed image closes collective revision and demands a final choice.'}]}
     if identifier.startswith('question.'):
-        value = 'How does deferred choice keep a shared image revisable?'
+        questions = [
+            'How can collective editing keep a deferred choice available?',
+            'Which display rules affect when participants revise the image?',
+            'What visual traces distinguish provisional decisions from fixed outcomes?',
+            'How do different audiences negotiate finality in a shared composition?',
+            'Where does authorship reside when viewers alter an unfinished image?',
+            'When should a collective composition stop changing during an exhibition?',
+            'What permissions shape an open revision process for contributors?',
+            'How can an archive preserve discarded image choices for later study?',
+            'Which material constraints resist repeated changes to a composition?',
+            'What social pressures make a tentative choice feel final?',
+            'How does delayed feedback influence decisions about a shared image?',
+            'What documentation helps participants understand earlier revisions?']
+        value = questions[int(identifier.split('Q')[-1]) - 1]
     elif identifier.startswith('query.'):
-        value = 'deferred choice shared image ' + request['inputs']['strategy']
+        value = request['inputs']['question'].rstrip('?') + ' ' + request['inputs']['strategy']
     elif identifier.startswith('relevance.'):
         value = {'answer': True, 'reason': request['inputs']['body']}
     elif identifier.startswith('excerpt.'):
         value = request['inputs']['body']
     elif identifier.startswith('observation.'):
-        value = request['inputs']['quote']
+        value = ('Collective authorship appears constrained when participants cannot alter the composition.'
+                 if 'fixed' in request['inputs']['quote'].lower() else
+                 'Participants retain editing opportunities because the shared image remains provisional.')
     elif identifier.startswith('claim.'):
-        value = request['inputs']['observation']
+        value = ('Fixing a collective composition may reduce the scope of later participant authorship.'
+                 if 'constrained' in request['inputs']['observation'] else
+                 'A revisable shared image can preserve participant agency beyond an initial selection.')
     elif identifier.startswith('claim-type.'):
         value = 'SOURCE_CLAIM'
     elif identifier.startswith('pair.'):

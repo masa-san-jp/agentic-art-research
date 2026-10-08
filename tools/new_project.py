@@ -7,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from _common import EMPTY_JSONL_FILES, atomic_write_text, stable_json
+from _common import ROOT, EMPTY_JSONL_FILES, atomic_write_text, stable_json
 
 
 SLUG = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
@@ -21,6 +21,7 @@ def create_project(
     created_at: str | None = None,
     *,
     protocol_root: Path | None = None,
+    research_route: str | None = None,
 ) -> Path:
     if not SLUG.fullmatch(slug):
         raise ValueError("slug must be lower-case kebab-case")
@@ -33,7 +34,10 @@ def create_project(
         raise FileNotFoundError(f"project template not found: {template}")
 
     created_at = created_at or datetime.now(ZoneInfo("Asia/Tokyo")).isoformat(timespec="seconds")
+    from research_routing import select_route
+    route = select_route(protocol_root or ROOT, override=research_route, warn=False)
     replacements = {
+        "__RESEARCH_ROUTE__": route,
         "__PROJECT_SLUG__": slug,
         "__PROJECT_TITLE__": title,
         "__CREATOR_ID__": creator_id if creator_id else "null",
@@ -74,6 +78,7 @@ def main() -> int:
     parser.add_argument("--root", type=Path, help="compatibility alias for --work-root")
     parser.add_argument("--work-root", type=Path, help="temporary work root or external output staging root")
     parser.add_argument("--protocol-root", type=Path, help="read-only protocol checkout containing templates")
+    parser.add_argument("--research-route", choices=["research_elements", "legacy"], help="default: research_elements; legacy is deprecated")
     args = parser.parse_args()
     work_root = args.work_root or args.root
     if work_root is None:
@@ -85,9 +90,12 @@ def main() -> int:
             args.title,
             args.creator_id,
             protocol_root=args.protocol_root.resolve() if args.protocol_root else None,
+            research_route=args.research_route,
         )
     except (ValueError, FileExistsError, FileNotFoundError) as exc:
         parser.error(str(exc))
+    from research_routing import select_route
+    select_route(args.protocol_root.resolve() if args.protocol_root else ROOT, target)
     print(target)
     return 0
 

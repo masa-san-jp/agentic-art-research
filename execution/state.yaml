@@ -1,7 +1,7 @@
 version: 9
 updated_at: "2026-10-08T10:28:53+00:00"
 current_milestone: G7
-next_task: null
+next_task: ELEMENT-RESEARCH-122
 last_completed_task: AAK-02-NATIVE-AUTHORING
 terminal: false
 blocked_by: [LIVE-ACCEPTANCE-NOT-RUN]

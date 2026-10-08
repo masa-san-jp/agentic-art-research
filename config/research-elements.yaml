@@ -1,4 +1,11 @@
-version: 1
+version: 2
+default_route: research_elements
+max_claim_pairs: 120
+derivation_similarity_threshold: "0.9"
+search_strategy_descriptions:
+  primary: 制作者・作品・研究の一次資料を探し、問いに直接関係する記述を確認する。
+  counterexample: 問いの仮説を否定する事例や異なる結果を探し、反証を確認する。
+  independent-secondary: 一次資料の転載ではない独立した批評・研究を探し、別の立場から照合する。
 max_attempts: 5
 question_count: 4
 options_per_decision: 2

@@ -541,7 +541,7 @@ tasks:
   - id: ELEMENT-RESEARCH-122
     milestone: G7
     title: Qualify standalone Stage B element research
-    status: BLOCKED
+    status: IN_PROGRESS
     depends_on: []
     issue_refs: ["agentic-art-research#122"]
     acceptance: Fake answerer runs questions through ledger-bound prior-art differences one element at a time; owner-profile live acceptance with actually retrieved public sources and grounded ledger claims/decisions must pass before DONE.

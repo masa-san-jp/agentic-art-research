@@ -2,7 +2,7 @@
 from __future__ import annotations
 import json
 import hashlib
-from itertools import combinations
+from itertools import combinations, islice
 import yaml
 from research_element_contracts import require_message
 
@@ -14,9 +14,11 @@ def managed_empty_files(config):
             for key, path in config['paths'].items() if key not in ('state', 'lock', 'log', 'repetition_report')}
 
 
-def element(state, identifier, instruction, inputs, *, choices=None, boolean=False, checks=(), max_chars=240):
+def element(state, identifier, instruction, inputs, *, choices=None, boolean=False, checks=(), min_chars=1, max_chars=240):
     fmt = {'type': 'choice', 'choices': choices} if choices else {
         'type': 'boolean_with_reason' if boolean else 'text', 'max_chars': max_chars}
+    if not choices and not boolean:
+        fmt['min_chars'] = min_chars
     request = {'contract_version': 'element-request/v1', 'run_id': state['run_id'],
                'element_id': identifier, 'attempt': state['attempt'], 'previous_failure': state['previous_failure'],
                'instruction': instruction, 'inputs': inputs, 'answer_format': fmt,
@@ -124,7 +126,8 @@ def collect(state, records):
             prefix = f'{qid}.{strategy}'
             query_id = f'query.{prefix}'
             yield element(state, query_id, '問いを調べる検索語を1つ返してください。',
-                          {'question': q['question'], 'strategy': strategy}, max_chars=160,
+                          {'question': q['question'], 'strategy': strategy,
+                           'strategy_description': config['search_strategy_descriptions'][strategy]}, max_chars=160,
                           checks=['contains_source_terms:question'])
             search_id = f'search.{prefix}'
             request = {'contract_version': 'search-request/v1', 'run_id': state['run_id'],
@@ -163,7 +166,7 @@ def collect(state, records):
                     # The full body is pinned in the internal ledger; only one window is sent.
                     yield element(state, excerpt_id, '問いの根拠になる本文の一部分を、そのまま1つ抜き書きしてください。',
                                   {'question': q['question'], 'body': body, 'source_url': source['url']},
-                                  max_chars=240, checks=['exact_excerpt:source_url'])
+                                  min_chars=20, max_chars=240, checks=['min_chars:20', 'exact_excerpt:source_url', 'source_terms_or_sentence:question'])
                     quote = answers[excerpt_id]
                     # Distinct windows of the same source are one independent source.
                     if body_hash not in evidence_by_hash:
@@ -204,6 +207,26 @@ def collect(state, records):
                          for row in records['evidence']]
 
 
+def candidate_claim_pairs(claims):
+    """Within-question pairs first, then cross-question pairs sharing evidence."""
+    questions, evidence, seen = {}, {}, set()
+    for claim in claims:
+        questions.setdefault(claim['scope'], []).append(claim)
+        for eid in claim['evidence_ids']:
+            evidence.setdefault(eid, []).append(claim)
+    order = {claim['id']: index for index, claim in enumerate(claims)}
+    for groups, cross_only in ((questions, False), (evidence, True)):
+        for group in groups.values():
+            for left, right in combinations(group, 2):
+                if cross_only and left['scope'] == right['scope']:
+                    continue
+                left, right = sorted((left, right), key=lambda c: order[c['id']])
+                pair = (left['id'], right['id'])
+                if pair not in seen:
+                    seen.add(pair)
+                    yield left, right
+
+
 def analyze(state, records):
     answers = state['answers']
     for excerpt in records['excerpts']:
@@ -211,16 +234,18 @@ def analyze(state, records):
         identifier = f'observation.{oid}'
         question = next(q['question'] for q in records['questions'] if q['id'] == excerpt['question_id'])
         yield element(state, identifier, 'この抜き書きから観察できることを1文で返してください。',
-                      {'question': question, 'quote': excerpt['quote']},
-                      checks=['one_sentence', 'contains_source_terms:quote'])
+                      {'question': question, 'quote': excerpt['quote'],
+                       'similarity_threshold': state['config']['derivation_similarity_threshold']},
+                      checks=['one_sentence', 'contains_source_terms:quote', 'not_similar_to:quote'])
         records['observations'].append({'id': oid, 'statement': answers[identifier],
             'scope': excerpt['question_id'], 'evidence_ids': [excerpt['evidence_id']]})
     for observation in records['observations']:
         cid = f"CL{len(records['claims'])+1:03}"
         identifier = f'claim.{cid}'
         yield element(state, identifier, 'この観察が根拠となる主張を1文で返してください。',
-                      {'observation': observation['statement']},
-                      checks=['one_sentence', 'contains_source_terms:observation'])
+                      {'observation': observation['statement'],
+                       'similarity_threshold': state['config']['derivation_similarity_threshold']},
+                      checks=['one_sentence', 'contains_source_terms:observation', 'not_similar_to:observation'])
         type_id = f'claim-type.{cid}'
         yield element(state, type_id, 'この主張の種類を1つ選んでください。',
                       {'claim': answers[identifier], 'observation': observation['statement']},
@@ -232,7 +257,11 @@ def analyze(state, records):
             'evidence_ids': observation['evidence_ids'], 'supporting_claims': [], 'opposing_claims': [],
             'scope': observation['scope'], 'epistemic_status': status})
     # Earlier-to-later order makes the support graph acyclic; opposition is symmetric.
-    for left, right in combinations(records['claims'], 2):
+    candidates = list(islice(candidate_claim_pairs(records['claims']), state['config']['max_claim_pairs'] + 1))
+    state['pair_review'] = {'limit': state['config']['max_claim_pairs'],
+                            'selected_count': min(len(candidates), state['config']['max_claim_pairs']),
+                            'truncated': len(candidates) > state['config']['max_claim_pairs']}
+    for left, right in candidates[:state['config']['max_claim_pairs']]:
         identifier = f"pair.{left['id']}.{right['id']}"
         yield element(state, identifier, '左の主張は右の主張を支持、対立、無関係のどれにしますか。1つ選んでください。',
                       {'left': left['statement'], 'right': right['statement']},
@@ -278,13 +307,17 @@ def decide(state, records):
         did = f"DC{len(records['decisions'])+1:03}"
         question_id = f'decision-question.{did}'
         yield element(state, question_id, 'この洞察を作品に生かすために決める問いを1文で返してください。',
-                      {'insight': insight['statement']}, checks=['ends_with_question', 'one_sentence'], max_chars=120)
+                      {'proposition': state['proposition'],
+                       'research_question': next(q['question'] for q in records['questions']
+                           if q['id'] == next(c['scope'] for c in records['claims'] if c['id'] == insight['claim_ids'][0])),
+                       'insight': insight['statement']}, checks=['ends_with_question', 'one_sentence'], max_chars=120)
         options = {}
         for index in range(state['config']['options_per_decision']):
             option_id = f'{did}-option-{index+1}'
             identifier = f'option.{option_id}'
             yield element(state, identifier, 'この判断の問いへの選択肢を1つ、既出と異なる内容で返してください。',
-                          {'question': answers[question_id], 'insight': insight['statement'], 'previous_options': list(options.values())},
+                          {'proposition': state['proposition'], 'question': answers[question_id],
+                           'insight': insight['statement'], 'previous_options': list(options.values())},
                           checks=['one_sentence', 'not_similar_to:previous_options'], max_chars=160)
             options[option_id] = answers[identifier]
         adoption_id = f'adopt.{did}'
@@ -297,7 +330,8 @@ def decide(state, records):
                 continue
             identifier = f'reject.{option_id}'
             yield element(state, identifier, 'この選択肢を採用しない理由を1文で返してください。',
-                          {'insight': insight['statement'], 'selected': options[selected], 'rejected': option}, checks=['one_sentence'])
+                          {'proposition': state['proposition'], 'insight': insight['statement'],
+                           'selected': options[selected], 'rejected': option}, checks=['one_sentence'])
             rid = f"RO{len(records['rejected'])+1:03}"
             records['rejected'].append({'id': rid, 'title': option, 'reason': answers[identifier], 'decision_ids': [did]})
             rejected.append(rid)
@@ -317,7 +351,7 @@ def decide(state, records):
     # Inspect each evidence-backed source; a generic article is never invented into a work title.
     for evidence in records['evidence']:
         source = state['ledger'][evidence['source_location']]
-        quotes = [e['quote'] for e in records['excerpts'] if e['evidence_id'] == evidence['id']]
+        quotes = list(dict.fromkeys(e['quote'] for e in records['excerpts'] if e['evidence_id'] == evidence['id']))
         identifier = f"prior-work.{evidence['id']}"
         yield element(state, identifier, 'この取得資料には比較する先行作品が記述されていますか。はい/いいえと理由1文を返してください。',
                       {'title': source['title'], 'quotes': quotes[:state['config']['insight_group_size']]}, boolean=True, checks=['one_sentence'])

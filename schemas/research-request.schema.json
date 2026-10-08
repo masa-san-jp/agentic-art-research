@@ -18,6 +18,7 @@
   "additionalProperties": false,
   "properties": {
     "schema_version": {"const": "1.0.0"},
+    "research_route": {"$ref": "common.schema.json#/$defs/researchRoute"},
     "request_id": {"type": "string", "pattern": "^RR[0-9]{3,}$"},
     "requested_at": {"$ref": "common.schema.json#/$defs/timestamp"},
     "source": {"$ref": "#/$defs/source"},

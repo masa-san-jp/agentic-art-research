@@ -381,6 +381,7 @@ class ResearchElementsTest(unittest.TestCase):
 
     def test_materialized_research_validates_with_existing_repository_gates(self):
         import shutil
+        import subprocess
         from validate import validate_repository
         from build_graph import build_graph
         self.small_plan()
@@ -393,6 +394,19 @@ class ResearchElementsTest(unittest.TestCase):
         self.assertEqual([], [(f.rule, f.message) for f in findings])
         graph = build_graph(root)
         self.assertTrue(any(node['id'] == 'DC001' for node in graph['nodes']))
+        command = [sys.executable, str(ROOT / 'tools/validate.py'), '--check',
+                   '--protocol-root', str(ROOT), '--work-root', str(root),
+                   '--project', 'project/elements']
+        result = subprocess.run(command, capture_output=True, text=True)
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        # The external CLI must exercise the additional checkpoint checks.
+        path = self.project / '02_evidence/excerpts.jsonl'
+        rows = [json.loads(line) for line in path.read_text().splitlines()]
+        rows[0]['quote'] = 'Changed outside the checkpoint'
+        path.write_text(''.join(json.dumps(row) + '\n' for row in rows))
+        result = subprocess.run(command, capture_output=True, text=True)
+        self.assertEqual(1, result.returncode)
+        self.assertIn('ELEMENT-', result.stdout)
 
     def test_long_source_yields_one_excerpt_and_claim_for_the_question(self):
         self.small_plan(max_total_sources=1)
@@ -428,3 +442,141 @@ class ResearchElementsTest(unittest.TestCase):
         self.assertIsNone(report['next_action'])
         self.assertEqual(pending_id, report['blocked']['element_id'])
         self.assertEqual('runtime_budget', report['blocked']['last_failure'][0]['check'])
+
+    def test_default_four_question_pipeline_and_grounded_decision_inputs(self):
+        from collections import Counter
+        report, requests = self.run_fake()
+        self.assertEqual('COMPLETED', report['status'])
+        self.assertEqual(118, len(requests))
+        self.assertEqual({'question': 4, 'query': 12, 'search': 12, 'relevance': 8,
+                          'excerpt': 8, 'observation': 8, 'claim': 8, 'claim-type': 8,
+                          'pair': 16, 'insight': 4, 'decision-question': 4, 'option': 8,
+                          'adopt': 4, 'reject': 4, 'prior-work': 2, 'difference': 8},
+                         dict(Counter(r['element_id'].split('.')[0] for r in requests)))
+        self.assertTrue(all(r['attempt'] == 1 for r in requests))
+        questions = [r for r in requests if r['element_id'].startswith('question.')]
+        self.assertEqual(4, len(questions))
+        state = load_json(self.engine.path)
+        qtexts = [state['answers'][r['element_id']] for r in questions]
+        self.assertEqual(4, len(set(qtexts)))
+        queries = [state['answers'][r['element_id']] for r in requests if r['element_id'].startswith('query.')]
+        self.assertEqual(len(queries), len(set(queries)))
+        for request in requests:
+            stage = request['element_id'].split('.')[0]
+            if stage in {'decision-question', 'option', 'reject'}:
+                self.assertEqual(state['proposition'], request['inputs']['proposition'])
+            if stage == 'decision-question':
+                self.assertIn(request['inputs']['research_question'], qtexts)
+            if stage == 'query':
+                self.assertEqual(state['config']['search_strategy_descriptions'][request['inputs']['strategy']], request['inputs']['strategy_description'])
+            if stage == 'prior-work':
+                self.assertEqual(1, len(request['inputs']['quotes']))
+            if 'inputs' in request:
+                self.assertLessEqual(len(json.dumps(request['inputs'], ensure_ascii=False).encode()), 4096)
+        self.assertFalse(report['completion']['pair_review']['truncated'])
+        self.assertEqual(len(requests), report['accepted_count'])
+        self.assertEqual([], __import__('research_element_validation').check_project(self.project.resolve(), ROOT))
+
+    def test_excerpt_requires_length_and_anchor_or_complete_sentence(self):
+        request = self.until_search()
+        answer = self.fake(request)
+        answer['results'] = answer['results'][:1]
+        sentence = 'Puzzling unrelated vocabulary appears here.'
+        fragment = 'Detached fragment with no overlap'
+        answer['results'][0]['body'] = sentence + ' ' + fragment
+        request = self.engine.answer(answer, now=NOW)['next_action']['request']
+        request = self.engine.answer(self.fake(request), now=NOW)['next_action']['request']
+        self.assertEqual(20, request['answer_format']['min_chars'])
+        for value, check in [('e', 'min_chars:20'), (fragment, 'source_terms_or_sentence:question')]:
+            report = self.engine.answer(self.reply(request, value), now=NOW)
+            retry = report['next_action']['request']
+            self.assertEqual(request['element_id'], retry['element_id'])
+            self.assertIn(check, [f['check'] for f in retry['previous_failure']])
+            request = retry
+        report = self.engine.answer(self.reply(request, sentence), now=NOW)
+        self.assertNotEqual(request['element_id'], report['next_action']['request']['element_id'])
+
+    def test_copied_observation_and_claim_retry_only_their_element(self):
+        self.small_plan()
+        report = self.engine.next(now=NOW)
+        for stage, input_key in [('observation', 'quote'), ('claim', 'observation')]:
+            while not report['next_action']['request']['element_id'].startswith(stage + '.'):
+                request = report['next_action']['request']
+                report = self.engine.answer(self.fake(request), now=NOW)
+            request = report['next_action']['request']
+            before = load_json(self.engine.path)['answers']
+            self.assertEqual('0.9', request['inputs']['similarity_threshold'])
+            report = self.engine.answer(self.reply(request, request['inputs'][input_key]), now=NOW)
+            retry = report['next_action']['request']
+            self.assertEqual(request['element_id'], retry['element_id'])
+            self.assertIn('not_similar_to:' + input_key, [f['check'] for f in retry['previous_failure']])
+            self.assertEqual(before, load_json(self.engine.path)['answers'])
+            report = self.engine.answer(self.fake(retry), now=NOW)
+
+    def test_pair_candidates_require_same_question_or_shared_evidence(self):
+        from research_element_driver import candidate_claim_pairs
+        claims = [{'id': 'CL001', 'scope': 'Q001', 'evidence_ids': ['EV001']},
+                  {'id': 'CL002', 'scope': 'Q001', 'evidence_ids': ['EV002']},
+                  {'id': 'CL003', 'scope': 'Q002', 'evidence_ids': ['EV001']},
+                  {'id': 'CL004', 'scope': 'Q002', 'evidence_ids': ['EV003']}]
+        pairs = [(a['id'], b['id']) for a, b in candidate_claim_pairs(claims)]
+        self.assertEqual([('CL001', 'CL002'), ('CL003', 'CL004'), ('CL001', 'CL003')], pairs)
+
+    def test_pair_cap_is_a_reported_gap_without_extra_inference(self):
+        self.engine.config['max_claim_pairs'] = 1
+        report, requests = self.run_fake()
+        pairs = [r for r in requests if r['element_id'].startswith('pair.')]
+        self.assertEqual(1, len(pairs))
+        self.assertEqual({'limit': 1, 'selected_count': 1, 'truncated': True}, report['completion']['pair_review'])
+
+    def test_previous_frozen_policy_requires_pinned_code_not_silent_upgrade(self):
+        from research_element_validation import require_schema
+        config = dict(self.engine.config)
+        config['version'] = 1
+        with self.assertRaisesRegex(ValueError, 'version: const failed'):
+            require_schema(ROOT, 'research-elements-config', config)
+
+    def test_new_entry_defaults_to_elements_and_preview_does_not_write(self):
+        from next_action import build_next_action
+        root = Path(self.temp.name).resolve()
+        before = {p.relative_to(self.project).as_posix(): p.read_bytes() for p in self.project.rglob('*') if p.is_file()}
+        preview = build_next_action(root, 'project/elements', 'probe', NOW, protocol_root=ROOT, dry_run=True)
+        self.assertEqual('element-request/v1', preview['next_action']['request']['contract_version'])
+        self.assertEqual(before, {p.relative_to(self.project).as_posix(): p.read_bytes() for p in self.project.rglob('*') if p.is_file()})
+        live = build_next_action(root, 'project/elements', 'probe', NOW, protocol_root=ROOT)
+        self.assertEqual(preview, live)
+        self.assertNotIn('write_targets', live)
+
+    def test_legacy_entry_requires_explicit_selection_and_warns(self):
+        import shutil
+        import warnings
+        from task_runtime import initialize_runtime
+        from next_action import build_next_action
+        from research_routing import LegacyResearchWarning
+        root = Path(self.temp.name).resolve()
+        for name in ('config', 'schemas'):
+            shutil.copytree(ROOT / name, root / name)
+        initialize_runtime(root, 'project/elements', initialized_at=NOW, protocol_root=ROOT)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter('always')
+            result = build_next_action(root, 'project/elements', 'probe', NOW, protocol_root=ROOT, research_route='legacy')
+        self.assertEqual('TASK001', result['task_id'])
+        self.assertTrue(any(issubclass(w.category, LegacyResearchWarning) for w in caught))
+
+    def test_whole_role_supervisor_cannot_start_default_element_project(self):
+        from harness_supervisor import Supervisor, SupervisorError
+        with self.assertRaisesRegex(SupervisorError, 'HARNESS-RESEARCH-ROUTE'):
+            Supervisor(protocol_root=ROOT, work_root=Path(self.temp.name), output_root=Path(self.temp.name) / 'output', project_id='project/elements', run_id='HR122')
+
+    def test_harness_new_request_returns_one_element_without_invoking_worker(self):
+        from harness_e2e import run_request
+        root = Path(self.temp.name)
+        request = yaml.safe_load((ROOT / 'tests/fixtures/harness/request.yaml').read_text())
+        request.pop('research_route')
+        path = root / 'request.yaml'
+        path.write_text(yaml.safe_dump(request))
+        def forbidden_worker(*args, **kwargs):
+            self.fail('Whole-role worker invoked for new element research')
+        report = run_request(protocol_root=ROOT, work_root=root / 'new-work', output_root=root / 'new-output', run_id='HR122', request_path=path, now=NOW, worker_runner=forbidden_worker)
+        self.assertEqual('element-request/v1', report['next_action']['request']['contract_version'])
+        self.assertEqual('question.Q001', report['next_action']['request']['element_id'])

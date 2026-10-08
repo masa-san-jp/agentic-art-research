@@ -106,7 +106,7 @@ class ResearchMemoryTests(unittest.TestCase):
         initialize_runtime(root, "project/second", initialized_at=NOW)
         pack = build_context_pack(root, "project/second", "TASK001", "planner", memory_query=self.query(receipt["target_commit"]))
         self.assertEqual("NOT_RECORDED", pack["prior_knowledge"]["reuse_status"])
-        action = build_next_action(root, "project/second", "synthetic-worker", NOW, dry_run=True,
+        action = build_next_action(root, "project/second", "synthetic-worker", NOW, dry_run=True, research_route="legacy",
             protocol_root=ROOT, work_root=root, memory_query=self.query(receipt["target_commit"]))
         self.assertEqual(pack["prior_knowledge"], action["context"]["prior_knowledge"])
         hit = next(h for h in pack["prior_knowledge"]["records"] if h["item_id"] == "CL001")

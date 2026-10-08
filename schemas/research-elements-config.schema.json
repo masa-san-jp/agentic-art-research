@@ -19,11 +19,15 @@
     "pair_relations",
     "rights_default",
     "rights_by_url",
-    "paths"
+    "paths",
+    "default_route",
+    "max_claim_pairs",
+    "derivation_similarity_threshold",
+    "search_strategy_descriptions"
   ],
   "properties": {
     "version": {
-      "const": 1
+      "const": 2
     },
     "max_attempts": {
       "type": "integer",
@@ -230,6 +234,44 @@
         },
         "repetition_report": {
           "const": "07_runtime/element-repetition-scan.json"
+        }
+      }
+    },
+    "default_route": {
+      "const": "research_elements"
+    },
+    "max_claim_pairs": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10000
+    },
+    "derivation_similarity_threshold": {
+      "type": "string",
+      "const": "0.9"
+    },
+    "search_strategy_descriptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "primary",
+        "counterexample",
+        "independent-secondary"
+      ],
+      "properties": {
+        "primary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "counterexample": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "independent-secondary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
         }
       }
     }

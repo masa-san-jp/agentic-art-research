@@ -57,7 +57,7 @@ class RetryFeedbackContractTest(unittest.TestCase):
         self.output.mkdir()
         (self.work / "projects").mkdir()
         shutil.copytree(REPO_ROOT / "config", self.work / "config")
-        self.project = create_project(self.work, "probe", "Probe", protocol_root=REPO_ROOT)
+        self.project = create_project(self.work, "probe", "Probe", protocol_root=REPO_ROOT, research_route="legacy")
         task_runtime.initialize_runtime(self.work, "project/probe", initialized_at=NOW)
         self.addCleanup(shutil.rmtree, self.root, True)
 

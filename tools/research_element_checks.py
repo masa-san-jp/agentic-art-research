@@ -40,7 +40,7 @@ def parse_check(spec: str) -> tuple[str, str]:
     name, _, arg = spec.partition(':')
     plain = {'non_empty', 'ends_with_question', 'url_shape', 'url_in_ledger', 'one_sentence'}
     lists = {'contains_terms', 'contains_source_terms', 'forbidden', 'one_of'}
-    keyed = {'reference_exists', 'exact_excerpt', 'not_similar_to'}
+    keyed = {'reference_exists', 'exact_excerpt', 'not_similar_to', 'source_terms_or_sentence'}
     if name in plain and not arg and ':' not in spec:
         return name, arg
     if name in lists and arg and all(item.strip() for item in arg.split(',')):
@@ -120,6 +120,20 @@ def check_value(value: object, checks: list[str], *, inputs: dict,
             groups = [inputs.get(key) for key in arg.split(',')]
             ok = all(isinstance(body, str) and any(term in source_terms(text) or (len(term) == 1 and re.search(r'[\u30a0-\u30ff\u3400-\u9fff]', term) and term in unicodedata.normalize('NFKC', text)) for term in source_terms(body)) for body in groups)
             reason = 'Include at least one literal content term from each named source.'
+        elif name == 'source_terms_or_sentence':
+            question = inputs.get(arg, '')
+            question_words = {'how', 'what', 'which', 'when', 'where', 'why', 'who',
+                              'does', 'do', 'did', 'can', 'could', 'should', 'would'}
+            anchored = bool(source_terms(text) & (source_terms(question) - question_words))
+            body = ledger.get(inputs.get('source_url'), {}).get('body', '')
+            start = body.find(text)
+            prefix = body[:start].rstrip() if start >= 0 else ''
+            sentence = (start >= 0 and (not prefix or prefix[-1] in '.!?。！？')
+                        and text.rstrip().endswith(('.', '!', '?', '。', '！', '？'))
+                        and '\n' not in text and '\r' not in text
+                        and len(re.findall(r'[。!?！？]|(?<!\d)\.(?!\d)', text)) == 1)
+            ok = anchored or sentence
+            reason = 'Include a question content term, or copy one complete source sentence.'
         elif name == 'contains_terms':
             terms = [inputs.get(item, item) for item in arg.split(',')]
             ok = all(isinstance(term, str) and term.strip() and term in text for term in terms)
@@ -147,7 +161,7 @@ def check_value(value: object, checks: list[str], *, inputs: dict,
         elif name == 'not_similar_to':
             prior = inputs.get(arg)
             prior = prior if isinstance(prior, list) else [prior]
-            ok = all(isinstance(v, str) and not too_similar(text, v, '0.8') for v in prior)
+            ok = all(isinstance(v, str) and not too_similar(text, v, inputs.get('similarity_threshold', '0.8')) for v in prior)
             reason = 'Use an operation distinct from the supplied material.'
         elif name == 'not_similar':
             old = [v.get('reason', '') if isinstance(v, dict) else v for v in previous_answers.values()]

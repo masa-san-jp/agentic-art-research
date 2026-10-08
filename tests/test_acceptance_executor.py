@@ -53,7 +53,7 @@ class AcceptanceExecutorContractTest(unittest.TestCase):
         (self.work / "projects").mkdir()
         (self.work / "data").mkdir()
         shutil.copytree(REPO_ROOT / "config", self.work / "config")
-        self.project = create_project(self.work, "probe", "Probe", creator_id="test", protocol_root=REPO_ROOT)
+        self.project = create_project(self.work, "probe", "Probe", creator_id="test", protocol_root=REPO_ROOT, research_route="legacy")
         task_runtime.initialize_runtime(self.work, "project/probe", initialized_at=NOW)
         claimed = task_runtime.claim_next(self.work, "project/probe", "worker-1", now=NOW)
         self.assertIsNotNone(claimed)

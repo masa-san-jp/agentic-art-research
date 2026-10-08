@@ -164,6 +164,7 @@ def _resume_command(protocol_root: Path, work_root: Path, output_root: Path, run
         f"python3 {protocol_root / 'tools' / 'harness.py'} resume"
         f" --protocol-root {protocol_root} --work-root {work_root}"
         f" --output-root {output_root} --run-id {run_id}"
+        " --research-route legacy"
     )
 
 
@@ -661,13 +662,15 @@ def run_request(
     worker_runner: Callable[..., dict[str, Any]] | None = None,
     phase_callback: Callable[[str], None] | None = None,
     resume: bool = False,
+    research_route: str | None = None,
 ) -> dict[str, Any]:
-    """Run or resume one request and always return a versioned outcome."""
+    """Return one element for research; explicit legacy returns its run outcome."""
 
     protocol = protocol_root.resolve()
     work = work_root.resolve()
     output = output_root.resolve()
     paths = HarnessPaths.resolve(protocol, work, output)
+    from research_routing import select_route
     state_hint = _load_state(work) if resume and work.is_dir() else None
     if isinstance(state_hint, dict):
         # A resume command intentionally needs only run_id and roots.  The
@@ -690,6 +693,13 @@ def run_request(
             import harness as harness_module
 
             request, request_sha256 = _validate_request(protocol, request_path.expanduser().resolve())
+            selected_route = select_route(protocol, declared=request.get('research_route'), override=research_route)
+            if selected_route == 'research_elements':
+                manifest = bootstrap(protocol_root=protocol, work_root=work, output_root=output,
+                    run_id=run_id, now=_timestamp(now), request_path=request_path,
+                    profiles_root=profiles_root, art_history_root=art_history_root, production_schema=production_schema)
+                from research_elements import Engine
+                return Engine(work / 'projects' / manifest['project_id'].split('/')[1]).next(now=_timestamp(now), run_id=run_id)
             slug = str(request["project"]["slug"])
             protocol_commit, _ = harness_module._git_head(protocol)
             existing = _existing_output(
@@ -707,6 +717,11 @@ def run_request(
             manifest = _load_bootstrap_manifest(work)
             if manifest.get("run_id") != run_id:
                 raise HarnessE2EError("HARNESS-RESUME", "run ID does not match the bootstrap manifest")
+            project = work / 'projects' / manifest['project_id'].split('/')[1]
+            selected_route = select_route(protocol, project, override=research_route)
+            if selected_route == 'research_elements':
+                from research_elements import Engine
+                return Engine(project).next(now=_timestamp(now), run_id=run_id)
             existing = _existing_output(
                 protocol_root=protocol,
                 output_root=output,
@@ -791,6 +806,7 @@ def run_request(
             output_root=output,
             project_id=manifest["project_id"],
             run_id=run_id,
+            research_route=selected_route,
             worker_id=worker_id,
             adapter=adapter,
             command=command,

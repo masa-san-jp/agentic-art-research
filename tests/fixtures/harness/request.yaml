@@ -1,4 +1,5 @@
 schema_version: 1.0.0
+research_route: legacy
 request_id: RR001
 requested_at: '2026-08-25T00:00:00+09:00'
 source:

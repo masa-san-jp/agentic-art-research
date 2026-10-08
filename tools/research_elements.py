@@ -201,6 +201,21 @@ class Engine:
                     {'check': 'runtime_budget', 'reason': 'Project runtime budget exhausted.'}]})
             self.advance(state)
 
+    def preview(self, *, now, run_id='research'):
+        """Read-only entry preview; do not claim a legacy task or write a checkpoint."""
+        from research_element_driver import advance
+        timestamp(now)
+        state = self.read() if self.path.exists() else self.initialize(now, run_id)
+        if timestamp(now) < timestamp(state['last_now']):
+            raise ValueError('--now cannot move backwards')
+        if state['status'] == 'WAITING' and (timestamp(now) - timestamp(state['started_at'])).total_seconds() >= state['budget']['max_runtime_minutes'] * 60:
+            state.update(status='BLOCKED', pending=None, blocked={'element_id': state['pending']['element_id'],
+                'last_failure': [{'check': 'runtime_budget', 'reason': 'Project runtime budget exhausted.'}]})
+        advance(state)
+        if state['pending'] is None:
+            self.finish(state)
+        return self.report(state)
+
     def next(self, *, now, run_id='research', history_root=None, rights_table=None):
         timestamp(now)
         with self.locked():
@@ -321,7 +336,8 @@ class Engine:
                       prior_art=state['record_counts']['prior_art'], self_repetition_review=len(reviews))
         failures = quality_failures(CompletionQualityPolicy(state['minimums'], tuple(state['required_records'])), counts)
         state['completion'] = {'stage': 'B', 'status': 'INCOMPLETE' if failures or state['status'] == 'BLOCKED' else (
-            'COMPLETE_WITH_GAPS' if state['question_gaps'] or state['record_counts']['contradictions'] or state['record_counts']['uncertainties'] else 'COMPLETE'),
+            'COMPLETE_WITH_GAPS' if state.get('pair_review', {}).get('truncated') or state['question_gaps'] or state['record_counts']['contradictions'] or state['record_counts']['uncertainties'] else 'COMPLETE'),
+            'pair_review': state.get('pair_review'),
             'counts': counts, 'quality_failures': failures, 'unresolved_questions': state['question_gaps'],
             'next_start': 'Stage C and the existing production-brief / native project acceptance gates.',
             'project_completed': False}
