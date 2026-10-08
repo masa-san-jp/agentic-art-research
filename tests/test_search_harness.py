@@ -44,7 +44,7 @@ class SearchHarnessContractTest(unittest.TestCase):
         self.output.mkdir()
         (self.work / "projects").mkdir()
         shutil.copytree(REPO_ROOT / "config", self.work / "config")
-        self.project = create_project(self.work, "probe", "Probe", protocol_root=REPO_ROOT)
+        self.project = create_project(self.work, "probe", "Probe", protocol_root=REPO_ROOT, research_route="legacy")
         (self.project / "01_planning/question-register.yaml").write_text(
             "questions:\n  - id: Q001\n    text: Which direction should continue?\n    priority: mandatory\n    status: OPEN\n",
             encoding="utf-8",

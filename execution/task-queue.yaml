@@ -537,3 +537,18 @@ tasks:
       - python3 -m unittest discover -s tests -v
       - git diff --check
     completion: v1.1 visual-language mechanisms are grounded by resolvable proposition and reference IDs; self-repetition-scan/v2 reads mechanism metadata, scopes declared creator history, reports unavailable history as UNKNOWN with HISTORY_ROOT_UNAVAILABLE, legacy v1 and visual-language v1.0 remain readable, and all 289 local tests plus child gates pass. PR #87 is merged to main as 1e8390e6ac7286c23a971d19a8797be4851cf086; its remote check was not started because of an account billing limit.
+
+  - id: ELEMENT-RESEARCH-122
+    milestone: G7
+    title: Qualify standalone Stage B element research
+    status: BLOCKED
+    depends_on: []
+    issue_refs: ["agentic-art-research#122"]
+    acceptance: Fake answerer runs questions through ledger-bound prior-art differences one element at a time; owner-profile live acceptance with actually retrieved public sources and grounded ledger claims/decisions must pass before DONE.
+    checks:
+      - .venv/bin/python -m unittest discover -s tests -v
+      - .venv/bin/python tools/validate.py --check
+      - .venv/bin/python tools/build_graph.py --check
+      - git diff --check
+    completion: Review code b3f60fc33d913aa84a8e2dbcb2866d6428e4abaf qualified with both full 410-test suites, focused 35 tests, fixture matrix 3, default fake CLI 118 first-attempt requests, small CLI 24, external validation and all prior checks (exit 0).
+    blocked_reason: LIVE-ACCEPTANCE-NOT-RUN; no external browsing authorized in this implementation session.

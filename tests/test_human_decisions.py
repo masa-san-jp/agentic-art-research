@@ -40,7 +40,7 @@ class HumanDecisionContractTest(unittest.TestCase):
         self.output.mkdir()
         (self.work / "projects").mkdir()
         shutil.copytree(REPO_ROOT / "config", self.work / "config")
-        self.project = create_project(self.work, "probe", "Probe", creator_id="test", protocol_root=REPO_ROOT)
+        self.project = create_project(self.work, "probe", "Probe", creator_id="test", protocol_root=REPO_ROOT, research_route="legacy")
         task_runtime.initialize_runtime(self.work, "project/probe", initialized_at=NOW)
         claimed = task_runtime.claim_next(self.work, "project/probe", "worker-a", now=NOW)
         self.assertIsNotNone(claimed)

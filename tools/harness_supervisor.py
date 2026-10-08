@@ -220,6 +220,7 @@ class Supervisor:
         sleep: Callable[[float], None] | None = None,
         worker_runner: Callable[..., dict[str, Any]] | None = None,
         event_callback: Callable[[dict[str, Any]], None] | None = None,
+        research_route: str | None = None,
     ) -> None:
         if not project_id.startswith("project/") or project_id.count("/") != 1:
             raise SupervisorError("HARNESS-JOURNAL", "project_id must be project/<slug>")
@@ -228,6 +229,10 @@ class Supervisor:
         self.protocol_root = protocol_root.resolve()
         self.work_root = work_root.resolve()
         self.output_root = output_root.resolve()
+        from research_routing import select_route
+        self.research_route = select_route(self.protocol_root, self.work_root / 'projects' / project_id.split('/')[1], override=research_route)
+        if self.research_route != 'legacy':
+            raise SupervisorError('HARNESS-RESEARCH-ROUTE', 'New research uses research_elements next/answer; whole-role workers require explicit legacy selection.')
         self.project_id = project_id
         self.run_id = run_id
         self.worker_id = _safe_id(worker_id, "worker_id")
@@ -565,6 +570,7 @@ class Supervisor:
                         work_root=self.work_root,
                         output_root=self.output_root,
                         run_id=self.run_id,
+                        research_route=self.research_route,
                     )
                 except retry_feedback.RetryFeedbackError as exc:
                     raise SupervisorError("HARNESS-RETRY-FEEDBACK", str(exc)) from exc

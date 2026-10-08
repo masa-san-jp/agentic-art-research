@@ -133,6 +133,28 @@
           "$ref": "common.schema.json#/$defs/nonEmptyString"
         }
       }
+    },
+    "element_research": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "question_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "options_per_decision": {
+          "type": "integer",
+          "minimum": 2
+        },
+        "search_limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        }
+      }
+    },
+    "research_route": {
+      "$ref": "common.schema.json#/$defs/researchRoute"
     }
   }
 }

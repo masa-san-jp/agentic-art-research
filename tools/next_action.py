@@ -291,6 +291,7 @@ def build_next_action(
     output_root: Path | None = None,
     memory_query: dict[str, Any] | None = None,
     run_id: str | None = None,
+    research_route: str | None = None,
 ) -> dict[str, Any]:
     if memory_query is not None and memory_query.get("at") != now:
         raise NextActionError("memory query must use the current task clock")
@@ -300,6 +301,11 @@ def build_next_action(
     output = (output_root or work / "data" / "handoffs").resolve()
     project = _project(work, target)
     slug = target.split("/", 1)[1]
+    from research_routing import select_route
+    if select_route(protocol, project, override=research_route) == 'research_elements':
+        from research_elements import Engine
+        engine = Engine(project)
+        return engine.preview(now=now, run_id=run_id or 'research') if dry_run else engine.next(now=now, run_id=run_id or 'research')
     events = read_jsonl(project / "07_runtime" / "run-log.jsonl")
     budget = budget_remaining(project, events)
     preview = task_runtime.peek_next(work, target, worker_id, now=now)
@@ -475,6 +481,7 @@ def main() -> int:
     parser.add_argument("--output-root", type=Path, help="external successful-output root")
     parser.add_argument("--memory-query", type=Path, help="explicit external owner/creator/pinned knowledge query JSON")
     parser.add_argument("--run-id", help="harness run ID used to include retry feedback in the context")
+    parser.add_argument("--research-route", choices=["research_elements", "legacy"], help="default: research_elements; explicit legacy emits a warning")
     args = parser.parse_args()
     if args.run_id and not args.protocol_root:
         parser.error("--protocol-root is required when --run-id is supplied")
@@ -491,6 +498,7 @@ def main() -> int:
                 output_root=args.output_root.resolve() if args.output_root else None,
                 memory_query=__import__("json").loads(args.memory_query.read_text()) if args.memory_query else None,
                 run_id=args.run_id,
+                research_route=args.research_route,
             )
         )
     except (NextActionError, InputParseError, task_runtime.TaskRuntimeError,

@@ -96,6 +96,11 @@ def build_context_pack(
         "acceptance_tests": _read_source(project, ACCEPTANCE_TESTS_PATH),
         "evidence": [_read_source(project, relative) for relative in ROLE_SOURCE_PATHS[role]],
     }
+    # The supervisor's worker envelope consumes summary/source_refs, not the
+    # richer evidence objects. Include the proposition at this explicit boundary.
+    intent = _read_source(project, "00_intake/creative-intent.md")
+    pack["summary"] = f"{task.get('title', task_id)}\nCreative intent:\n{intent['content']}"
+    pack["source_refs"] = list(dict.fromkeys([intent["path"], *ROLE_SOURCE_PATHS[role]]))
     if human_decision is not None:
         pack["human_decision"] = dict(human_decision)
     if run_id is not None and attempt_id is not None:

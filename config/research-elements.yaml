@@ -1,0 +1,54 @@
+version: 2
+default_route: research_elements
+max_claim_pairs: 120
+derivation_similarity_threshold: "0.9"
+search_strategy_descriptions:
+  primary: 制作者・作品・研究の一次資料を探し、問いに直接関係する記述を確認する。
+  counterexample: 問いの仮説を否定する事例や異なる結果を探し、反証を確認する。
+  independent-secondary: 一次資料の転載ではない独立した批評・研究を探し、別の立場から照合する。
+max_attempts: 5
+question_count: 4
+options_per_decision: 2
+search_strategies:
+- primary
+- counterexample
+- independent-secondary
+search_limit: 10
+input_bytes: 4096
+body_chunk_bytes: 2000
+max_search_body_bytes: 1048576
+max_search_answer_bytes: 10485760
+forbidden:
+- ∩
+- 無し
+- 未記入
+pair_relations:
+- supports
+- opposes
+- unrelated
+rights_default:
+  rights_status: unknown
+  redistribution: unknown
+  sensitivity: PUBLIC_CITABLE
+rights_by_url: {}
+paths:
+  state: 07_runtime/research-elements.json
+  lock: 07_runtime/research-elements.lock
+  questions: 01_planning/question-register.yaml
+  sources: 02_evidence/source-ledger.jsonl
+  evidence: 02_evidence/evidence-ledger.jsonl
+  observations: 03_knowledge/observations.jsonl
+  claims: 03_knowledge/claims.jsonl
+  relationships: 03_knowledge/relationships.jsonl
+  contradictions: 03_knowledge/contradictions.jsonl
+  insights: 04_decisions/insight-register.yaml
+  decisions: 04_decisions/decision-log.yaml
+  rejected: 04_decisions/rejected-options.yaml
+  prior_art: 03_knowledge/prior-art.jsonl
+  rights: 06_governance/rights-register.yaml
+  log: 07_runtime/run-log.jsonl
+  excerpts: 02_evidence/excerpts.jsonl
+  uncertainties: 04_decisions/uncertainty-register.yaml
+  reviews: 04_decisions/self-repetition-review.yaml
+  repetition_report: 07_runtime/element-repetition-scan.json
+insight_group_size: 2

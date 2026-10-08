@@ -1188,3 +1188,100 @@ Pending native qualification and rerun under an explicit new code pin.
 Actual fork testing also exposed opaque catalog URNs being exported as HTTPS access URLs. Preserve hashed provenance and omit unavailable external access; Production owns category availability and gap handling. Original465 candidate remains preserved, this follow-up is separately qualified.
 
 Qualification outcome: code2304261b0c009b9f8690f2d5afbd76a53304c8a9 passed all required owner gates. Six actual-agent runs and main integration remain parent AAK02 responsibilities; no physical or public execution is claimed.
+
+## Issue #122 ExecPlan: Stage B research elements
+
+### Purpose / Big Picture
+
+Replace role-sized research generation with `tools/research_elements.py next|answer --project <external-dir>`. Workers return a single parent-compatible element value; search agents return retrieved URL/title/body envelopes. Programs own IDs, budgets, pinning, exact quotations, assembly and completion checks. Parent run.py integration and Stage C remain separate. Actual projects, profiles and retrieved bodies stay outside this protocol Git.
+
+### Progress
+
+- [x] Envelope engine, checkpoints, retry isolation and program projections (6 focused tests).
+- [x] Questions, search requests, source relevance and exact excerpts (12 focused tests).
+- [x] Observations, typed claims, pair enumeration and support/opposition (14 focused tests).
+- [x] Insights, decisions, rejection reasons and ledger-bound prior art differences (23 focused tests, including native validator/graph).
+- [x] Final shared and repository-local quality gates; both full suites passed 400 tests on a clean pinned checkout.
+- [ ] Owner-profile live acceptance: `LIVE-ACCEPTANCE-NOT-RUN` (external browsing prohibited in this implementation session).
+
+### Surprises & Discoveries
+
+- The parent source at commit `337c33211d6048d934b2db0dcf749cd25cb2e617` supplies closed wire schemas and mechanical checks. Existing research task runtime has separate leases and whole-role acceptance; the requested standalone CLI must not falsely complete those tasks.
+
+- A malformed unrelated schema initially crashed the optional validator. Restrict its schema registry to the requested local reference closure so native `SCHEMA-META` findings retain their meaning.
+
+### Decision Log
+
+- Keep one accepted quote/observation/claim per source/question; continue to later UTF-8 windows only when earlier windows are irrelevant. Full retrieved bodies remain pinned.
+- Enumerate unordered claim pairs, direct support from earlier to later claims to preserve the native acyclic support contract, and record opposition symmetrically.
+
+- Use an opt-in standalone Stage B engine; retain legacy acceptance and production-brief generation until owner live acceptance. No silent lowering of project completion minimums.
+- Copy the four parent wire schemas verbatim and mechanical checks with provenance. Use a dynamic deterministic research driver rather than import parent run.py.
+- Freeze creative intent, constraints, plan and policy at run start; reject changed inputs and foreign output edits. Persist answers before deriving files so interrupted materialization is recoverable.
+- Network browsing is prohibited by the orchestration instruction for this implementation session. A real live run cannot be substituted by fictional sources or the fake answerer.
+
+### Outcomes
+
+`CODE_VERIFIED_LIVE_NOT_RUN`. Task `ELEMENT-RESEARCH-122`, repository maintenance (no real target project). Issue masa-san-jp/agentic-art-research#122; branch agent/122-element-research; base `ba1f2d2426073fd2dcb4d235fb5bf72d558de6ea`. Qualified code `9dcc70521babd67b7353cef3044742bd39c60a04`, tree `56ecf9bffc3886960c808b6984a41fe8b6e26bbb`; copied parent contracts at `337c33211d6048d934b2db0dcf749cd25cb2e617`.
+
+`SHARED_PYTHON` below denotes the interpreter explicitly supplied by the orchestrator; no user-specific absolute path is added to this repository.
+
+| Acceptance command | Exit | Result |
+| --- | --- | --- |
+| `$SHARED_PYTHON -m compileall -q tools tests` | 0 | 113 Python files |
+| `$SHARED_PYTHON -m unittest discover -s tests -v` | 0 | Ran 400 tests in 1972.770s, OK |
+| `.venv/bin/python -m unittest discover -s tests -v` | 0 | Ran 400 tests in 1863.277s, OK |
+| `$SHARED_PYTHON tools/validate.py --check` | 0 | repository validation passed |
+| `.venv/bin/python tools/validate.py --check` | 0 | repository validation passed |
+| `$SHARED_PYTHON tools/build_graph.py --check` | 0 | generated graph current |
+| `.venv/bin/python tools/build_graph.py --check` | 0 | generated graph current |
+| `$SHARED_PYTHON -m unittest discover -s tests -p test_research_elements.py -v` | 0 | Ran 25 tests, OK |
+| `$SHARED_PYTHON -m unittest discover -s tests -p test_fixture_matrix.py -v` | 0 | Ran 3 tests, OK |
+| `.venv/bin/python tools/security_check.py --check` | 0 | advanced security inspection passed |
+| `.venv/bin/python tools/docs_check.py --check` | 0 | documentation check passed |
+| `git diff --check` | 0 | no whitespace errors |
+
+The final full commands used `PYTHONDONTWRITEBYTECODE=1` to keep the protocol snapshot stable. The real standalone CLI smoke test (synthetic inputs only, exit 0) passed 24 successive search/single-value envelopes from question to prior-work difference. Its final request status was `COMPLETED`, native quality `INCOMPLETE`, and `project_completed: false`; this is not a native project completion or owner live acceptance.
+
+Initial shared full run: exit 1, Ran 398 tests in 3619.809s, 1 failure / 12 errors. The unrelated schema exception was repaired; concurrent archive temporary-path collision and dirty-checkout failures are retained as failed preliminary qualification. Initial local full run: `PRELIMINARY-LOCAL-RUN-TERMINATED`, exit 143, 162 completed passing lines / 2 completed failure lines / 1 completed error line; it never produced a final suite count. It was ended only after both final suites passed, because the stale snapshot test was still running and appeared to be formatting a large failure difference. No initial failure or interrupted run is counted as a pass, and no existing assertion/gate was weakened.
+
+Full logs SHA-256: shared `b4d7076c30d4e904e46b12e98c362a325e021592fae03e715c42926407ba9f7e`, local `ab9edec1d747055b6bfc4fd0d3a26cc11730a780d32606c56406050903365048`. Local implementation commits: e4e3636, 7ea94c2, 944603d, 7cfa627, 9dcc705. Completion paths and commands are repeated in execution/state.yaml and execution/handoff.md.
+
+Remaining condition: `LIVE-ACCEPTANCE-NOT-RUN`. No external web retrieval was performed under the explicit no-browsing instruction. Next start: orchestrator reviews local commits, supplies the owner profile's Stage A central proposition to a fresh external project, answers CLI requests one at a time with actually retrieved public bodies, confirms grounded claims/decisions in the ledger, and records owner output acceptance. Only then may this task become DONE; parent run.py integration and Stage C remain separate issues.
+
+No sensitive information, real profile/project/runtime/raw or actual graph was added to Git. Synthetic CLI and element-test temporary projects were removed by their normal cleanup. OS-temp cleanup for the interrupted preliminary legacy test is not verified. No push, PR, GitHub write, public artifact or real production output was created.
+
+### Issue #122 review revision (2026-10-08)
+
+Progress: IN_PROGRESS. Implement all ten requested fixes, make new research element-based by default, retain explicitly selected legacy tests/gates with warnings, qualify the unmodified default four-question fake run, then rerun every prior check on committed code. No real-owner acceptance is claimed.
+
+Decision: pair review prioritizes same-question combinations and admits cross-question combinations only with shared evidence; its configured cap yields an explicit truncation gap. New config v2 rejects prior frozen checkpoints rather than silently changing their checks; finish older runs on their pinned code or create a fresh external project.
+
+Progress: all ten review fixes implemented. The initial opt-in routing decision above is superseded: new research uses research_elements by default; legacy requires explicit request/plan/CLI selection and emits a deprecation warning. Native legacy tests now declare that selection; their assertions/gates are retained. The pre-qualification focused suite passed 35 tests (11.531s, exit 0), including the unmodified default four-question run: 118 first-attempt requests (106 elements, 12 searches). External validator CLI accepts the generated project and rejects altered quotations with ELEMENT findings. An earlier focused run (35 tests, 11.118s, exit 1, one error) exposed missing work-root config in the new legacy test setup; this fixture setup was repaired without changing acceptance assertions. The preceding boolean answer-format error during implementation was corrected before qualification. Full qualification follows on a clean local code commit.
+
+Review Outcomes: `CODE_VERIFIED_LIVE_NOT_RUN`. All ten requested revisions are implemented in local commits `5f105c0a0c78ff1aa23e857e92736a43b800a9e9` and `b3f60fc33d913aa84a8e2dbcb2866d6428e4abaf`. Qualified code is the latter commit, tree `6e935535bc1efe1112a83d7b42a219a64efec724`. Full source remained clean and unchanged throughout qualification. Shared and local full suites used separate isolated TMPDIR roots to avoid the existing archive-test path collision, and `PYTHONDONTWRITEBYTECODE=1` was inherited by subprocesses.
+
+| Review acceptance command | Exit | Result |
+| --- | --- | --- |
+| `$SHARED_PYTHON -m compileall -q tools tests` | 0 | 114 Python files |
+| `$SHARED_PYTHON -m unittest discover -s tests -v` | 0 | Ran 410 tests in 1139.396s, OK |
+| `.venv/bin/python -m unittest discover -s tests -v` | 0 | Ran 410 tests in 1155.697s, OK |
+| `$SHARED_PYTHON tools/validate.py --check` | 0 | repository validation passed |
+| `.venv/bin/python tools/validate.py --check` | 0 | repository validation passed |
+| `$SHARED_PYTHON tools/build_graph.py --check` | 0 | generated graph current |
+| `.venv/bin/python tools/build_graph.py --check` | 0 | generated graph current |
+| `$SHARED_PYTHON -m unittest discover -s tests -p test_research_elements.py -v` | 0 | Ran 35 tests in 18.494s, OK |
+| `$SHARED_PYTHON -m unittest discover -s tests -p test_fixture_matrix.py -v` | 0 | Ran 3 tests in 31.277s, OK |
+| `.venv/bin/python tools/security_check.py --check` | 0 | advanced security inspection passed |
+| `.venv/bin/python tools/docs_check.py --check` | 0 | documentation check passed |
+| `git diff --check` | 0 | no whitespace errors |
+| `$SHARED_PYTHON /tmp/issue122_review_default_cli.py` | 0 | unmodified default plan, 118 first-attempt CLI envelopes, external validator exit 0 |
+| `$SHARED_PYTHON /tmp/issue122_cli_smoke.py` | 0 | previous small-plan smoke rerun, 24 CLI envelopes |
+
+The default CLI smoke repeatedly invokes `tools/research_elements.py next|answer --project <external-dir> --now <RFC3339>` using the bundled fake, then `tools/validate.py --check --protocol-root <protocol-dir> --work-root <external-work-root> --project project/cli-elements`. Default request counts: question 4, query 12, search 12, relevance 8, excerpt 8, observation 8, claim 8, claim-type 8, pair 16, insight 4, decision-question 4, option 8, adopt 4, reject 4, prior-work 2, difference 8. Total 118 (106 element values and 12 search answers); retries 0. The fixture has two unique sources and does not meet native research minimums: status COMPLETED, quality INCOMPLETE, project_completed false. These are synthetic protocol results, not owner live acceptance or a promised count for real retrieval.
+
+Review full log SHA-256: shared `19b5c396d52d9194428f25f8cea4b0786adacd2141865323c3bef44abb307e6b`, local `a64e3e257325c426462766b3d329d78983f993f98de46be69f5f8d581eec0cad`. Focused elements `3d8f73c714198318a0ea85daa5bbc71d8883a774606887c65b3b8f248d931f36`, fixture matrix `47f5c4c60b2e785d8099f7a0c777e0b764a5a9efcea9c6d28aebcd7cd636f1af`, default CLI `276f4f0bc44e96af147c3a940677c06814e0fd29f025f6d95096c08540aa685c`. Before the review cases were added, the repaired original focused suite also completed: Ran 25 tests in 4.270s, OK, exit 0. No preliminary failed run is treated as passing evidence.
+
+Review decisions: complete-sentence quotation boundaries are determined by source start/end punctuation when no literal question content term is present; 20 characters and exact source/window match are always required. Claim pairs prioritize same-question comparisons, with only shared-evidence comparisons across questions, capped at config max_claim_pairs 120; truncation remains a reported gap. Similarity checks are lexical (0.9 for quote/observation derivation), not a semantic guarantee. Config v1 checkpoints stay on their pinned code; the new v2 policy is not silently substituted. Whole-role fixture/gate assertions remain unchanged; their setup explicitly selects legacy. README/AGENTS/element docs explain the new default, temporary legacy policy, and Git-external validator procedure. All changed paths are listed in execution/state.yaml.
+
+Remaining condition is unchanged: LIVE-ACCEPTANCE-NOT-RUN, because external site browsing is explicitly prohibited and no owner Stage A proposition plus actual retrieved bodies was provided as a live acceptance input. Task remains BLOCKED; next start is the orchestrator's owner-profile external CLI run and grounded ledger review. No sensitive data, real profile/project/raw/runtime or actual graph was committed; no GitHub write, public artifact or real production output occurred. Synthetic CLI/element/full-suite project directories were cleaned normally. The isolated full-suite temporary roots retain only empty runtime locks; OS-temp cleanup of the prior interrupted legacy run remains unverified.

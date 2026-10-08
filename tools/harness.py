@@ -453,6 +453,7 @@ def main() -> int:
     parser.add_argument("--fixture-mode")
     parser.add_argument("--max-runtime-seconds", type=int)
     parser.add_argument("--max-tasks", type=int)
+    parser.add_argument("--research-route", choices=["research_elements", "legacy"], help="default: research_elements; legacy is deprecated")
     args = parser.parse_args()
     try:
         if args.command == "conformance":
@@ -561,6 +562,7 @@ def main() -> int:
                 max_runtime_seconds=args.max_runtime_seconds,
                 max_tasks=args.max_tasks,
                 resume=args.command == "resume",
+                research_route=args.research_route,
             )
         else:
             target = args.decision_command
@@ -576,20 +578,28 @@ def main() -> int:
                     parser.error(f"--command-json must be a JSON argv array: {exc}")
                 if not isinstance(command, list) or any(not isinstance(item, str) for item in command):
                     parser.error("--command-json must be a JSON argv array")
-            supervisor = harness_supervisor.Supervisor(
-                protocol_root=args.protocol_root,
-                work_root=args.work_root,
-                output_root=args.output_root,
-                project_id=target,
-                run_id=args.run_id,
-                worker_id=args.worker,
-                adapter=args.adapter,
-                command=command,
-                fixture_mode=args.fixture_mode,
-                max_runtime_seconds=args.max_runtime_seconds,
-                max_tasks=args.max_tasks,
-            )
-            result = supervisor.run(resume=args.command == "resume")
+            from research_routing import select_route
+            project = args.work_root.resolve() / 'projects' / target.split('/')[1]
+            route = select_route(args.protocol_root.resolve(), project, override=args.research_route)
+            if route == 'research_elements':
+                from research_elements import Engine
+                result = Engine(project).next(now=_timestamp(args.now), run_id=args.run_id)
+            else:
+                supervisor = harness_supervisor.Supervisor(
+                    research_route=args.research_route,
+                    protocol_root=args.protocol_root,
+                    work_root=args.work_root,
+                    output_root=args.output_root,
+                    project_id=target,
+                    run_id=args.run_id,
+                    worker_id=args.worker,
+                    adapter=args.adapter,
+                    command=command,
+                    fixture_mode=args.fixture_mode,
+                    max_runtime_seconds=args.max_runtime_seconds,
+                    max_tasks=args.max_tasks,
+                )
+                result = supervisor.run(resume=args.command == "resume")
     except (HarnessError, HarnessPathError, RequestAcceptanceError, human_decisions.HumanDecisionError, harness_supervisor.SupervisorError, task_runtime.TaskRuntimeError, OSError, ValueError) as exc:
         print(f"FAILED: {exc}")
         return 1

@@ -51,6 +51,14 @@ fi
 
 ## 無人でプロジェクトを進めるとき
 
+段階Bの新規調査は `research_elements` が既定である。下記の入口も1件の
+`element-request/v1` または `search-request/v1` を返すので、依頼のinputsだけを使い、
+`tools/research_elements.py answer --project <external-project-dir>` に1件ずつ回答する。
+答え手は成果物ファイルを書かず、プログラムが組み立てる。詳細と外部project検証は
+[要素リサーチ手順](docs/research-elements.md)に従う。
+以下のtask lease / write_targets / complete手順は、request/planまたはCLIで
+`legacy` を明示した互換経路に適用する。使用時に警告し、段階Bの実 run 受理と移行後に外す。
+
 調査プロジェクトの中で作業するエージェントは、この節だけで動けるようにする。仕様書と手順書を
 全文読んでから組み立てる必要は無い——**入口が、そのタスクに要る分だけを返す。**
 

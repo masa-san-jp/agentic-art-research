@@ -37,7 +37,7 @@ class AttemptWorkspaceContractTest(unittest.TestCase):
         self.output.mkdir()
         (self.work / "data").mkdir()
         (self.work / "projects").mkdir()
-        self.project = create_project(self.work, "probe", "Probe", protocol_root=REPO_ROOT)
+        self.project = create_project(self.work, "probe", "Probe", protocol_root=REPO_ROOT, research_route="legacy")
         self.addCleanup(shutil.rmtree, self.root, True)
 
     def make_attempt(self, role: str = "planner", attempt_id: str = "AT001"):

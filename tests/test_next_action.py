@@ -25,7 +25,7 @@ LATER = "2026-08-21T09:10:00+09:00"
 
 def _new_project(root: Path, slug: str) -> None:
     subprocess.run(
-        [sys.executable, "tools/new_project.py", slug, "--title", slug, "--creator-id", "test", "--root", str(root)],
+        [sys.executable, "tools/new_project.py", slug, "--title", slug, "--creator-id", "test", "--research-route", "legacy", "--root", str(root)],
         cwd=ROOT, capture_output=True, text=True, check=True,
     )
 

@@ -127,7 +127,7 @@ PYTHON=".venv/bin/python"
   --output-root "$OUTPUT_ROOT"
 ```
 
-実際にclaimするときは `--dry-run` を外します。同じworkerが既にtaskを持つ場合は、そのtaskが再開されます。`NO_TASK_READY` は「勝手に新しいtaskを作る」という意味ではなく、queue上に開始可能なtaskがないという終端状態です。
+`--dry-run` を外すと既定の要素依頼を固定します。役割単位のclaim/resumeを使う場合だけ `--research-route legacy` を明示します。その互換経路では、同じworkerが既にtaskを持つ場合に再開し、`NO_TASK_READY` はqueue上に開始可能なtaskがない終端状態を表します。
 
 ハーネス自体の成功・失敗・resume・境界をofflineで確認するだけなら、reference matrixを実行します。
 
@@ -163,6 +163,14 @@ WORK_ROOT="${WORK_ROOT:-$(mktemp -d /tmp/agentic-art-work.XXXXXX)}"
 
 受理されるprojectは `RESEARCH_ONLY` で始まり、`task_runtime` も初期化されます。同じ依頼の再実行は `ALREADY_APPLIED` になり、既存projectを上書きしません。
 
+## 要素単位の研究（段階 B）
+
+`tools/research_elements.py next|answer --project <external-project-dir>` で、1件の依頼に1つの値を返す研究単体CLIを利用できます。検索は利用中のエージェントが実行し、本文hash・引用・台帳・ファイル生成はプログラムが処理します。[手順と完了状態](docs/research-elements.md)を参照してください。親runとの接続、段階C、production-briefは後続工程です。
+
+新規調査の既定は `research_elements` です。`next_action.py` と `harness.py run` も1件の要素依頼を返し、答え手は `research_elements.py answer` に回答します。TASK001〜009をworkerにまとめて書かせる旧経路は、request/planの `research_route: legacy` またはCLIの `--research-route legacy` を明示した場合だけ動き、警告を出します。段階Bの実 run 受理と移行が完了したら旧経路を外します。
+
+要素の台帳・引用を検証するには、Git外のprojectを指定します。リポジトリ単独の検証に加え、`.venv/bin/python tools/validate.py --check --protocol-root <protocol-dir> --work-root <external-work-root> --project project/<slug>` を実行してください。配置と検査内容は[外部projectの手順](docs/research-elements.md)に記載しています。
+
 ## 実行モデル
 
 | root | 役割 | 置くもの |
@@ -173,7 +181,7 @@ WORK_ROOT="${WORK_ROOT:-$(mktemp -d /tmp/agentic-art-work.XXXXXX)}"
 
 3つのrootを同じ場所、親子関係、symlink、広すぎるfilesystem直下にしないでください。`harness.py` はprotocolをwork rootへatomicに展開し、失敗時にpartial outputを残しません。
 
-実運転でrequest受理から検証済みhandoffまでを一度に接続する入口は次です。`ADAPTER` には `config/worker-adapters.yaml` に定義したadapter名を指定します。
+以下は明示的な旧経路でrequest受理から検証済みhandoffまでを接続する互換手順です。`ADAPTER` には `config/worker-adapters.yaml` に定義したadapter名を指定します。
 
 ```bash
 PYTHON=".venv/bin/python"
@@ -184,6 +192,7 @@ OUTPUT_ROOT="$(mktemp -d /tmp/agentic-art-output.XXXXXX)"
 
 "$PYTHON" tools/harness.py run \
   --request "$REQUEST" \
+  --research-route legacy \
   --adapter "$ADAPTER" \
   --protocol-root "$(pwd)" \
   --work-root "$WORK_ROOT" \

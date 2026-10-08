@@ -45,7 +45,7 @@ class HarnessSupervisorContractTest(unittest.TestCase):
         self.output.mkdir()
         (self.work / "projects").mkdir()
         shutil.copytree(REPO_ROOT / "config", self.work / "config")
-        self.project = create_project(self.work, "supervisor-probe", "Supervisor probe", protocol_root=REPO_ROOT)
+        self.project = create_project(self.work, "supervisor-probe", "Supervisor probe", protocol_root=REPO_ROOT, research_route="legacy")
         plan = self.project / "01_planning/research-plan.yaml"
         plan.write_text(
             plan.read_text(encoding="utf-8").replace(
@@ -266,7 +266,7 @@ class HarnessSupervisorContractTest(unittest.TestCase):
         events = load_json(self.root / "work/.harness/supervisor/supervisor-probe/HR701.json")["events"]
         self.assertTrue(any(event.get("phase") == "HEARTBEAT" for event in events))
 
-        create_project(self.work, "shutdown-probe", "Shutdown probe", protocol_root=REPO_ROOT)
+        create_project(self.work, "shutdown-probe", "Shutdown probe", protocol_root=REPO_ROOT, research_route="legacy")
         task_runtime.initialize_runtime(self.work, "project/shutdown-probe", initialized_at=NOW)
         shutdown_supervisor = self.make_supervisor(project_id="project/shutdown-probe", run_id="HR702")
 

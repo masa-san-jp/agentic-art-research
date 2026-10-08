@@ -1,0 +1,270 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/research-elements.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "run_id",
+    "project_id",
+    "source_commit",
+    "started_at",
+    "last_now",
+    "inputs",
+    "config",
+    "stopping",
+    "budget",
+    "minimums",
+    "required_records",
+    "vocabulary",
+    "answers",
+    "ledger",
+    "history",
+    "attempt",
+    "previous_failure",
+    "status",
+    "pending",
+    "files",
+    "previous_files",
+    "baseline_log",
+    "history_root",
+    "history_snapshot",
+    "security_patterns",
+    "record_counts",
+    "question_gaps",
+    "proposition"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "research-elements/v1"
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "project_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "started_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "last_now": {
+      "type": "string",
+      "minLength": 1
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "config": {
+      "$ref": "research-elements-config.schema.json"
+    },
+    "stopping": {
+      "type": "object"
+    },
+    "budget": {
+      "type": "object"
+    },
+    "minimums": {
+      "type": "object"
+    },
+    "required_records": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "vocabulary": {
+      "type": "object"
+    },
+    "answers": {
+      "type": "object"
+    },
+    "ledger": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "url",
+          "title",
+          "body",
+          "acquired_at",
+          "content_hash",
+          "id"
+        ],
+        "properties": {
+          "url": {
+            "type": "string",
+            "minLength": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "body": {
+            "type": "string",
+            "minLength": 1
+          },
+          "acquired_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "content_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "id": {
+            "type": "string",
+            "pattern": "^SRC[0-9]{3,}$"
+          }
+        }
+      }
+    },
+    "history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "element_id",
+          "attempt",
+          "answer_hash",
+          "occurred_at",
+          "failures"
+        ],
+        "properties": {
+          "element_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "attempt": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "answer_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "occurred_at": {
+            "type": "string",
+            "minLength": 1
+          },
+          "failures": {
+            "type": "array"
+          }
+        }
+      }
+    },
+    "attempt": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "previous_failure": {
+      "type": [
+        "array",
+        "null"
+      ]
+    },
+    "status": {
+      "enum": [
+        "WAITING",
+        "COMPLETED",
+        "BLOCKED"
+      ]
+    },
+    "pending": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "files": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "previous_files": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "baseline_log": {
+      "type": "string"
+    },
+    "history_root": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "history_snapshot": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "security_patterns": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "record_counts": {
+      "type": "object"
+    },
+    "question_gaps": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "completion": {
+      "type": "object"
+    },
+    "blocked": {
+      "type": "object"
+    },
+    "repetition_scan": {
+      "type": "object"
+    },
+    "proposition": {
+      "type": "string",
+      "minLength": 1
+    },
+    "pair_review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "limit",
+        "selected_count",
+        "truncated"
+      ],
+      "properties": {
+        "limit": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "selected_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}
