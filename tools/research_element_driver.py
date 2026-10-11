@@ -164,9 +164,12 @@ def collect(state, records):
                         continue
                     excerpt_id = f'excerpt.{prefix_source}'
                     # The full body is pinned in the internal ledger; only one window is sent.
-                    yield element(state, excerpt_id, '問いの根拠になる本文の一部分を、そのまま1つ抜き書きしてください。',
+                    # A source in another language shares no content term with the question, so only a
+                    # complete sentence can pass; the cap must admit one ordinary long sentence.
+                    yield element(state, excerpt_id, '問いの根拠になる本文の一部分を、そのまま1つ抜き書きしてください。'
+                                  '問いの言葉を含まない場合は、本文の完全な1文を引用符を付けずにそのまま写してください。',
                                   {'question': q['question'], 'body': body, 'source_url': source['url']},
-                                  min_chars=20, max_chars=240, checks=['min_chars:20', 'exact_excerpt:source_url', 'source_terms_or_sentence:question'])
+                                  min_chars=20, max_chars=600, checks=['min_chars:20', 'exact_excerpt:source_url', 'source_terms_or_sentence:question'])
                     quote = answers[excerpt_id]
                     # Distinct windows of the same source are one independent source.
                     if body_hash not in evidence_by_hash:

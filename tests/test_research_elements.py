@@ -496,6 +496,22 @@ class ResearchElementsTest(unittest.TestCase):
         report = self.engine.answer(self.reply(request, sentence), now=NOW)
         self.assertNotEqual(request['element_id'], report['next_action']['request']['element_id'])
 
+    def test_excerpt_accepts_one_long_sentence_from_a_source_in_another_language(self):
+        request = self.until_search()
+        answer = self.fake(request)
+        answer['results'] = answer['results'][:1]
+        sentence = ('An appreciable incidence of irregular auditing was discovered which was associated, '
+                    'inter alia, with perceptions of time budget pressure, perception of a firm culture of '
+                    'acceptance of irregular short cuts and areas of work which were felt to be unimportant.')
+        self.assertGreater(len(sentence), 240)
+        answer['results'][0]['body'] = 'Survey results. ' + sentence + ' Implications follow.'
+        request = self.engine.answer(answer, now=NOW)['next_action']['request']
+        relevant = {'answer': True, 'reason': 'Time pressure is linked to irregular work.'}
+        request = self.engine.answer(self.reply(request, relevant), now=NOW)['next_action']['request']
+        self.assertTrue(request['element_id'].startswith('excerpt.'))
+        report = self.engine.answer(self.reply(request, sentence), now=NOW)
+        self.assertNotEqual(request['element_id'], report['next_action']['request']['element_id'])
+
     def test_copied_observation_and_claim_retry_only_their_element(self):
         self.small_plan()
         report = self.engine.next(now=NOW)
