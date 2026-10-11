@@ -563,15 +563,21 @@ class ResearchElementsTest(unittest.TestCase):
 
     def test_question_elements_receive_stage_a_grounding(self):
         from research_elements import grounding
-        intent = ('# T\n\n## 制作意図\n\n命題が制作に耐えるかを確かめる。\n\n## 現時点の中心命題\n\n何が具体性を分けるか?\n\n'
+        intent = ('# T\n\n## 制作意図\n\n命題 phase-a:LIVE-20261010-A7 が制作に耐えるかを確かめる。\n\n## 現時点の中心命題\n\n何が具体性を分けるか?\n\n'
                   '## 観客に起こしたい体験\n\n未確認。\n\n## 参照候補\n\n'
                   '- art-history:conceptual-art: urn:art-history:x (rights_status=UNKNOWN)\n'
-                  '- marketing:specificity-over-relatability-expectation: urn:m:y (rights_status=UNKNOWN)\n')
+                  '- marketing:specificity-over-relatability-expectation: urn:m:y (rights_status=UNKNOWN)\n'
+                  '- self:claim:cost-decision-pulls-both-ways: urn:self-model:z (rights_status=UNKNOWN)\n'
+                  '- phase-a-provenance.json: material, cards and the question: urn:o:p (rights_status=APPROVED_REFERENCE)\n')
         text = grounding(intent)
-        self.assertIn('命題が制作に耐えるかを確かめる。', text)
+        self.assertIn('命題 が制作に耐えるかを確かめる。', text)
+        self.assertNotIn('phase-a', text)
         self.assertIn('conceptual-art', text)
         self.assertIn('specificity-over-relatability-expectation', text)
         self.assertNotIn('urn:', text)
+        self.assertIn('cost-decision-pulls-both-ways', text)
+        self.assertNotIn('self:', text)
+        self.assertNotIn('provenance', text)
         self.assertNotIn('未確認', text)
         (self.project / '00_intake/creative-intent.md').write_text(intent)
         request = Engine(self.project).next(now=NOW)['next_action']['request']

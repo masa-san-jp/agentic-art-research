@@ -49,12 +49,15 @@ def grounding(intent: str) -> str:
     parts = []
     purpose = re.search(r'^## (?:制作意図|Purpose)\s*\n(.*?)(?=^## |\Z)', intent, re.M | re.S)
     if purpose and purpose.group(1).strip() and '未確認' not in purpose.group(1):
-        parts.append(' '.join(purpose.group(1).split()))
+        # Internal identifiers (e.g. "phase-a:LIVE-20261010-A7") leaked into questions and queries.
+        text = re.sub(r'\s*\b[a-z][a-z0-9-]*:[A-Za-z0-9][A-Za-z0-9:._-]*', '', purpose.group(1))
+        parts.append(' '.join(text.split()))
     refs = re.search(r'^## (?:参照候補|References)\s*\n(.*?)(?=^## |\Z)', intent, re.M | re.S)
     if refs:
-        labels = [m.split(':', 1)[1] if m.count(':') >= 1 and not m.startswith('http') else m
-                  for m in re.findall(r'^- ([^:\n]+(?::[^:\s\n]+)*):\s', refs.group(1), re.M)]
-        labels = list(dict.fromkeys(label.strip() for label in labels if label.strip()))
+        # Keep the topic part of each label ("self:claim:x" -> "x"); file names are records, not topics.
+        labels = [m.rsplit(':', 1)[-1].strip() for m in re.findall(r'^- ([^:\n]+(?::[^:\s\n]+)*):\s', refs.group(1), re.M)]
+        labels = list(dict.fromkeys(label for label in labels
+                                    if label and not re.search(r'\.(?:json|ya?ml|md|txt|csv)$', label)))
         if labels:
             parts.append('参照: ' + ', '.join(labels))
     text = ' / '.join(parts)
