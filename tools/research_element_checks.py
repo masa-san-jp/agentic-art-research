@@ -115,10 +115,11 @@ def check_value(value: object, checks: list[str], *, inputs: dict,
             reason = 'End the question with ? or ？.'
         elif name == 'one_sentence':
             # Quoted material (「」『』“”"") may carry its own sentence marks, e.g. a source title
-            # ending in "!" inside a Japanese sentence; only the outer sentence counts (as in the
-            # parent's element_checks.py).
+            # ending in "!" inside a Japanese sentence; only the outer sentence counts.
             outer = re.sub(r'「[^」]*」|『[^』]*』|“[^”]*”|"[^"]*"', '', text.strip())
-            enders = re.findall(r'[。!?！？]|(?<!\d)\.(?=\s+[A-Z]|\s*$)', outer)
+            # Every period ends a sentence except a decimal point (3.5); review found that
+            # requiring an uppercase letter next let "First. second." through.
+            enders = re.findall(r'[。!?！？]|\.(?!\d)', outer)
             ok = '\n' not in text.strip() and '\r' not in text.strip() and len(enders) <= 1
             reason = 'Return one sentence only.'
         elif name == 'contains_source_terms':

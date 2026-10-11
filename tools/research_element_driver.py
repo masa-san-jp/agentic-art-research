@@ -57,7 +57,7 @@ def advance(state):
     records = {key: [] for key in state['config']['paths'] if key not in ('state', 'lock', 'repetition_report')}
     pending = None
     for request in schedule(state, records):
-        if request['element_id'] not in state['answers']:
+        if request['element_id'] not in state['answers'] and request['element_id'] not in state.get('abandoned', {}):
             pending = request
             break
     if state['status'] == 'BLOCKED':
@@ -92,7 +92,9 @@ def chunks(body, limit):
 
 
 def occurred(state, identifier):
-    return next(h['occurred_at'] for h in state['history'] if h['element_id'] == identifier and not h['failures'])
+    accepted = [h['occurred_at'] for h in state['history'] if h['element_id'] == identifier and not h['failures']]
+    # An abandoned element has only failed attempts; its event time is the last of them.
+    return accepted[0] if accepted else [h['occurred_at'] for h in state['history'] if h['element_id'] == identifier][-1]
 
 
 def event(state, records, kind, identifier, **fields):
@@ -165,6 +167,9 @@ def collect(state, records):
                     yield element(state, relevance_id, 'この取得本文は問いに関係しますか。はい/いいえと理由1文を返してください。',
                                   {'question': q['question'], 'title': source['title'], 'body': body}, boolean=True,
                                   checks=['one_sentence', 'contains_source_terms:body'])
+                    if relevance_id in state.get('abandoned', {}):
+                        event(state, records, 'ELEMENT_ABANDONED', relevance_id, question_id=qid, source_id=source_id)
+                        continue
                     if not answers[relevance_id]['answer']:
                         continue
                     excerpt_id = f'excerpt.{prefix_source}'
@@ -175,6 +180,9 @@ def collect(state, records):
                                   '問いの言葉を含まない場合は、本文の完全な1文を引用符を付けずにそのまま写してください。',
                                   {'question': q['question'], 'body': body, 'source_url': source['url']},
                                   min_chars=20, max_chars=600, checks=['min_chars:20', 'exact_excerpt:source_url', 'source_terms_or_sentence:question'])
+                    if excerpt_id in state.get('abandoned', {}):
+                        event(state, records, 'ELEMENT_ABANDONED', excerpt_id, question_id=qid, source_id=source_id)
+                        continue
                     quote = answers[excerpt_id]
                     # Distinct windows of the same source are one independent source.
                     if body_hash not in evidence_by_hash:

@@ -524,8 +524,25 @@ class ResearchElementsTest(unittest.TestCase):
         from research_element_checks import check_value
         quoted = "本文は「Making sure you're not a bot!」という確認ページの説明であり、問いとは無関係です。"
         self.assertEqual([], check_value(quoted, ['one_sentence'], inputs={}, ledger={}, previous_answers={}))
-        two = '本文は確認ページである。問いとは無関係です。'
-        self.assertEqual(['one_sentence'], [f['check'] for f in check_value(two, ['one_sentence'], inputs={}, ledger={}, previous_answers={})])
+        for two in ['本文は確認ページである。問いとは無関係です。', 'First sentence. second sentence.',
+                    '測定した. 次の実験を行った.', 'The value is 3. Next sentence.']:
+            self.assertEqual(['one_sentence'], [f['check'] for f in check_value(two, ['one_sentence'], inputs={}, ledger={}, previous_answers={})], two)
+        self.assertEqual([], check_value('The ratio rose to 3.5 percent.', ['one_sentence'], inputs={}, ledger={}, previous_answers={}))
+
+    def test_exhausted_excerpt_skips_the_window_instead_of_blocking(self):
+        request = self.until_search()
+        answer = self.fake(request)
+        answer['results'] = answer['results'][:1]
+        request = self.engine.answer(answer, now=NOW)['next_action']['request']
+        request = self.engine.answer(self.fake(request), now=NOW)['next_action']['request']
+        self.assertTrue(request['element_id'].startswith('excerpt.'))
+        excerpt_id = request['element_id']
+        for _ in range(5):
+            report = self.engine.answer(self.reply(request, 'not in the body at all, twenty chars'), now=NOW)
+            request = report['next_action']['request'] if report['next_action'] else None
+        self.assertNotEqual('BLOCKED', report['status'])
+        self.assertIn(excerpt_id, load_json(self.engine.path)['abandoned'])
+        self.assertNotEqual(excerpt_id, request['element_id'])
 
     def test_copied_observation_and_claim_retry_only_their_element(self):
         self.small_plan()
