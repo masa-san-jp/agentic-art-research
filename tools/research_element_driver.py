@@ -39,11 +39,20 @@ def schedule(state, records):
     for index in range(state['budget']['question_count']):
         qid = f'Q{index+1:03}'
         identifier = f'question.{qid}'
-        yield element(state, identifier, '命題について調べる問いを1文で返してください。',
-                      {'proposition': state['proposition'],
-                       'question_number': index+1,
-                       'previous_questions': [q['question'] for q in records['questions']]},
-                      checks=['ends_with_question', 'one_sentence', 'not_similar:0.8'], max_chars=120)
+        inputs = {'proposition': state['proposition'], 'grounding': state.get('grounding', ''),
+                  'question_number': index+1,
+                  'previous_questions': [q['question'] for q in records['questions']]}
+        # Fit the request byte budget instead of crashing the run: shorten the optional grounding
+        # first, then drop the oldest earlier questions (not_similar still checks every answer).
+        def over():
+            return len(json.dumps(inputs, ensure_ascii=False).encode()) - state['config']['input_bytes']
+        if over() > 0:
+            raw = inputs['grounding'].encode('utf-8')
+            inputs['grounding'] = raw[:max(0, len(raw) - over())].decode('utf-8', errors='ignore')
+        while over() > 0 and inputs['previous_questions']:
+            inputs['previous_questions'] = inputs['previous_questions'][1:]
+        yield element(state, identifier, '命題について調べる問いを1文で返してください。背景（grounding）の制作意図と参照の観点から問いを立ててください。',
+                      inputs, checks=['ends_with_question', 'one_sentence', 'not_similar:0.8'], max_chars=120)
         records['questions'].append({'id': qid, 'question': answers[identifier], 'priority': 'mandatory', 'status': 'OPEN',
                                      'stop_condition': {'sufficient_answers': state['budget']['sufficient_answers'],
                                         'max_search_strategies': min(len(state['config']['search_strategies']), state['stopping']['max_search_strategies_per_question']),
@@ -258,10 +267,12 @@ def analyze(state, records):
     for observation in records['observations']:
         cid = f"CL{len(records['claims'])+1:03}"
         identifier = f'claim.{cid}'
-        yield element(state, identifier, 'この観察が根拠となる主張を1文で返してください。',
+        # A claim states what the observation supports; "cannot be claimed" is not a claim (research #125).
+        yield element(state, identifier, 'この観察が根拠となる主張を1文で返してください。「主張できない」とは書かず、観察から言える内容を主張として書いてください。',
                       {'observation': observation['statement'],
                        'similarity_threshold': state['config']['derivation_similarity_threshold']},
-                      checks=['one_sentence', 'contains_source_terms:observation', 'not_similar_to:observation'])
+                      checks=['one_sentence', 'contains_source_terms:observation', 'not_similar_to:observation',
+                              'forbidden:主張できない,主張はできない,言うことはできない'])
         type_id = f'claim-type.{cid}'
         yield element(state, type_id, 'この主張の種類を1つ選んでください。',
                       {'claim': answers[identifier], 'observation': observation['statement']},

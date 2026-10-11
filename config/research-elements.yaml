@@ -7,7 +7,7 @@ search_strategy_descriptions:
   counterexample: 問いの仮説を否定する事例や異なる結果を探し、反証を確認する。
   independent-secondary: 一次資料の転載ではない独立した批評・研究を探し、別の立場から照合する。
 max_attempts: 5
-question_count: 4
+question_count: 8
 options_per_decision: 2
 search_strategies:
 - primary

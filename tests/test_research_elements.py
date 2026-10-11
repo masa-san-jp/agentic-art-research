@@ -443,8 +443,16 @@ class ResearchElementsTest(unittest.TestCase):
         self.assertEqual(pending_id, report['blocked']['element_id'])
         self.assertEqual('runtime_budget', report['blocked']['last_failure'][0]['check'])
 
+    def test_default_question_count_is_eight(self):
+        self.assertEqual(8, yaml.safe_load((ROOT / 'config/research-elements.yaml').read_text())['question_count'])
+
     def test_default_four_question_pipeline_and_grounded_decision_inputs(self):
         from collections import Counter
+        # The exact element counts below are for a four-question plan (the default is now eight).
+        path = self.project / '01_planning/research-plan.yaml'
+        plan = yaml.safe_load(path.read_text())
+        plan['element_research'] = {'question_count': 4}
+        path.write_text(yaml.safe_dump(plan, sort_keys=False))
         report, requests = self.run_fake()
         self.assertEqual('COMPLETED', report['status'])
         self.assertEqual(118, len(requests))
@@ -552,6 +560,48 @@ class ResearchElementsTest(unittest.TestCase):
         self.assertNotEqual('BLOCKED', report['status'])
         self.assertIn(excerpt_id, load_json(self.engine.path)['abandoned'])
         self.assertNotEqual(excerpt_id, request['element_id'])
+
+    def test_question_elements_receive_stage_a_grounding(self):
+        from research_elements import grounding
+        intent = ('# T\n\n## 制作意図\n\n命題 phase-a:LIVE-20261010-A7 が制作に耐えるかを確かめる。\n\n## 現時点の中心命題\n\n何が具体性を分けるか?\n\n'
+                  '## 観客に起こしたい体験\n\n未確認。\n\n## 参照候補\n\n'
+                  '- art-history:conceptual-art: urn:art-history:x (rights_status=UNKNOWN)\n'
+                  '- marketing:specificity-over-relatability-expectation: urn:m:y (rights_status=UNKNOWN)\n'
+                  '- self:claim:cost-decision-pulls-both-ways: urn:self-model:z (rights_status=UNKNOWN)\n'
+                  '- phase-a-provenance.json: material, cards and the question: urn:o:p (rights_status=APPROVED_REFERENCE)\n')
+        text = grounding(intent)
+        self.assertIn('命題 が制作に耐えるかを確かめる。', text)
+        self.assertNotIn('phase-a', text)
+        self.assertIn('conceptual-art', text)
+        self.assertIn('specificity-over-relatability-expectation', text)
+        self.assertNotIn('urn:', text)
+        self.assertIn('cost-decision-pulls-both-ways', text)
+        self.assertNotIn('self:', text)
+        self.assertNotIn('provenance', text)
+        self.assertNotIn('未確認', text)
+        (self.project / '00_intake/creative-intent.md').write_text(intent)
+        request = Engine(self.project).next(now=NOW)['next_action']['request']
+        self.assertEqual(text, request['inputs']['grounding'])
+
+    def test_long_proposition_and_eight_questions_stay_within_the_request_budget(self):
+        from research_element_driver import schedule
+        self.engine.next(now=NOW)
+        state = load_json(self.engine.path)
+        state['proposition'] = 'あ' * 660 + '?'
+        state['grounding'] = 'い' * 166
+        state['budget']['question_count'] = 8
+        state['answers'] = {f'question.Q{i:03}': 'う' * 119 + '?' for i in range(1, 8)}
+        records = {key: [] for key in state['config']['paths'] if key not in ('state', 'lock', 'repetition_report')}
+        for request in schedule(state, records):
+            self.assertLessEqual(len(json.dumps(request['inputs'], ensure_ascii=False).encode()), state['config']['input_bytes'])
+            if request['element_id'] == 'question.Q008':
+                break
+
+    def test_claim_rejects_a_non_claim(self):
+        from research_element_checks import check_value
+        checks = ['forbidden:主張できない,主張はできない,言うことはできない']
+        self.assertTrue(check_value('この抜粋だけでは影響を主張できない。', checks, inputs={}, ledger={}, previous_answers={}))
+        self.assertFalse(check_value('担当者の裁量が対応の具体性を分ける。', checks, inputs={}, ledger={}, previous_answers={}))
 
     def test_copied_observation_and_claim_retry_only_their_element(self):
         self.small_plan()
