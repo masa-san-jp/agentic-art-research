@@ -39,11 +39,20 @@ def schedule(state, records):
     for index in range(state['budget']['question_count']):
         qid = f'Q{index+1:03}'
         identifier = f'question.{qid}'
+        inputs = {'proposition': state['proposition'], 'grounding': state.get('grounding', ''),
+                  'question_number': index+1,
+                  'previous_questions': [q['question'] for q in records['questions']]}
+        # Fit the request byte budget instead of crashing the run: shorten the optional grounding
+        # first, then drop the oldest earlier questions (not_similar still checks every answer).
+        def over():
+            return len(json.dumps(inputs, ensure_ascii=False).encode()) - state['config']['input_bytes']
+        if over() > 0:
+            raw = inputs['grounding'].encode('utf-8')
+            inputs['grounding'] = raw[:max(0, len(raw) - over())].decode('utf-8', errors='ignore')
+        while over() > 0 and inputs['previous_questions']:
+            inputs['previous_questions'] = inputs['previous_questions'][1:]
         yield element(state, identifier, '命題について調べる問いを1文で返してください。背景（grounding）の制作意図と参照の観点から問いを立ててください。',
-                      {'proposition': state['proposition'], 'grounding': state.get('grounding', ''),
-                       'question_number': index+1,
-                       'previous_questions': [q['question'] for q in records['questions']]},
-                      checks=['ends_with_question', 'one_sentence', 'not_similar:0.8'], max_chars=120)
+                      inputs, checks=['ends_with_question', 'one_sentence', 'not_similar:0.8'], max_chars=120)
         records['questions'].append({'id': qid, 'question': answers[identifier], 'priority': 'mandatory', 'status': 'OPEN',
                                      'stop_condition': {'sufficient_answers': state['budget']['sufficient_answers'],
                                         'max_search_strategies': min(len(state['config']['search_strategies']), state['stopping']['max_search_strategies_per_question']),

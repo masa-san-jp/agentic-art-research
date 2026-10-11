@@ -577,6 +577,20 @@ class ResearchElementsTest(unittest.TestCase):
         request = Engine(self.project).next(now=NOW)['next_action']['request']
         self.assertEqual(text, request['inputs']['grounding'])
 
+    def test_long_proposition_and_eight_questions_stay_within_the_request_budget(self):
+        from research_element_driver import schedule
+        self.engine.next(now=NOW)
+        state = load_json(self.engine.path)
+        state['proposition'] = 'あ' * 660 + '?'
+        state['grounding'] = 'い' * 166
+        state['budget']['question_count'] = 8
+        state['answers'] = {f'question.Q{i:03}': 'う' * 119 + '?' for i in range(1, 8)}
+        records = {key: [] for key in state['config']['paths'] if key not in ('state', 'lock', 'repetition_report')}
+        for request in schedule(state, records):
+            self.assertLessEqual(len(json.dumps(request['inputs'], ensure_ascii=False).encode()), state['config']['input_bytes'])
+            if request['element_id'] == 'question.Q008':
+                break
+
     def test_claim_rejects_a_non_claim(self):
         from research_element_checks import check_value
         checks = ['forbidden:主張できない,主張はできない,言うことはできない']
