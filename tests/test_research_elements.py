@@ -512,6 +512,14 @@ class ResearchElementsTest(unittest.TestCase):
         report = self.engine.answer(self.reply(request, sentence), now=NOW)
         self.assertNotEqual(request['element_id'], report['next_action']['request']['element_id'])
 
+    def test_literal_term_checks_are_named_in_the_instruction(self):
+        request = self.until_search()
+        answer = self.fake(request)
+        request = self.engine.answer(answer, now=NOW)['next_action']['request']
+        self.assertTrue(request['element_id'].startswith('relevance.'))
+        self.assertIn('contains_source_terms:body', request['checks'])
+        self.assertIn('body の中の語をそれぞれ1つ以上、原文の表記のまま含めてください', request['instruction'])
+
     def test_copied_observation_and_claim_retry_only_their_element(self):
         self.small_plan()
         report = self.engine.next(now=NOW)

@@ -15,6 +15,11 @@ def managed_empty_files(config):
 
 
 def element(state, identifier, instruction, inputs, *, choices=None, boolean=False, checks=(), min_chars=1, max_chars=240):
+    # A literal-term check is invisible to the answerer unless the instruction names it; across
+    # languages (Japanese answer, English source) it is otherwise failed on every attempt.
+    named = [c.split(':', 1)[1] for c in checks if c.startswith('contains_source_terms:')]
+    if named:
+        instruction += '回答には ' + '、'.join(named) + ' の中の語をそれぞれ1つ以上、原文の表記のまま含めてください。'
     fmt = {'type': 'choice', 'choices': choices} if choices else {
         'type': 'boolean_with_reason' if boolean else 'text', 'max_chars': max_chars}
     if not choices and not boolean:
