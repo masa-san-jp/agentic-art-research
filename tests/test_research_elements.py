@@ -527,7 +527,9 @@ class ResearchElementsTest(unittest.TestCase):
         for two in ['本文は確認ページである。問いとは無関係です。', 'First sentence. second sentence.',
                     '測定した. 次の実験を行った.', 'The value is 3. Next sentence.']:
             self.assertEqual(['one_sentence'], [f['check'] for f in check_value(two, ['one_sentence'], inputs={}, ledger={}, previous_answers={})], two)
-        self.assertEqual([], check_value('The ratio rose to 3.5 percent.', ['one_sentence'], inputs={}, ledger={}, previous_answers={}))
+        for one in ['The ratio rose to 3.5 percent.', 'The body describes e.g. deferred choice.',
+                    'The body leaves the choice open...', 'v1.2 is out.']:
+            self.assertEqual([], check_value(one, ['one_sentence'], inputs={}, ledger={}, previous_answers={}), one)
 
     def test_exhausted_excerpt_skips_the_window_instead_of_blocking(self):
         request = self.until_search()

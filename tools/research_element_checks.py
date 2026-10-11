@@ -119,7 +119,10 @@ def check_value(value: object, checks: list[str], *, inputs: dict,
             outer = re.sub(r'「[^」]*」|『[^』]*』|“[^”]*”|"[^"]*"', '', text.strip())
             # Every period ends a sentence except a decimal point (3.5); review found that
             # requiring an uppercase letter next let "First. second." through.
-            enders = re.findall(r'[。!?！？]|\.(?!\d)', outer)
+            # Abbreviations and an ellipsis run are not sentence ends.
+            outer = re.sub(r'\b(?:e\.g|i\.e|etc|vs|cf|al|Dr|Mr|Mrs|Ms|St|No|Fig|pp|p)\.', '', outer, flags=re.I)
+            outer = re.sub(r'\.{2,}|…+', '…', outer)
+            enders = re.findall(r'[。!?！？…]+|\.(?!\d)', outer)
             ok = '\n' not in text.strip() and '\r' not in text.strip() and len(enders) <= 1
             reason = 'Return one sentence only.'
         elif name == 'contains_source_terms':
