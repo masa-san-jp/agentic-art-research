@@ -40,6 +40,10 @@ def timestamp(value):
     return result
 
 
+# Per-source-window elements: exhausting retries skips that window rather than blocking the run.
+ABANDONABLE = ('relevance.', 'excerpt.')
+
+
 class Engine:
     """A locked checkpoint owns all values; files are recoverable projections of it.
 
@@ -267,7 +271,12 @@ class Engine:
                                      'answer_hash': answer_hash, 'occurred_at': now, 'failures': failures})
             if failures:
                 state['previous_failure'] = failures
-                if state['attempt'] >= state['config']['max_attempts']:
+                if state['attempt'] >= state['config']['max_attempts'] and request['element_id'].startswith(ABANDONABLE):
+                    # One source window that yields no checkable judgement or quote is not evidence;
+                    # skip it instead of ending the whole run.
+                    state.setdefault('abandoned', {})[request['element_id']] = failures
+                    state.update(attempt=1, previous_failure=None)
+                elif state['attempt'] >= state['config']['max_attempts']:
                     state.update(status='BLOCKED', pending=None,
                                  blocked={'element_id': request['element_id'], 'attempt': state['attempt'],
                                           'last_failure': failures})

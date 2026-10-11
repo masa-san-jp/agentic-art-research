@@ -89,6 +89,13 @@
     "answers": {
       "type": "object"
     },
+    "abandoned": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array"
+      },
+      "description": "Per-source-window elements (relevance., excerpt.) whose retries were exhausted; the window is skipped, keyed by element_id with the last failures."
+    },
     "ledger": {
       "type": "object",
       "additionalProperties": {

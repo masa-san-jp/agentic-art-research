@@ -90,6 +90,46 @@ def too_similar(left: str, right: str, threshold: str) -> bool:
     return len(a & b) * denominator >= numerator * len(a | b)
 
 
+# Tokens whose period is not a sentence end; titles are case-sensitive so a final "no." still ends.
+NON_TERMINAL = re.compile(r'(?:\b(?:e\.g|i\.e|vs|cf|al)|\b(?:Dr|Mr|Mrs|Ms|St|Prof))$')
+
+
+def sentence_ends(text: str) -> int:
+    """Count sentence ends by boundary, not by every period.
+
+    Japanese 。！？ always end a sentence. An ASCII . ! ? or an ellipsis ends one only at the end
+    of the text or before the start of another sentence (whitespace then any letter, or a
+    capital/CJK character right after an ellipsis); decimals (3.5, v1.2) have no whitespace after
+    the period. "etc." ends a sentence only before a capital.
+    """
+    count = len(re.findall(r'[。！？]+', text))
+    stripped = re.sub(r'[。！？]+$', '', text.strip())
+    # Dotted abbreviations (U.S., Ph.D., a.m.) and a leading list number ("1. ") are not ends.
+    stripped = re.sub(r'\b(?:[A-Za-z]{1,2}\.){2,}(?=\s+[a-z0-9])', 'ABBR', stripped)
+    stripped = re.sub(r'\b(?:[A-Za-z]\.){2,}(?=\s+[A-Z])', 'ABBR', stripped)
+    stripped = re.sub(r'^\d+\.\s+', '', stripped)
+    for m in re.finditer(r'(\.{3,}|…+|[.!?]+)', stripped):
+        mark, before, after = m.group(1), stripped[:m.start()], stripped[m.end():]
+        if not after.strip():
+            count += 1
+            continue
+        ellipsis = mark.startswith('..') or mark.startswith('…')
+        nxt = re.match(r'(\s*)(\S)', after)
+        space, ch = nxt.group(1), nxt.group(2)
+        upper_or_cjk = ch.isupper() or bool(re.match(r'[\u3040-\u30ff\u3400-\u9fff]', ch))
+        if ellipsis:
+            count += upper_or_cjk
+        elif not space:
+            continue
+        elif mark == '.' and NON_TERMINAL.search(before):
+            continue
+        elif mark == '.' and re.search(r'\betc$', before):
+            count += upper_or_cjk
+        else:
+            count += 1
+    return count
+
+
 def check_value(value: object, checks: list[str], *, inputs: dict,
                 ledger: dict, previous_answers: dict) -> list[dict[str, str]]:
     text = value.get('reason', '') if isinstance(value, dict) else value
@@ -114,7 +154,11 @@ def check_value(value: object, checks: list[str], *, inputs: dict,
             ok = text.rstrip().endswith(('?', '？'))
             reason = 'End the question with ? or ？.'
         elif name == 'one_sentence':
-            ok = '\n' not in text.strip() and '\r' not in text.strip() and len(re.findall(r'[。!?！？]|(?<!\d)\.(?!\d)', text)) <= 1
+            # Quoted material (「」『』“”"") may carry its own sentence marks, e.g. a source title
+            # ending in "!" inside a Japanese sentence; only the outer sentence counts.
+            outer = re.sub(r'「[^」]*」|『[^』]*』|“[^”]*”|"[^"]*"', '', text.strip())
+            enders = sentence_ends(outer)
+            ok = '\n' not in text.strip() and '\r' not in text.strip() and enders <= 1
             reason = 'Return one sentence only.'
         elif name == 'contains_source_terms':
             groups = [inputs.get(key) for key in arg.split(',')]

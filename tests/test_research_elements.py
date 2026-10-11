@@ -496,6 +496,63 @@ class ResearchElementsTest(unittest.TestCase):
         report = self.engine.answer(self.reply(request, sentence), now=NOW)
         self.assertNotEqual(request['element_id'], report['next_action']['request']['element_id'])
 
+    def test_excerpt_accepts_one_long_sentence_from_a_source_in_another_language(self):
+        request = self.until_search()
+        answer = self.fake(request)
+        answer['results'] = answer['results'][:1]
+        sentence = ('An appreciable incidence of irregular auditing was discovered which was associated, '
+                    'inter alia, with perceptions of time budget pressure, perception of a firm culture of '
+                    'acceptance of irregular short cuts and areas of work which were felt to be unimportant.')
+        self.assertGreater(len(sentence), 240)
+        answer['results'][0]['body'] = 'Survey results. ' + sentence + ' Implications follow.'
+        request = self.engine.answer(answer, now=NOW)['next_action']['request']
+        relevant = {'answer': True, 'reason': 'Time pressure is linked to irregular work.'}
+        request = self.engine.answer(self.reply(request, relevant), now=NOW)['next_action']['request']
+        self.assertTrue(request['element_id'].startswith('excerpt.'))
+        report = self.engine.answer(self.reply(request, sentence), now=NOW)
+        self.assertNotEqual(request['element_id'], report['next_action']['request']['element_id'])
+
+    def test_literal_term_checks_are_named_in_the_instruction(self):
+        request = self.until_search()
+        answer = self.fake(request)
+        request = self.engine.answer(answer, now=NOW)['next_action']['request']
+        self.assertTrue(request['element_id'].startswith('relevance.'))
+        self.assertIn('contains_source_terms:body', request['checks'])
+        self.assertIn('body の中の語をそれぞれ1つ以上、原文の表記のまま含めてください', request['instruction'])
+
+    def test_one_sentence_ignores_marks_inside_quotes(self):
+        from research_element_checks import check_value
+        quoted = "本文は「Making sure you're not a bot!」という確認ページの説明であり、問いとは無関係です。"
+        self.assertEqual([], check_value(quoted, ['one_sentence'], inputs={}, ledger={}, previous_answers={}))
+        multi = ['本文は確認ページである。問いとは無関係です。', 'First sentence. second sentence.',
+                 '測定した. 次の実験を行った.', 'The value is 3. Next sentence.', 'This is no. Next one.',
+                 'Something etc. Another.', 'Go to step 1. Then stop.', 'Wrapped ... text. More.',
+                 'status.p. Next.', 'ellipsis then new sentence...Next.']
+        single = ['The ratio rose to 3.5 percent.', 'The body describes e.g. deferred choice.',
+                  'The body leaves the choice open...', 'v1.2 is out.', 'The choice... remains open.',
+                  'The choice… remains open.', 'The list has pens etc. and more.', quoted,
+                  'The U.S. study supports this claim.', 'A Ph.D. researcher observed the effect.',
+                  'The event starts at 10 a.m. tomorrow.', '1. The study supports this claim.']
+        for two in multi:
+            self.assertEqual(['one_sentence'], [f['check'] for f in check_value(two, ['one_sentence'], inputs={}, ledger={}, previous_answers={})], two)
+        for one in single:
+            self.assertEqual([], check_value(one, ['one_sentence'], inputs={}, ledger={}, previous_answers={}), one)
+
+    def test_exhausted_excerpt_skips_the_window_instead_of_blocking(self):
+        request = self.until_search()
+        answer = self.fake(request)
+        answer['results'] = answer['results'][:1]
+        request = self.engine.answer(answer, now=NOW)['next_action']['request']
+        request = self.engine.answer(self.fake(request), now=NOW)['next_action']['request']
+        self.assertTrue(request['element_id'].startswith('excerpt.'))
+        excerpt_id = request['element_id']
+        for _ in range(5):
+            report = self.engine.answer(self.reply(request, 'not in the body at all, twenty chars'), now=NOW)
+            request = report['next_action']['request'] if report['next_action'] else None
+        self.assertNotEqual('BLOCKED', report['status'])
+        self.assertIn(excerpt_id, load_json(self.engine.path)['abandoned'])
+        self.assertNotEqual(excerpt_id, request['element_id'])
+
     def test_copied_observation_and_claim_retry_only_their_element(self):
         self.small_plan()
         report = self.engine.next(now=NOW)
