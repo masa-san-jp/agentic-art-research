@@ -104,6 +104,10 @@ def sentence_ends(text: str) -> int:
     """
     count = len(re.findall(r'[。！？]+', text))
     stripped = re.sub(r'[。！？]+$', '', text.strip())
+    # Dotted abbreviations (U.S., Ph.D., a.m.) and a leading list number ("1. ") are not ends.
+    stripped = re.sub(r'\b(?:[A-Za-z]{1,2}\.){2,}(?=\s+[a-z0-9])', 'ABBR', stripped)
+    stripped = re.sub(r'\b(?:[A-Za-z]\.){2,}(?=\s+[A-Z])', 'ABBR', stripped)
+    stripped = re.sub(r'^\d+\.\s+', '', stripped)
     for m in re.finditer(r'(\.{3,}|…+|[.!?]+)', stripped):
         mark, before, after = m.group(1), stripped[:m.start()], stripped[m.end():]
         if not after.strip():

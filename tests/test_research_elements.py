@@ -530,7 +530,9 @@ class ResearchElementsTest(unittest.TestCase):
                  'status.p. Next.', 'ellipsis then new sentence...Next.']
         single = ['The ratio rose to 3.5 percent.', 'The body describes e.g. deferred choice.',
                   'The body leaves the choice open...', 'v1.2 is out.', 'The choice... remains open.',
-                  'The choice… remains open.', 'The list has pens etc. and more.', quoted]
+                  'The choice… remains open.', 'The list has pens etc. and more.', quoted,
+                  'The U.S. study supports this claim.', 'A Ph.D. researcher observed the effect.',
+                  'The event starts at 10 a.m. tomorrow.', '1. The study supports this claim.']
         for two in multi:
             self.assertEqual(['one_sentence'], [f['check'] for f in check_value(two, ['one_sentence'], inputs={}, ledger={}, previous_answers={})], two)
         for one in single:
