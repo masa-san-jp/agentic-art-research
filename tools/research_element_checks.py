@@ -90,6 +90,42 @@ def too_similar(left: str, right: str, threshold: str) -> bool:
     return len(a & b) * denominator >= numerator * len(a | b)
 
 
+# Tokens whose period is not a sentence end; titles are case-sensitive so a final "no." still ends.
+NON_TERMINAL = re.compile(r'(?:\b(?:e\.g|i\.e|vs|cf|al)|\b(?:Dr|Mr|Mrs|Ms|St|Prof))$')
+
+
+def sentence_ends(text: str) -> int:
+    """Count sentence ends by boundary, not by every period.
+
+    Japanese 。！？ always end a sentence. An ASCII . ! ? or an ellipsis ends one only at the end
+    of the text or before the start of another sentence (whitespace then any letter, or a
+    capital/CJK character right after an ellipsis); decimals (3.5, v1.2) have no whitespace after
+    the period. "etc." ends a sentence only before a capital.
+    """
+    count = len(re.findall(r'[。！？]+', text))
+    stripped = re.sub(r'[。！？]+$', '', text.strip())
+    for m in re.finditer(r'(\.{3,}|…+|[.!?]+)', stripped):
+        mark, before, after = m.group(1), stripped[:m.start()], stripped[m.end():]
+        if not after.strip():
+            count += 1
+            continue
+        ellipsis = mark.startswith('..') or mark.startswith('…')
+        nxt = re.match(r'(\s*)(\S)', after)
+        space, ch = nxt.group(1), nxt.group(2)
+        upper_or_cjk = ch.isupper() or bool(re.match(r'[\u3040-\u30ff\u3400-\u9fff]', ch))
+        if ellipsis:
+            count += upper_or_cjk
+        elif not space:
+            continue
+        elif mark == '.' and NON_TERMINAL.search(before):
+            continue
+        elif mark == '.' and re.search(r'\betc$', before):
+            count += upper_or_cjk
+        else:
+            count += 1
+    return count
+
+
 def check_value(value: object, checks: list[str], *, inputs: dict,
                 ledger: dict, previous_answers: dict) -> list[dict[str, str]]:
     text = value.get('reason', '') if isinstance(value, dict) else value
@@ -117,13 +153,8 @@ def check_value(value: object, checks: list[str], *, inputs: dict,
             # Quoted material (「」『』“”"") may carry its own sentence marks, e.g. a source title
             # ending in "!" inside a Japanese sentence; only the outer sentence counts.
             outer = re.sub(r'「[^」]*」|『[^』]*』|“[^”]*”|"[^"]*"', '', text.strip())
-            # Every period ends a sentence except a decimal point (3.5); review found that
-            # requiring an uppercase letter next let "First. second." through.
-            # Abbreviations and an ellipsis run are not sentence ends.
-            outer = re.sub(r'\b(?:e\.g|i\.e|etc|vs|cf|al|Dr|Mr|Mrs|Ms|St|No|Fig|pp|p)\.', '', outer, flags=re.I)
-            outer = re.sub(r'\.{2,}|…+', '…', outer)
-            enders = re.findall(r'[。!?！？…]+|\.(?!\d)', outer)
-            ok = '\n' not in text.strip() and '\r' not in text.strip() and len(enders) <= 1
+            enders = sentence_ends(outer)
+            ok = '\n' not in text.strip() and '\r' not in text.strip() and enders <= 1
             reason = 'Return one sentence only.'
         elif name == 'contains_source_terms':
             groups = [inputs.get(key) for key in arg.split(',')]

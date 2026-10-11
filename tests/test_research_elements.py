@@ -524,11 +524,16 @@ class ResearchElementsTest(unittest.TestCase):
         from research_element_checks import check_value
         quoted = "本文は「Making sure you're not a bot!」という確認ページの説明であり、問いとは無関係です。"
         self.assertEqual([], check_value(quoted, ['one_sentence'], inputs={}, ledger={}, previous_answers={}))
-        for two in ['本文は確認ページである。問いとは無関係です。', 'First sentence. second sentence.',
-                    '測定した. 次の実験を行った.', 'The value is 3. Next sentence.']:
+        multi = ['本文は確認ページである。問いとは無関係です。', 'First sentence. second sentence.',
+                 '測定した. 次の実験を行った.', 'The value is 3. Next sentence.', 'This is no. Next one.',
+                 'Something etc. Another.', 'Go to step 1. Then stop.', 'Wrapped ... text. More.',
+                 'status.p. Next.', 'ellipsis then new sentence...Next.']
+        single = ['The ratio rose to 3.5 percent.', 'The body describes e.g. deferred choice.',
+                  'The body leaves the choice open...', 'v1.2 is out.', 'The choice... remains open.',
+                  'The choice… remains open.', 'The list has pens etc. and more.', quoted]
+        for two in multi:
             self.assertEqual(['one_sentence'], [f['check'] for f in check_value(two, ['one_sentence'], inputs={}, ledger={}, previous_answers={})], two)
-        for one in ['The ratio rose to 3.5 percent.', 'The body describes e.g. deferred choice.',
-                    'The body leaves the choice open...', 'v1.2 is out.']:
+        for one in single:
             self.assertEqual([], check_value(one, ['one_sentence'], inputs={}, ledger={}, previous_answers={}), one)
 
     def test_exhausted_excerpt_skips_the_window_instead_of_blocking(self):
