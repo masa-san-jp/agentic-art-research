@@ -114,7 +114,12 @@ def check_value(value: object, checks: list[str], *, inputs: dict,
             ok = text.rstrip().endswith(('?', '？'))
             reason = 'End the question with ? or ？.'
         elif name == 'one_sentence':
-            ok = '\n' not in text.strip() and '\r' not in text.strip() and len(re.findall(r'[。!?！？]|(?<!\d)\.(?!\d)', text)) <= 1
+            # Quoted material (「」『』“”"") may carry its own sentence marks, e.g. a source title
+            # ending in "!" inside a Japanese sentence; only the outer sentence counts (as in the
+            # parent's element_checks.py).
+            outer = re.sub(r'「[^」]*」|『[^』]*』|“[^”]*”|"[^"]*"', '', text.strip())
+            enders = re.findall(r'[。!?！？]|(?<!\d)\.(?=\s+[A-Z]|\s*$)', outer)
+            ok = '\n' not in text.strip() and '\r' not in text.strip() and len(enders) <= 1
             reason = 'Return one sentence only.'
         elif name == 'contains_source_terms':
             groups = [inputs.get(key) for key in arg.split(',')]

@@ -520,6 +520,13 @@ class ResearchElementsTest(unittest.TestCase):
         self.assertIn('contains_source_terms:body', request['checks'])
         self.assertIn('body の中の語をそれぞれ1つ以上、原文の表記のまま含めてください', request['instruction'])
 
+    def test_one_sentence_ignores_marks_inside_quotes(self):
+        from research_element_checks import check_value
+        quoted = "本文は「Making sure you're not a bot!」という確認ページの説明であり、問いとは無関係です。"
+        self.assertEqual([], check_value(quoted, ['one_sentence'], inputs={}, ledger={}, previous_answers={}))
+        two = '本文は確認ページである。問いとは無関係です。'
+        self.assertEqual(['one_sentence'], [f['check'] for f in check_value(two, ['one_sentence'], inputs={}, ledger={}, previous_answers={})])
+
     def test_copied_observation_and_claim_retry_only_their_element(self):
         self.small_plan()
         report = self.engine.next(now=NOW)
