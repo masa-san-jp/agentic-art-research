@@ -40,6 +40,27 @@ def timestamp(value):
     return result
 
 
+def grounding(intent: str) -> str:
+    """Stage A context beyond the one-sentence proposition: the intent and the reference labels.
+
+    The proposition alone is often phrased in everyday terms, and questions built from it drift away
+    from the work (research #125). Reference URIs are dropped; at most 500 UTF-8 bytes are kept.
+    """
+    parts = []
+    purpose = re.search(r'^## (?:制作意図|Purpose)\s*\n(.*?)(?=^## |\Z)', intent, re.M | re.S)
+    if purpose and purpose.group(1).strip() and '未確認' not in purpose.group(1):
+        parts.append(' '.join(purpose.group(1).split()))
+    refs = re.search(r'^## (?:参照候補|References)\s*\n(.*?)(?=^## |\Z)', intent, re.M | re.S)
+    if refs:
+        labels = [m.split(':', 1)[1] if m.count(':') >= 1 and not m.startswith('http') else m
+                  for m in re.findall(r'^- ([^:\n]+(?::[^:\s\n]+)*):\s', refs.group(1), re.M)]
+        labels = list(dict.fromkeys(label.strip() for label in labels if label.strip()))
+        if labels:
+            parts.append('参照: ' + ', '.join(labels))
+    text = ' / '.join(parts)
+    return text.encode('utf-8')[:500].decode('utf-8', errors='ignore')
+
+
 # Per-source-window elements: exhausting retries skips that window rather than blocking the run.
 ABANDONABLE = ('relevance.', 'excerpt.')
 
@@ -122,7 +143,8 @@ class Engine:
             raise ValueError('Protocol source commit unavailable')
         state = {'contract_version': 'research-elements/v1', 'run_id': run_id, 'project_id': plan['project_id'],
                  'source_commit': commit, 'started_at': now, 'last_now': now,
-                 'inputs': inputs, 'proposition': proposition, 'config': config, 'stopping': policy, 'budget': budget,
+                 'inputs': inputs, 'proposition': proposition, 'grounding': grounding(intent),
+                 'config': config, 'stopping': policy, 'budget': budget,
                  'minimums': quality.minimums, 'required_records': list(quality.required_records),
                  'vocabulary': load_yaml(ROOT / 'config/vocabularies.yaml'),
                  'answers': {}, 'ledger': {}, 'history': [], 'attempt': 1, 'previous_failure': None,
