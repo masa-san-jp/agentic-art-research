@@ -206,8 +206,9 @@ class PlansHistoryTest(unittest.TestCase):
         self.assertEqual(1, receipt['project_count'])
         self.assertEqual('P0001', receipt['projects'][0]['plan_id'])
         project = self.output / 'P0001'
-        self.assertEqual((self.plan / 'plan.md').read_bytes(), (project / '05_production/creative-direction.md').read_bytes())
         claims = [json.loads(line) for line in (project / '03_knowledge/claims.jsonl').read_text().splitlines()]
+        self.assertEqual('\n\n'.join(dict.fromkeys(claim['statement'] for claim in claims)) + '\n',
+                         (project / '05_production/creative-direction.md').read_text())
         self.assertEqual(3, len(claims))
         for claim in claims:
             source = claim['source_ref'].split('#')[0]
@@ -223,6 +224,42 @@ class PlansHistoryTest(unittest.TestCase):
             self.assertEqual(expected, report['scanned_project_count'])
             self.assertEqual(bool(expected), bool(report['matches']))
         self.assertEqual(before, {str(p): p.read_bytes() for p in self.catalog.rglob('*') if p.is_file()})
+
+    def test_table_template_words_do_not_match_unrelated_candidate(self):
+        (self.plan / 'metadata.yaml').write_text('id: P0001\n')
+        substantive = '三枚の半透明パネルに光と短い状態ラベルを配置する。'
+        (self.plan / 'plan.md').write_text(
+            '# Plan\n\nRepeated boilerplate mechanism approval.\n\n'
+            '| 項目 | 内容 |\n| --- | --- |\n'
+            f'| mechanism | {substantive} |\n'
+            '| without_the_technique | CEASES_TO_WORK |\n\n'
+            '| 承認ID | 理由 |\n| --- | --- |\n'
+            '| AR001 | Repeated boilerplate mechanism approval. |\n\n'
+            '| 要件 | 要件内容 | 状態 |\n| --- | --- | --- |\n'
+            f'| RQ001 | {substantive} | PLANNED |\n')
+        before = (self.plan / 'plan.md').read_bytes()
+        build_history(self.catalog, self.output)
+        project = self.output / 'P0001'
+        rows = [json.loads(line) for line in (project / '03_knowledge/claims.jsonl').read_text().splitlines()]
+        self.assertEqual([substantive, substantive], [row['statement'] for row in rows])
+        self.assertEqual(substantive + '\n', (project / '05_production/creative-direction.md').read_text())
+        self.assertEqual(before, (self.plan / 'plan.md').read_bytes())
+        self.assertEqual(build_history(self.catalog, self.output), build_history(self.catalog, self.root / 'second'))
+        candidate = self.root / 'candidate'
+        (candidate / '03_knowledge').mkdir(parents=True)
+        (candidate / '03_knowledge/claims.jsonl').write_text(json.dumps({
+            'statement': 'The mechanism inflates a red balloon inside a steel cage.'}) + '\n')
+        report = scan_projects(candidate, self.output, repository='example/research', source_commit='a'*40,
+                               now=NOW, contract_version=CONTRACT_VERSION_V2)
+        self.assertEqual(1, report['scanned_project_count'])
+        self.assertEqual([], report['matches'])
+        self.assertEqual('LOW', report['risk_level'])
+
+    def test_malformed_plan_table_fails_before_publish(self):
+        (self.plan / 'plan.md').write_text('| 項目 | 内容 |\n| --- | --- |\n| mechanism |\n')
+        with self.assertRaisesRegex(WorksHistoryError, 'table row width'):
+            build_history(self.catalog, self.output)
+        self.assertFalse(self.output.exists())
 
     def test_stage_b_records_plan_history_review(self):
         helper = element_tests.ResearchElementsTest('test_explicit_history_reuses_native_scan_and_pins_changes')

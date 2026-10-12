@@ -1363,3 +1363,40 @@ inferring creator from Git owner, replacing history in a frozen original run.
 ### Outcomes
 Qualified code 8cfcbea: local 451 / 924.389s and shared 451 / 923.042s, both OK, exit 0; focused 17 PASS. Real scan: 11 plans, 756 signals, 69 matches, native HIGH; Stage B HIGH and one review. Original project unchanged. Native matches are lexical, including shared English terms; Stage C review and existing evidence/requirements gaps remain. Base code/source commit:
 0e3da3a (PR #135). All actual project/history/runtime stays outside protocol Git.
+
+## PR #135 P1: exclude plan template text (2026-10-13 JST)
+
+### Purpose / Big Picture
+Fix WORKS-HISTORY-133 false positives caused by whole Markdown tables and the
+unfiltered plan copied into creative-direction. Preserve deterministic conversion,
+creator scope, indexed works/plans paths and native scanner thresholds.
+
+### Progress
+- [x] Pull branch; reproduce template-label path and add unrelated balloon regression.
+- [x] Extract explicit proposal row values and requirement/acceptance columns; generate
+  both plan artifacts from those excerpts plus existing textual metadata values.
+- [x] Focused suite: 19 tests PASS, including malformed-table failure before publish.
+- [ ] Rebuild owner history, scan a fresh real project copy, record pairs and judgement.
+- [ ] Qualify committed clean code with local and requested shared full suites; push.
+
+### Surprises & Discoveries
+Native similarity treats one shared long English term as 0.9; changing that rule
+would exceed this review's scope. Production-plan prose and generic content columns
+contain repeated operational boilerplate, so table-based plans use explicit
+comparison row/column allowlists. Plain narrative plans retain paragraph extraction.
+
+### Decision Log
+Use verbatim cell values with line/column provenance, never table labels or headers.
+For table-based plans omit template prose and administration tables; retain substantive
+encounter/theme/message/mechanism/hypothesis, requirement and acceptance values.
+Generate creative-direction from the same claims, with stable exact deduplication.
+Keep works byte preservation and metadata TEXT_FIELDS unchanged. Reject malformed
+row widths rather than silently reinterpret cells. Rejected: scanner threshold
+changes, inferred mechanisms, corpus-wide removal of shared substantive words.
+
+### Outcomes
+Pending real verification and clean full qualification. Source code commit before
+this repair: 57510e34fcf4e7ae689415342724084ab810cff9. No sensitive content or actual
+project artifacts are committed; external history and verification copy stay outside Git.
+Next start: finish real copy verification and full suites, append final evidence, push
+agent/133-selfrep-history; do not merge.

@@ -40,6 +40,47 @@ def _mapping(value, path):
     return value
 
 
+def _plan_excerpts(text):
+    """Yield verbatim proposal values, excluding the production-plan template.
+
+    Table-based plans use explicit comparison rows/columns rather than generic
+    'content' columns, which also contain scheduling and approval boilerplate.
+    Plain narrative plans retain their paragraph extraction.
+    """
+    paragraphs = re.split(r'\n\s*\n', text)
+    if not any(re.search(r'^\s*\|', part, re.MULTILINE) for part in paragraphs):
+        for ordinal, paragraph in enumerate(paragraphs, 1):
+            if paragraph.strip() and not all(line.lstrip().startswith('#') or not line.strip()
+                                             for line in paragraph.splitlines()):
+                yield paragraph.strip(), f'paragraph-{ordinal}'
+        return
+    fields = {
+        'experience sequence / encounter', 'position', 'first_seconds', 'after_30s',
+        'after_3min', 'field', 'stands_against', 'difference', 'why_now', 'claim',
+        'who_disagrees', 'denies', 'shown_not_told', 'mechanism', 'questions',
+        'what_came_out', '仮説タイトル', '仮説',
+    }
+    columns = {'要件内容', '合格条件'}
+    headers = None
+    for line_number, line in enumerate(text.splitlines(), 1):
+        if not line.strip().startswith('|'):
+            headers = None
+            continue
+        cells = [cell.strip() for cell in re.split(r'(?<!\\)\|', line.strip().strip('|'))]
+        if all(re.fullmatch(r':?-{3,}:?', cell) for cell in cells):
+            continue
+        if headers is None:
+            headers = cells
+            continue
+        if len(cells) != len(headers):
+            raise WorksHistoryError(f'plan.md line {line_number}: table row width differs from header')
+        selected = [1] if len(cells) == 2 and cells[0] in fields else [
+            index for index, header in enumerate(headers) if header in columns]
+        for index in selected:
+            if cells[index]:
+                yield cells[index], f'line-{line_number}-column-{index + 1}'
+
+
 def build_history(works_root: Path, output: Path, *, creator_id: str | None = None) -> dict:
     """Validate all sources, then atomically publish an immutable history tree."""
     if creator_id is not None and (not isinstance(creator_id, str) or not creator_id.strip() or creator_id == 'unknown'):
@@ -138,6 +179,11 @@ def build_history(works_root: Path, output: Path, *, creator_id: str | None = No
         # Claims are verbatim paragraph excerpts, not newly authored assertions.
         claims = []
         for name, text in texts:
+            if kind == 'plans':
+                for statement, location in _plan_excerpts(text):
+                    claims.append({'id': f'WH{len(claims) + 1:04}', 'statement': statement,
+                                   'source_ref': f'{relative}/{name}#{location}'})
+                continue
             for ordinal, paragraph in enumerate(re.split(r'\n\s*\n', text), 1):
                 if not paragraph.strip() or all(
                     line.lstrip().startswith('#') or not line.strip()
@@ -172,7 +218,8 @@ def build_history(works_root: Path, output: Path, *, creator_id: str | None = No
             json.dumps(claim, ensure_ascii=False, sort_keys=True) + '\n' for claim in claims)
         # Preserve complete Markdown bytes (including headings) from the record,
         # falling back to the introduction for catalogs with no record.md yet.
-        direction = dict(texts).get('record.md', dict(texts).get('README.md')) if kind == 'works' else dict(texts).get('plan.md', '')
+        direction = dict(texts).get('record.md', dict(texts).get('README.md')) if kind == 'works' else '\n\n'.join(
+            dict.fromkeys(claim['statement'] for claim in claims)) + '\n'
         files[f'{target}/05_production/creative-direction.md'] = direction
         projects.append({f'{label}_id': identifier, 'project_id': f'works-history/{identifier}',
                          'creator_id': creator, 'source_path': relative, 'claim_count': len(claims),
