@@ -59,6 +59,44 @@ def check_project(project, protocol):
     path = project / '07_runtime/research-elements.json'
     if not path.exists():
         return []
+    return check_stage_b(project, protocol, path) + check_stage_c(project, protocol)
+
+
+def check_stage_c(project, protocol):
+    """Stage C checkpoint: projections, accepted-answer hashes and the pinned Stage B checkpoint."""
+    path = project / '07_runtime/work-elements.json'
+    if not path.exists():
+        return []
+    errors = []
+    try:
+        state = load_json(path)
+        require_schema(protocol, 'work-elements', state)
+        from research_elements import canonical, digest
+        from research_element_contracts import require_message
+        if digest((project / '07_runtime/research-elements.json').read_text(encoding='utf-8')) != state['stage_b_hash']:
+            errors.append(('WORK-ELEMENT-STAGE-B', 'Stage B checkpoint changed after Stage C started'))
+        for relative, content in state['files'].items():
+            target = project / relative
+            if target.resolve() != target or project not in target.parents or not target.is_file():
+                errors.append(('WORK-ELEMENT-PATH', f'Unsafe or missing element-owned file: {relative}'))
+            elif target.read_text(encoding='utf-8') != content:
+                errors.append(('WORK-ELEMENT-PROJECTION', f'File differs from its checkpoint: {relative}; run next to repair interrupted assembly.'))
+        for identifier, value in state['answers'].items():
+            accepted = [h for h in state['history'] if h['element_id'] == identifier and not h['failures']]
+            if len(accepted) != 1:
+                errors.append(('WORK-ELEMENT-ANSWER-HISTORY', f'{identifier}: expected exactly one accepted answer'))
+                continue
+            answer = {'contract_version': 'element-answer/v1', 'run_id': state['run_id'], 'element_id': identifier,
+                      'attempt': accepted[0]['attempt'], 'value': value}
+            require_message(answer, 'element-answer')
+            if digest(canonical(answer)) != accepted[0]['answer_hash']:
+                errors.append(('WORK-ELEMENT-ANSWER-HASH', f'{identifier}: accepted value differs from its recorded hash'))
+    except (ValueError, OSError, KeyError, TypeError) as exc:
+        errors.append(('WORK-ELEMENT-CHECKPOINT', f'{path.name}: {exc}'))
+    return errors
+
+
+def check_stage_b(project, protocol, path):
     errors = []
     def fail(rule, message):
         errors.append((rule, message))

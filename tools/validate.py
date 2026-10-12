@@ -2898,6 +2898,13 @@ def validate_repository(
         except (ValueError, OSError) as exc:
             findings.append(Finding(_relative_path(root, element_config_path), "ELEMENT-CONFIG", str(exc),
                                     remediation="Restore the bounded research element policy and canonical paths."))
+    work_config_path = protocol / "config/work-elements.yaml"
+    if work_config_path.exists():
+        try:
+            require_element_schema(protocol, "work-elements-config", load_yaml(work_config_path))
+        except (ValueError, OSError) as exc:
+            findings.append(Finding(_relative_path(root, work_config_path), "ELEMENT-CONFIG", str(exc),
+                                    remediation="Restore the bounded Stage C element policy and canonical paths."))
     for project in selected_projects:
         for rule, message in check_element_project(project, protocol):
             findings.append(Finding(_relative_path(root, project / "07_runtime/research-elements.json"), rule, message,

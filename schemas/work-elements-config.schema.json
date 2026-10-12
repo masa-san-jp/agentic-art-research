@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/work-elements-config.schema.json",
+  "title": "Stage C element policy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "max_attempts", "plan_count", "components_per_plan", "steps_per_plan", "encounter_scenes",
+               "mechanism_rounds", "similarity_threshold", "input_bytes", "forbidden", "requirement_categories",
+               "acceptance_methods", "effect_types", "cost_bands", "duration_bands", "venue_dependency",
+               "without_the_technique", "paths"],
+  "properties": {
+    "version": {"const": 1},
+    "max_attempts": {"type": "integer", "minimum": 1, "maximum": 10},
+    "plan_count": {"type": "integer", "minimum": 1, "maximum": 5},
+    "components_per_plan": {"type": "integer", "minimum": 1, "maximum": 8},
+    "steps_per_plan": {"type": "integer", "minimum": 1, "maximum": 8},
+    "encounter_scenes": {"const": 3},
+    "mechanism_rounds": {"type": "integer", "minimum": 1, "maximum": 5},
+    "similarity_threshold": {"type": "string", "pattern": "^0\\.[0-9]+$"},
+    "input_bytes": {"type": "integer", "minimum": 1024},
+    "forbidden": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "requirement_categories": {
+      "type": "object", "minProperties": 1,
+      "propertyNames": {"enum": ["experience", "material", "interaction", "mechanism"]},
+      "additionalProperties": {"type": "string", "minLength": 1}
+    },
+    "acceptance_methods": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "effect_types": {"type": "array", "minItems": 1, "uniqueItems": true,
+                     "items": {"enum": ["READ_ONLY", "REPOSITORY_WRITE", "PHYSICAL_EXTERNAL", "PUBLICATION", "PURCHASE", "CONTRACT", "DELETION"]}},
+    "cost_bands": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["LOW", "MEDIUM", "HIGH"]}},
+    "duration_bands": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["HOURS", "DAYS", "WEEKS", "MONTHS"]}},
+    "venue_dependency": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["NONE", "LOW", "MEDIUM", "HIGH"]}},
+    "without_the_technique": {"const": ["CEASES_TO_WORK", "MERELY_PLAINER"]},
+    "paths": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "lock", "hypotheses", "comparison", "requirements", "acceptance_tests", "prototype_plans",
+                   "creative_direction", "brief"],
+      "properties": {
+        "state": {"const": "07_runtime/work-elements.json"},
+        "lock": {"const": "07_runtime/work-elements.lock"},
+        "hypotheses": {"const": "04_decisions/production-hypotheses.yaml"},
+        "comparison": {"const": "04_decisions/hypothesis-comparison.yaml"},
+        "requirements": {"const": "05_production/production-requirements.yaml"},
+        "acceptance_tests": {"const": "05_production/acceptance-tests.yaml"},
+        "prototype_plans": {"const": "05_production/prototype-plans.yaml"},
+        "creative_direction": {"const": "05_production/creative-direction.md"},
+        "brief": {"const": "05_production/production-brief.yaml"}
+      }
+    }
+  }
+}

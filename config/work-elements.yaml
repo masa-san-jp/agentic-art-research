@@ -1,0 +1,48 @@
+version: 1
+# Stage C: the work's content, one value per request (docs/work-elements.md).
+max_attempts: 5
+# Plans compared before one is recommended; each plan rests on a different adopted Stage B decision.
+plan_count: 2
+components_per_plan: 3
+steps_per_plan: 3
+encounter_scenes: 3
+# "Without the technique it is merely plainer" re-asks only the mechanism, at most this many times in all.
+mechanism_rounds: 3
+similarity_threshold: "0.8"
+input_bytes: 4096
+forbidden:
+- ∩
+- 無し
+- 未記入
+- 未確定
+# Requirements of the recommended plan: one per category, each with one acceptance test.
+requirement_categories:
+  experience: 鑑賞者の体験（出会いから3分後まで）
+  material: 素材と振る舞い
+  interaction: 鑑賞者の行為と作品の応答
+  mechanism: 仕掛け（技術を外すと成り立たない部分）
+acceptance_methods:
+- observation
+- prototype_review
+- viewer_session
+- measurement
+effect_types:
+- READ_ONLY
+- REPOSITORY_WRITE
+- PHYSICAL_EXTERNAL
+- PUBLICATION
+- PURCHASE
+cost_bands: [LOW, MEDIUM, HIGH]
+duration_bands: [HOURS, DAYS, WEEKS, MONTHS]
+venue_dependency: [NONE, LOW, MEDIUM, HIGH]
+without_the_technique: [CEASES_TO_WORK, MERELY_PLAINER]
+paths:
+  state: 07_runtime/work-elements.json
+  lock: 07_runtime/work-elements.lock
+  hypotheses: 04_decisions/production-hypotheses.yaml
+  comparison: 04_decisions/hypothesis-comparison.yaml
+  requirements: 05_production/production-requirements.yaml
+  acceptance_tests: 05_production/acceptance-tests.yaml
+  prototype_plans: 05_production/prototype-plans.yaml
+  creative_direction: 05_production/creative-direction.md
+  brief: 05_production/production-brief.yaml
