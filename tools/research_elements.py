@@ -75,7 +75,9 @@ def grounding(intent: str) -> str:
 
 # Per-source-window elements: exhausting retries skips that window rather than blocking the run.
 # A claim that cannot be stated from a weak observation is skipped too (research #127).
-ABANDONABLE = ('relevance.', 'excerpt.', 'claim.')
+# A claim pair that cannot be judged is recorded as no relation: the Stage C live run lost a whole
+# project when one pair element failed five times (research #129).
+ABANDONABLE = ('relevance.', 'excerpt.', 'claim.', 'pair.')
 
 
 class Engine:
