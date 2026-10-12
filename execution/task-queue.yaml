@@ -552,3 +552,18 @@ tasks:
       - git diff --check
     completion: Review code b3f60fc33d913aa84a8e2dbcb2866d6428e4abaf qualified with both full 410-test suites, focused 35 tests, fixture matrix 3, default fake CLI 118 first-attempt requests, small CLI 24, external validation and all prior checks (exit 0).
     blocked_reason: LIVE-ACCEPTANCE-NOT-RUN; no external browsing authorized in this implementation session.
+
+  - id: WORKS-HISTORY-133
+    milestone: G7
+    title: Adapt owner work records to creator-scoped self-repetition history
+    status: BLOCKED
+    depends_on: [SELF-REPETITION-V2-001]
+    issue_refs: ["agentic-art-research#133"]
+    acceptance: Deterministic external history conversion passes synthetic scanner/Stage B tests and an owner run records at least one self-repetition review from indexed past works.
+    checks:
+      - .venv/bin/python -m unittest discover -s tests -p test_works_history.py -v
+      - .venv/bin/python -m unittest discover -s tests -v
+      - .venv/bin/python tools/validate.py --check
+      - git diff --check
+    completion: Adapter implemented; synthetic Stage B records SR001 and removes the self-repetition quality failure. Real read-only scan executed; supplied works index contains zero records, so zero comparable history projects and zero reviews remain.
+    blocked_reason: NO-INDEXED-WORKS; real owner acceptance requires at least one indexed work with explicit creator identity. Do not substitute plans or fabricate reviews.

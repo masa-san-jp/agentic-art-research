@@ -155,3 +155,48 @@ Next: AAK-09 after AAK-05/07 owner gates; parent can continue independent AAK-12
   }
 }
 ```
+
+## Issue #133 / WORKS-HISTORY-133 (2026-10-13 JST)
+
+Branch `agent/133-selfrep-history`; Research base/source commit
+`0fa1509a2aef991a355665a912219d2cfde0f393`. Catalog source commit
+`8b023ac200d55aca00a6c283c85c95f478ea7da6`, works index SHA-256
+`5e08ec7a5d35b7866c1f5dca863f0998f8073209cb099f91a15c195daa06bb9f`.
+Changed paths and restart procedure are recorded in execution/state.yaml.
+
+The deterministic adapter only reads indexed work Markdown and explicit creator
+metadata. It writes immutable minimal scanner projects outside Git, plus relative
+source paths/hashes. Synthetic integration generates one Stage B review and removes
+QUALITY-REQUIRED-SELF_REPETITION_REVIEW. Focused command
+`.venv/bin/python -m unittest discover -s tests -p test_works_history.py -v`:
+10 tests PASS. Preliminary focused run failed on the test helper's backwards clock;
+fixture clock and duplicate imported-test discovery were corrected before qualification.
+Full unittest and final validator evidence follow below.
+
+Real verification ran `tools/works_history.py --works-root <owner-catalog>
+--output <external-history>` and the exact Stage B scanner path: candidate contains
+only frozen manifest + generated claims, `self-repetition-scan/v2`, repository identity,
+frozen protocol commit and last_now. A copy under the external verification root was
+used for `Engine.finish` in memory; neither original nor copied checkpoint was rewritten.
+The original project's complete file-hash set was unchanged.
+
+Result for `project/auto-live-20261012-a9-2a76271f9c04`: 20 candidate signals,
+0 comparable projects, 0 historical signals, 0 matches. Native scanner reports LOW
+with available empty history; Stage B correctly normalizes it to UNKNOWN and emits
+0 reviews. QUALITY-REQUIRED-SELF_REPETITION_REVIEW remains (along with existing
+minimum-evidence and minimum-requirements failures). The owner's works index is empty;
+plans were deliberately not substituted for produced works. Task remains BLOCKED on
+NO-INDEXED-WORKS, although adapter code and synthetic acceptance are implemented.
+
+Next start: supply indexed actual works with explicit creator identity, build a fresh
+external history root, then pin it on the first next of a new Stage B run. Existing
+frozen runs cannot replace their history. Stage C mechanism review remains separate.
+No sensitive information or actual work/project/runtime/raw was added to Git.
+External artifacts exist: history receipt, verification project copy, scan/completion
+reports and test logs; all stay outside the protocol repository.
+
+Pre-qualification: dirty-tree full suite ran 442 tests in 715.579s and failed 10
+memory setup checks (`execute a clean pinned code checkout`). Shared interpreter's
+release gate returned base_release FAIL on the same dirty source. These runs are
+not accepted evidence. Commit code before clean full qualification; append final
+verification in a subsequent evidence commit. Do not weaken the pinned-code guard.

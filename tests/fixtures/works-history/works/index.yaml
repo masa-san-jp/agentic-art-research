@@ -1,0 +1,6 @@
+version: 1
+records:
+  - id: W0001
+    title: Synthetic interval
+    path: works/W0001-interval
+retired_ids: []

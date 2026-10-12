@@ -4,7 +4,7 @@ current_milestone: G7
 next_task: null
 last_completed_task: AAK-02-NATIVE-AUTHORING
 terminal: false
-blocked_by: [LIVE-ACCEPTANCE-NOT-RUN]
+blocked_by: [LIVE-ACCEPTANCE-NOT-RUN, NO-INDEXED-WORKS]
 resume_from:
   read:
     - docs/research-elements.md
@@ -298,3 +298,40 @@ element_research_122:
     exit_code: 0
   - command: $SHARED_PYTHON /tmp/issue122_cli_smoke.py
     exit_code: 0
+
+works_history_133:
+  task_id: WORKS-HISTORY-133
+  project: repository-maintenance; LIVE-20261012-A9 read-only verification
+  status: CODE_IMPLEMENTED_REAL_INPUT_EMPTY
+  branch: agent/133-selfrep-history
+  source_commit: 0fa1509a2aef991a355665a912219d2cfde0f393
+  catalog_source_commit: 8b023ac200d55aca00a6c283c85c95f478ea7da6
+  catalog_index_sha256: 5e08ec7a5d35b7866c1f5dca863f0998f8073209cb099f91a15c195daa06bb9f
+  changed_paths:
+    - tools/works_history.py
+    - tests/test_works_history.py
+    - tests/fixtures/works-history
+    - docs/research-elements.md
+    - PLANS.md
+    - execution/task-queue.yaml
+    - execution/state.yaml
+    - execution/handoff.md
+  verification:
+    focused: 10 tests PASS
+    full: pending
+    validator: PASS before completion evidence update
+    real_scan:
+      candidate_project: project/auto-live-20261012-a9-2a76271f9c04
+      candidate_source_commit: 283769f3096fd654717a0b4ceff408bb2a0fe7e3
+      candidate_signals: 20
+      comparable_projects: 0
+      historical_signals: 0
+      matches: 0
+      native_v2_risk: LOW
+      stage_b_risk: UNKNOWN
+      self_repetition_reviews: 0
+      source_project_unchanged: true
+  remaining: NO-INDEXED-WORKS; QUALITY-REQUIRED-SELF_REPETITION_REVIEW remains in real run.
+  next_start: Register actual work records with explicit creator identity in owner catalog, build a new external history root, and start a fresh Stage B run with that history pinned. Existing runs do not accept history replacement.
+  sensitive_git_content: none; fixtures are synthetic
+  external_artifacts: history receipt, read-only project copy and metadata-only verification reports; not committed

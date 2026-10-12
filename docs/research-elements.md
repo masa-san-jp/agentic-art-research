@@ -89,6 +89,7 @@ URL・題名・取得本文以外のメタデータを推測で加えない。�
 - `--history-root <external-history-dir>`: 既存の native self-repetition scanner のcreator scopeと
   閾値で主張の自己反復を計算する。入力artifactのhashを固定し、変更後の再開は拒否する。
   未指定・比較可能な履歴0件は `UNKNOWN`。段階 C の機構レビューは後続工程で行う。
+  作品カタログは[過去作品adapter](#過去作品の記録を-history-root-に変換するissue-133)で外部履歴へ変換する。
 - `--rights-table <external-json>`: 実際に確認済みの URL ごとの `rights_status`、
   `redistribution`、`sensitivity: PUBLIC_CITABLE` の表。未指定URLは権利不明で、
   素材採用を `REJECTED` にする。権利判定をモデルに推測させない。
@@ -132,3 +133,38 @@ fakeの資格確認は `tests/test_research_elements.py`。架空資料は `exam
 依頼数は検索結果・関係判定・予算によって変わり、118は同梱fakeの検証値である。
 オーナーprofile・段階 A の中心問い・実資料による実 run と
 オーナーの出力確認は別の完了証跡であり、fake合格で代替しない。
+
+## 過去作品の記録を history-root に変換する（Issue #133）
+
+作品カタログのroot（`works/index.yaml`を含むディレクトリ）を明示して、
+決定論的adapterを実行する。モデル・networkは使わず、入力は読み取り専用。
+
+```bash
+.venv/bin/python tools/works_history.py --works-root <catalog-root> --output <external-history-dir>
+.venv/bin/python tools/research_elements.py next --project <external-project-dir> --history-root <external-history-dir>
+```
+
+indexの`version: 1`、`records`内の`id: W0001`、`path: works/W0001-short-slug`を読み、
+列挙された作品だけを変換する。`creator_id`はindex、`metadata.yaml`または`lineage.json`の
+明示値を使う。欠落、`unknown`、宣言間の不一致はエラー。候補projectがcreatorを宣言して
+いれば、その値と一致する作品だけが比較される。creator未宣言の候補はnative scannerの
+既存動作どおり全creatorと比較されるため、本人の比較には一致するIDを設定する。
+
+各作品の`README.md`と`record.md`（少なくとも一方が必要）の本文段落を、原文のまま
+`03_knowledge/claims.jsonl`の`statement`へ写す。これは出典付き抜粋で、推論で生成した
+主張ではない。`05_production/creative-direction.md`には`record.md`を丸ごと写し、
+無ければREADMEを使う。`manifest.yaml`には安定した作品project IDとcreatorを記録する。
+metadataはidentityにだけ使い、機構や制作命題をタイトルから推測しない。
+履歴はscanner向けの最小入力であり、通常のresearch project全体のschemaは満たさない。
+
+`works-history.json`に作品数・creator・相対出典パス・入力SHA-256を保存する。
+実作品本文・履歴・receiptはGit外に置く。symlink、パス逸脱、Git配下への出力、入力との
+重なりは拒否する。同じ入力・出力の再実行は無変更で、変更済み入力や非空の異なる出力は
+上書きしない。更新時は新しい履歴ディレクトリを使う。最初の`next`がmanifestとscanner
+artifactのhashを固定するため、進行中のrunの履歴は変更できない。
+
+`records: []`は空の履歴として明示的に出力する。制作プラン（`plans/`）、未登録作品、mediaを
+代わりに採用しない。比較可能な作品が1件以上あればStage Bは測定結果から`SR001`を記録し、
+類似が無くても履歴hashを比較根拠にする。0件ならStage Bは`UNKNOWN`・review 0件を維持し、
+`QUALITY-REQUIRED-SELF_REPETITION_REVIEW`は解消しない。実作品記録を登録して新しいrunで再検証する。
+段階Cの機構レビューは、引き続きその工程のnative scannerで別途行う。

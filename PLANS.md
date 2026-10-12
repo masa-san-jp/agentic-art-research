@@ -1285,3 +1285,44 @@ Review full log SHA-256: shared `19b5c396d52d9194428f25f8cea4b0786adacd214186532
 Review decisions: complete-sentence quotation boundaries are determined by source start/end punctuation when no literal question content term is present; 20 characters and exact source/window match are always required. Claim pairs prioritize same-question comparisons, with only shared-evidence comparisons across questions, capped at config max_claim_pairs 120; truncation remains a reported gap. Similarity checks are lexical (0.9 for quote/observation derivation), not a semantic guarantee. Config v1 checkpoints stay on their pinned code; the new v2 policy is not silently substituted. Whole-role fixture/gate assertions remain unchanged; their setup explicitly selects legacy. README/AGENTS/element docs explain the new default, temporary legacy policy, and Git-external validator procedure. All changed paths are listed in execution/state.yaml.
 
 Remaining condition is unchanged: LIVE-ACCEPTANCE-NOT-RUN, because external site browsing is explicitly prohibited and no owner Stage A proposition plus actual retrieved bodies was provided as a live acceptance input. Task remains BLOCKED; next start is the orchestrator's owner-profile external CLI run and grounded ledger review. No sensitive data, real profile/project/raw/runtime or actual graph was committed; no GitHub write, public artifact or real production output occurred. Synthetic CLI/element/full-suite project directories were cleaned normally. The isolated full-suite temporary roots retain only empty runtime locks; OS-temp cleanup of the prior interrupted legacy run remains unverified.
+
+## Issue #133: deterministic works history adapter
+
+### Purpose / Big Picture
+Convert only indexed work records from an explicitly supplied, read-only catalog
+into external scanner inputs. `tools/works_history.py --works-root <catalog>
+--output <external-history>` produces creator-scoped minimal history projects;
+pass that directory to the first `research_elements.py next --history-root`.
+These are scanner inputs, not complete research projects or inferred art claims.
+
+### Progress
+- [x] (2026-10-13 JST) Updated main and created agent/133-selfrep-history; read scanner, Stage B snapshot/finish and source catalog contracts.
+- [x] (2026-10-13 JST) Implemented adapter, synthetic fixtures, scanner/Stage B integration tests and usage docs; focused 10 tests PASS.
+- [ ] Run full unittest/validator and read-only real scan, record evidence, commit and open PR.
+
+### Surprises & Discoveries
+The supplied catalog has `works/index.yaml: records: []`; works/ contains only
+README and index. Its README distinguishes the eleven plans from produced works.
+No per-work record exists to convert. The native v2 scanner reports empty history
+as LOW, but Stage B intentionally converts zero comparable projects to UNKNOWN
+and emits no review. Do not manufacture history or silently substitute plans.
+
+### Decision Log
+Use index paths, record.md/README.md verbatim, and explicit creator_id from index,
+metadata.yaml or lineage.json; missing/conflicting identity fails closed. No model,
+network, discovery of unindexed works/media, or inference of creator from Git owner.
+Keep provenance as relative paths and hashes. Publish a fully prepared directory
+atomically; identical replays are no-ops and changed/non-owned output is rejected.
+Rejected: treating catalog plans as produced works or generating a review from an
+empty corpus. Base/source Research commit recorded in final evidence; source catalog
+revision will be recorded in external build receipt / verification evidence.
+
+### Outcomes
+Pending implementation and verification. Real acceptance cannot show a review
+until at least one indexed work with explicit creator identity is supplied.
+
+Qualification discovery: preliminary dirty-tree full run executed 442 tests and
+failed 10 memory tests with `execute a clean pinned code checkout`. This is not
+passing evidence. Full qualification must run after committing code, then append
+verification evidence in a separate commit. Shared Python 3.12 release gate also
+returned base_release FAIL on the uncommitted tree; inspect clean qualification.
