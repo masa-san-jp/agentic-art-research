@@ -301,38 +301,40 @@ element_research_122:
 
 works_history_133:
   task_id: WORKS-HISTORY-133
-  project: repository-maintenance; LIVE-20261012-A9 read-only verification
-  status: CODE_VERIFIED_REAL_INPUT_EMPTY
+  project: repository-maintenance; LIVE-20261012-A9 copy verification
+  status: DONE
   branch: agent/133-selfrep-history
-  source_commit: 0fa1509a2aef991a355665a912219d2cfde0f393
-  code_candidate: d751f28b6eaa99c38b155e3ff1537c1a1364b9f3
+  source_commit: 0e3da3a
+  code_candidate: 8cfcbeab1731e3ee458732c5a7a2c7d744f18876
   catalog_source_commit: 8b023ac200d55aca00a6c283c85c95f478ea7da6
-  catalog_index_sha256: 5e08ec7a5d35b7866c1f5dca863f0998f8073209cb099f91a15c195daa06bb9f
   changed_paths:
     - tools/works_history.py
     - tests/test_works_history.py
-    - tests/fixtures/works-history
+    - tests/fixtures/plans-history
     - docs/research-elements.md
     - PLANS.md
     - execution/task-queue.yaml
     - execution/state.yaml
     - execution/handoff.md
   verification:
-    focused: 10 tests PASS
-    full: "PASS: local 444 tests / 686.561s; shared 444 tests / 682.755s; both exit 0 on clean pinned code"
-    validator: PASS with both interpreters on pinned code
+    focused: 17 tests PASS
+    full: "PASS: clean local 451 tests / 924.389s; shared 451 tests / 923.042s; both exit 0"
+    validator: PASS local and shared
+    docs_security_graph_diff: PASS
     real_scan:
       candidate_project: project/auto-live-20261012-a9-2a76271f9c04
       candidate_source_commit: 283769f3096fd654717a0b4ceff408bb2a0fe7e3
+      explicit_catalog_scope: owner-catalog
+      candidate_creator_id: null
       candidate_signals: 20
-      comparable_projects: 0
-      historical_signals: 0
-      matches: 0
-      native_v2_risk: LOW
-      stage_b_risk: UNKNOWN
-      self_repetition_reviews: 0
+      comparable_projects: 11
+      historical_signals: 756
+      matches: 69
+      native_v2_risk: HIGH
+      stage_b_risk: HIGH
+      self_repetition_reviews: 1
       source_project_unchanged: true
-  remaining: NO-INDEXED-WORKS; QUALITY-REQUIRED-SELF_REPETITION_REVIEW remains in real run.
-  next_start: Register actual work records with explicit creator identity in owner catalog, build a new external history root, and start a fresh Stage B run with that history pinned. Existing runs do not accept history replacement.
+  remaining: Native lexical HIGH requires review; Stage C mechanism comparison remains required. Existing evidence minimum 22/30 and requirements minimum 0/4 keep Stage B INCOMPLETE.
+  next_start: Owner reviews HIGH matches; start a fresh run with explicit candidate creator and authorized catalog history pinned on first next. Do not replace history in the original frozen run. PR135 review; do not merge.
   sensitive_git_content: none; fixtures are synthetic
-  external_artifacts: history receipt, read-only project copy and metadata-only verification reports; not committed
+  external_artifacts: preserved old history, rebuilt history receipt, copied project, metadata-only scan/completion reports and test logs; not committed

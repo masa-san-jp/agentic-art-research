@@ -1345,8 +1345,8 @@ clean committed code, push the same branch and update PR #135; do not merge.
 ### Progress
 - [x] Extend adapter and docs; add small synthetic plan fixture, native scope and Stage B tests.
 - [x] Rebuilt real external history: 11 plans, 756 historical signals, 69 matches, native/Stage B HIGH, one review; original project hashes unchanged.
-- [ ] Commit code; run full unittest and declared checks on clean pinned checkout.
-- [ ] Record final evidence, push agent/133-selfrep-history and update PR #135.
+- [x] Commit 8cfcbea; clean local/shared full suites each pass 451 tests; focused 17 and declared checks pass.
+- [x] Record final evidence; delivery to agent/133-selfrep-history / PR #135 follows. Do not merge.
 
 ### Surprises & Discoveries
 Ten indexed plans have explicit but mixed synthetic creator IDs; P0004 lacks lineage/creator identity. Add an explicit authorized catalog owner scope option, retain original identity in receipt, and keep default fail-closed behavior. Candidate creator is null, so native scan uses its existing all-creator behavior. Works index
@@ -1361,5 +1361,5 @@ rebuilding the requested external location. Rejected: fabricating produced works
 inferring creator from Git owner, replacing history in a frozen original run.
 
 ### Outcomes
-Pending clean qualification and real-scan evidence. Base code/source commit:
+Qualified code 8cfcbea: local 451 / 924.389s and shared 451 / 923.042s, both OK, exit 0; focused 17 PASS. Real scan: 11 plans, 756 signals, 69 matches, native HIGH; Stage B HIGH and one review. Original project unchanged. Native matches are lexical, including shared English terms; Stage C review and existing evidence/requirements gaps remain. Base code/source commit:
 0e3da3a (PR #135). All actual project/history/runtime stays outside protocol Git.

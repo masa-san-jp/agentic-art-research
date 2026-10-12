@@ -221,3 +221,46 @@ Log hashes: local `f9e7bc46483a217b9f3cf8a585e13ba8ca2f452497591722e7bfc65b6e80c
 `0760e195d711d338a7f53f8433f0ab7dce2b808238bfd7d60411598c19308960`. No code changed after this qualification;
 this follow-up updates completion evidence only. Real acceptance remains blocked
 for the empty works index; publishing the requested PR does not claim a live review.
+
+
+## PR #135 follow-up / WORKS-HISTORY-133 completion (2026-10-13 JST)
+
+Owner explicitly authorized earlier proposals as self-repetition history, superseding
+NO-INDEXED-WORKS and the prior prohibition on substituting plans. Plans are proposals,
+not produced works. Qualified code `8cfcbeab1731e3ee458732c5a7a2c7d744f18876`; catalog source
+`8b023ac200d55aca00a6c283c85c95f478ea7da6`. Changed paths are in execution/state.yaml.
+
+Adapter reads indexed works and plans. Plans use only plan.md paragraphs and explicit
+metadata comparison fields verbatim, one project per plan. Default creator checks
+remain fail-closed. Real input P0004 lacks creator/lineage, while other source IDs
+are mixed legacy synthetic IDs. Under the owner's explicit corpus authorization,
+`--creator-id owner-catalog` assigns a shared works/plans scope and preserves original
+source_creator_id (including null) in the receipt. Conflicting source declarations
+remain errors. No source metadata is changed, no creator is inferred from Git.
+
+Commands (from protocol repo, paths supplied externally):
+- `.venv/bin/python tools/works_history.py --works-root <owner-catalog> --creator-id owner-catalog --output <external-history-root>`: exit 0, 11 history projects; prior empty history preserved by rename outside Git.
+- Native `scan_projects(..., contract_version=CONTRACT_VERSION_V2)` against a copied real project, using Stage B frozen manifest/claims, source commit and last_now: 20 candidate signals, 11 comparable plans, 756 history signals, 69 matches across all eleven plans, native HIGH.
+- `Engine.finish(state)` in memory on copy, with rebuilt history snapshot and scan recomputed: HIGH, one SR001 review, no QUALITY-REQUIRED-SELF_REPETITION_REVIEW. Stage B remains INCOMPLETE for evidence 22/30 and requirements 0/4. Candidate creator is null; native all-creator behavior is unchanged. Original project's complete hash set unchanged, catalog source hashes still match receipt.
+- `.venv/bin/python -m unittest discover -s tests -p test_works_history.py -v`: 17 tests PASS.
+- `.venv/bin/python -m unittest discover -s tests -v`: 451 tests / 924.389s, OK, exit 0.
+- `<shared-venv>/bin/python -m unittest discover -s tests`: 451 tests / 923.042s, OK, exit 0 (user-authorized interpreter because system python3 lacks yaml).
+- Local/shared `tools/validate.py --check`: PASS. Local docs/security/graph checks and `git diff --check`: PASS.
+
+Full suites ran on clean code with isolated TMPDIR and PYTHONDONTWRITEBYTECODE=1;
+no code changed during qualification. Preliminary unscoped real build failed on
+P0004 missing creator; not counted as successful evidence. Explicit corpus scope
+resolved the data boundary without changing original data or default validation.
+
+HIGH is the native lexical judgement, not a proven mechanism/artistic repetition:
+top matched terms include automatically, artist and present. Stage C mechanism
+review remains required. Task DONE for requested adapter/copy-scan verification.
+Next: review HIGH matches, use explicit candidate creator on a fresh Stage B run,
+and pin history on first next. Original frozen run must not be rewritten. Deliver
+to the same branch and update PR #135; do not merge. No sensitive content, real
+plan/project/runtime/raw or graph was added to protocol Git. Rebuilt/preserved
+history, copy, reports and logs remain external.
+
+Full log SHA-256:
+- local: `53d2c372efba0c03943ee320466d30f8d802ba38ed51c92599a92232dc9fe160`
+- shared: `54757d59f0d3ef5a8d031db33f560859469f5f398671eda32805c92eb941caf8`
