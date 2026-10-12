@@ -191,3 +191,157 @@ history and copy input hashes unchanged; no apply. No sensitive or actual
 project/runtime/raw added to Git; copy/reports remain outside protocol.
 Next: push qualification evidence, PR #138 review; do not merge.
 Independent ELEMENT-RESEARCH-122 live blocker remains unchanged.
+## Issue #133 / WORKS-HISTORY-133 (2026-10-13 JST)
+
+Branch `agent/133-selfrep-history`; Research base/source commit
+`0fa1509a2aef991a355665a912219d2cfde0f393`. Catalog source commit
+`8b023ac200d55aca00a6c283c85c95f478ea7da6`, works index SHA-256
+`5e08ec7a5d35b7866c1f5dca863f0998f8073209cb099f91a15c195daa06bb9f`.
+Changed paths and restart procedure are recorded in execution/state.yaml.
+
+The deterministic adapter only reads indexed work Markdown and explicit creator
+metadata. It writes immutable minimal scanner projects outside Git, plus relative
+source paths/hashes. Synthetic integration generates one Stage B review and removes
+QUALITY-REQUIRED-SELF_REPETITION_REVIEW. Focused command
+`.venv/bin/python -m unittest discover -s tests -p test_works_history.py -v`:
+10 tests PASS. Preliminary focused run failed on the test helper's backwards clock;
+fixture clock and duplicate imported-test discovery were corrected before qualification.
+Full unittest and final validator evidence follow below.
+
+Real verification ran `tools/works_history.py --works-root <owner-catalog>
+--output <external-history>` and the exact Stage B scanner path: candidate contains
+only frozen manifest + generated claims, `self-repetition-scan/v2`, repository identity,
+frozen protocol commit and last_now. A copy under the external verification root was
+used for `Engine.finish` in memory; neither original nor copied checkpoint was rewritten.
+The original project's complete file-hash set was unchanged.
+
+Result for `project/auto-live-20261012-a9-2a76271f9c04`: 20 candidate signals,
+0 comparable projects, 0 historical signals, 0 matches. Native scanner reports LOW
+with available empty history; Stage B correctly normalizes it to UNKNOWN and emits
+0 reviews. QUALITY-REQUIRED-SELF_REPETITION_REVIEW remains (along with existing
+minimum-evidence and minimum-requirements failures). The owner's works index is empty;
+plans were deliberately not substituted for produced works. Task remains BLOCKED on
+NO-INDEXED-WORKS, although adapter code and synthetic acceptance are implemented.
+
+Next start: supply indexed actual works with explicit creator identity, build a fresh
+external history root, then pin it on the first next of a new Stage B run. Existing
+frozen runs cannot replace their history. Stage C mechanism review remains separate.
+No sensitive information or actual work/project/runtime/raw was added to Git.
+External artifacts exist: history receipt, verification project copy, scan/completion
+reports and test logs; all stay outside the protocol repository.
+
+Pre-qualification: dirty-tree full suite ran 442 tests in 715.579s and failed 10
+memory setup checks (`execute a clean pinned code checkout`). Shared interpreter's
+release gate returned base_release FAIL on the same dirty source. These runs are
+not accepted evidence. Commit code before clean full qualification; append final
+verification in a subsequent evidence commit. Do not weaken the pinned-code guard.
+
+Final qualification on clean code `d751f28b6eaa99c38b155e3ff1537c1a1364b9f3`:
+
+| Command (from repo root) | Exit | Result |
+| --- | --- | --- |
+| `.venv/bin/python -m unittest discover -s tests -v` | 0 | 444 tests / 686.561s, OK |
+| `<shared-venv>/bin/python -m unittest discover -s tests` | 0 | 444 tests / 682.755s, OK |
+| `.venv/bin/python -m unittest discover -s tests -p test_works_history.py -v` | 0 | 10 tests, OK |
+| Shared interpreter, same focused command | 0 | 10 tests, OK |
+| Local/shared `tools/validate.py --check` | 0 | repository validation passed |
+| `tools/security_check.py --check`, `tools/docs_check.py --check`, `git diff --check` | 0 | PASS |
+
+Full-suite temporary roots were isolated and PYTHONDONTWRITEBYTECODE=1 was set.
+System python3 lacks yaml, so the user-specified shared interpreter was used.
+The two superseded dirty-tree suites and the dirty-tree release diagnostic were
+stopped before clean qualification; they are not passing evidence. The preliminary
+442-test run's 10 errors were pinned-code setup failures, resolved by the code commit.
+Log hashes: local `f9e7bc46483a217b9f3cf8a585e13ba8ca2f452497591722e7bfc65b6e80c375`, shared
+`0760e195d711d338a7f53f8433f0ab7dce2b808238bfd7d60411598c19308960`. No code changed after this qualification;
+this follow-up updates completion evidence only. Real acceptance remains blocked
+for the empty works index; publishing the requested PR does not claim a live review.
+
+
+## PR #135 follow-up / WORKS-HISTORY-133 completion (2026-10-13 JST)
+
+Owner explicitly authorized earlier proposals as self-repetition history, superseding
+NO-INDEXED-WORKS and the prior prohibition on substituting plans. Plans are proposals,
+not produced works. Qualified code `8cfcbeab1731e3ee458732c5a7a2c7d744f18876`; catalog source
+`8b023ac200d55aca00a6c283c85c95f478ea7da6`. Changed paths are in execution/state.yaml.
+
+Adapter reads indexed works and plans. Plans use only plan.md paragraphs and explicit
+metadata comparison fields verbatim, one project per plan. Default creator checks
+remain fail-closed. Real input P0004 lacks creator/lineage, while other source IDs
+are mixed legacy synthetic IDs. Under the owner's explicit corpus authorization,
+`--creator-id owner-catalog` assigns a shared works/plans scope and preserves original
+source_creator_id (including null) in the receipt. Conflicting source declarations
+remain errors. No source metadata is changed, no creator is inferred from Git.
+
+Commands (from protocol repo, paths supplied externally):
+- `.venv/bin/python tools/works_history.py --works-root <owner-catalog> --creator-id owner-catalog --output <external-history-root>`: exit 0, 11 history projects; prior empty history preserved by rename outside Git.
+- Native `scan_projects(..., contract_version=CONTRACT_VERSION_V2)` against a copied real project, using Stage B frozen manifest/claims, source commit and last_now: 20 candidate signals, 11 comparable plans, 756 history signals, 69 matches across all eleven plans, native HIGH.
+- `Engine.finish(state)` in memory on copy, with rebuilt history snapshot and scan recomputed: HIGH, one SR001 review, no QUALITY-REQUIRED-SELF_REPETITION_REVIEW. Stage B remains INCOMPLETE for evidence 22/30 and requirements 0/4. Candidate creator is null; native all-creator behavior is unchanged. Original project's complete hash set unchanged, catalog source hashes still match receipt.
+- `.venv/bin/python -m unittest discover -s tests -p test_works_history.py -v`: 17 tests PASS.
+- `.venv/bin/python -m unittest discover -s tests -v`: 451 tests / 924.389s, OK, exit 0.
+- `<shared-venv>/bin/python -m unittest discover -s tests`: 451 tests / 923.042s, OK, exit 0 (user-authorized interpreter because system python3 lacks yaml).
+- Local/shared `tools/validate.py --check`: PASS. Local docs/security/graph checks and `git diff --check`: PASS.
+
+Full suites ran on clean code with isolated TMPDIR and PYTHONDONTWRITEBYTECODE=1;
+no code changed during qualification. Preliminary unscoped real build failed on
+P0004 missing creator; not counted as successful evidence. Explicit corpus scope
+resolved the data boundary without changing original data or default validation.
+
+HIGH is the native lexical judgement, not a proven mechanism/artistic repetition:
+top matched terms include automatically, artist and present. Stage C mechanism
+review remains required. Task DONE for requested adapter/copy-scan verification.
+Next: review HIGH matches, use explicit candidate creator on a fresh Stage B run,
+and pin history on first next. Original frozen run must not be rewritten. Deliver
+to the same branch and update PR #135; do not merge. No sensitive content, real
+plan/project/runtime/raw or graph was added to protocol Git. Rebuilt/preserved
+history, copy, reports and logs remain external.
+
+Full log SHA-256:
+- local: `53d2c372efba0c03943ee320466d30f8d802ba38ed51c92599a92232dc9fe160`
+- shared: `54757d59f0d3ef5a8d031db33f560859469f5f398671eda32805c92eb941caf8`
+
+## PR #135 P1 template-text repair (2026-10-13 JST)
+
+Task WORKS-HISTORY-133; repository maintenance and external real-copy verification.
+Source 57510e34fcf4e7ae689415342724084ab810cff9; qualified code
+15f0026a2933d2b2ef2c9166213d76726fcade6c. Changed paths in execution/state.yaml.
+
+Plans now extract verbatim proposal cell values using explicit comparison rows
+and requirement/acceptance columns. Labels, headers, admin rows and template prose
+are absent from both claims.jsonl and creative-direction.md. Narrative plans retain
+paragraph extraction; works byte preservation, creator scope, paths, deterministic
+immutable publication and native scanner thresholds remain unchanged.
+
+Acceptance (from repository root):
+- `.venv/bin/python -m unittest discover -s tests -p test_works_history.py -v`: 19 PASS.
+- `.venv/bin/python -m unittest discover -s tests -v`: 453 PASS.
+- User-specified shared interpreter `-m unittest discover -s tests`: 453 PASS.
+- `.venv/bin/python tools/validate.py --check`: PASS.
+- `tools/security_check.py --check`, `tools/docs_check.py --check`, `git diff --check`: PASS.
+Both full suites run on clean committed code, isolated TMPDIR, no bytecode writes.
+
+External verification rebuilds requested works-history from the authorized owner
+catalog with `creator_id=owner-catalog`, preserving the previous history by rename.
+Scan a new copy of the supplied original project: comparable P0001..P0011 (11
+plans), 503 history signals, 50 candidate signals, 17 matches, native v2 HIGH.
+Repeat scan and build deterministic. Original project's complete hash set unchanged;
+catalog hashes match receipt. For direct comparison with previous acceptance, scan
+the copied Stage B state's frozen manifest/20 claims only: 11 matches (down from 69),
+native HIGH. No original project/runtime files are modified.
+
+Example references (full pairs remain in external JSON):
+- CL019 <=> P0005 acceptance value: score 0.9, terms describe/device.
+- CL007 <=> P0006 prototype statement: score 0.9, term drawings.
+- Candidate claim <=> P0008 proposition: score 0.9, term becomes.
+
+Balloon control against all 11 real plans: LOW, one weak 0.398 sequence match
+without strong terms; zero mechanism-label matches. Synthetic regression has zero
+matches/LOW. Remaining HIGH reflects substantive lexical overlaps under existing
+native thresholds, not established mechanism repetition. Next: review these pairs;
+use a fresh creator-scoped run, preserve frozen original, do not merge PR135.
+No sensitive data, real plan/project/raw or generated graph added to Git. External
+artifacts: previous/rebuilt history, fresh copy, scan reports, matched pairs and logs.
+
+local full: 453 tests / 905.902s; log SHA-256 549a0f87b3092085e39655798c89a8a2cd045b0efdc5f42a71ec39c3376e132b.
+
+shared full: 453 tests / 902.947s; log SHA-256 a33be163ec1499fcec7a051c56a0c8b5a2a1e6e05000fed6cd077bc7f0cac4c7.

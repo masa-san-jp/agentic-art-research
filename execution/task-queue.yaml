@@ -579,3 +579,16 @@ tasks:
       - .venv/bin/python tools/validate.py --check
       - git diff --check
     completion: Implementation 3efddeda889b84ac7db7f7e2abb6292f03e77c4e; both full suites 441 PASS, focused 11 PASS, all six bands and original fixture HIGH preserved; external 11-project scan LOW/0 matches with unchanged input hashes.
+  - id: WORKS-HISTORY-133
+    milestone: G7
+    title: Adapt owner works and earlier proposals to creator-scoped self-repetition history
+    status: DONE
+    depends_on: [SELF-REPETITION-V2-001]
+    issue_refs: ["agentic-art-research#133"]
+    acceptance: Deterministic external history conversion passes synthetic scanner/Stage B tests and an owner run records at least one self-repetition review from indexed past works or explicitly authorized past proposals.
+    checks:
+      - .venv/bin/python -m unittest discover -s tests -p test_works_history.py -v
+      - .venv/bin/python -m unittest discover -s tests -v
+      - .venv/bin/python tools/validate.py --check
+      - git diff --check
+    completion: PR135 P1 repair code 15f0026; focused 19 and clean local/shared full 453 tests PASS; validators PASS. Table-based plans emit substantive values in both artifacts and omit template text. Real copy scan compares 11 plans, 503 history signals and 50 candidate signals, with 17 matches and native HIGH; prior-comparable 20-claim scan has 11 matches and HIGH. Original project unchanged; owner scope and paths preserved.

@@ -1411,3 +1411,123 @@ were added. Preliminary fixture CLI invocation used an invalid-length commit
 argument and failed closed; rerun with the actual verified SHA passed.
 No review work remains; next: PR #138 review, do not merge. Existing
 ELEMENT-RESEARCH-122 live acceptance blocker remains independent.
+## Issue #133: deterministic works history adapter
+
+### Purpose / Big Picture
+Convert only indexed work records from an explicitly supplied, read-only catalog
+into external scanner inputs. `tools/works_history.py --works-root <catalog>
+--output <external-history>` produces creator-scoped minimal history projects;
+pass that directory to the first `research_elements.py next --history-root`.
+These are scanner inputs, not complete research projects or inferred art claims.
+
+### Progress
+- [x] (2026-10-13 JST) Updated main and created agent/133-selfrep-history; read scanner, Stage B snapshot/finish and source catalog contracts.
+- [x] (2026-10-13 JST) Implemented adapter, synthetic fixtures, scanner/Stage B integration tests and usage docs; focused 10 tests PASS.
+- [x] (2026-10-13 JST) Code committed as d751f28; clean local/shared full suites each passed 444 tests, validators passed; read-only real scan and restart evidence recorded.
+- [ ] Real owner review acceptance: blocked on NO-INDEXED-WORKS. Delivery proceeds via the explicitly requested branch push and PR; do not merge.
+
+### Surprises & Discoveries
+The supplied catalog has `works/index.yaml: records: []`; works/ contains only
+README and index. Its README distinguishes the eleven plans from produced works.
+No per-work record exists to convert. The native v2 scanner reports empty history
+as LOW, but Stage B intentionally converts zero comparable projects to UNKNOWN
+and emits no review. Do not manufacture history or silently substitute plans.
+
+### Decision Log
+Use index paths, record.md/README.md verbatim, and explicit creator_id from index,
+metadata.yaml or lineage.json; missing/conflicting identity fails closed. No model,
+network, discovery of unindexed works/media, or inference of creator from Git owner.
+Keep provenance as relative paths and hashes. Publish a fully prepared directory
+atomically; identical replays are no-ops and changed/non-owned output is rejected.
+Rejected: treating catalog plans as produced works or generating a review from an
+empty corpus. Base/source Research commit recorded in final evidence; source catalog
+revision will be recorded in external build receipt / verification evidence.
+
+### Outcomes
+Adapter and synthetic acceptance verified at d751f28b6eaa99c38b155e3ff1537c1a1364b9f3.
+Clean full suites: local 444 tests / 686.561s; shared 444 tests / 682.755s; both OK
+and exit 0. Local/shared validators, docs/security checks and diff check pass.
+Real acceptance remains blocked until at least one indexed work with explicit
+creator identity is supplied: 20 candidate signals, 0 comparable projects,
+0 matches, native LOW normalized by Stage B to UNKNOWN, 0 reviews.
+
+Qualification discovery: preliminary dirty-tree full run executed 442 tests and
+failed 10 memory tests with `execute a clean pinned code checkout`. This is not
+passing evidence. Full qualification must run after committing code, then append
+verification evidence in a separate commit. Shared Python 3.12 release gate also
+returned base_release FAIL on the uncommitted tree; inspect clean qualification.
+
+
+## PR #135 follow-up: include earlier proposals (2026-10-13 JST)
+
+### Purpose / Big Picture
+The owner explicitly defines self-repetition to include earlier harness proposals.
+Extend WORKS-HISTORY-133 to indexed plans while retaining produced works, using
+only plan.md / metadata.yaml comparison content and explicit creator scope.
+Rebuild external history, scan a copy of the supplied Stage B project, qualify
+clean committed code, push the same branch and update PR #135; do not merge.
+
+### Progress
+- [x] Extend adapter and docs; add small synthetic plan fixture, native scope and Stage B tests.
+- [x] Rebuilt real external history: 11 plans, 756 historical signals, 69 matches, native/Stage B HIGH, one review; original project hashes unchanged.
+- [x] Commit 8cfcbea; clean local/shared full suites each pass 451 tests; focused 17 and declared checks pass.
+- [x] Record final evidence; delivery to agent/133-selfrep-history / PR #135 follows. Do not merge.
+
+### Surprises & Discoveries
+Ten indexed plans have explicit but mixed synthetic creator IDs; P0004 lacks lineage/creator identity. Add an explicit authorized catalog owner scope option, retain original identity in receipt, and keep default fail-closed behavior. Candidate creator is null, so native scan uses its existing all-creator behavior. Works index
+is empty. This owner instruction supersedes the previous NO-INDEXED-WORKS blocker.
+
+### Decision Log
+Use plans/index.yaml for enumeration and lineage only for identity. Extract plan
+paragraphs and explicit metadata TEXT_FIELDS values verbatim; never derive a
+mechanism from title, index, README or media. Keep W/P IDs distinct and the existing
+immutable-output guard. Preserve the previous history by moving it aside before
+rebuilding the requested external location. Rejected: fabricating produced works,
+inferring creator from Git owner, replacing history in a frozen original run.
+
+### Outcomes
+Qualified code 8cfcbea: local 451 / 924.389s and shared 451 / 923.042s, both OK, exit 0; focused 17 PASS. Real scan: 11 plans, 756 signals, 69 matches, native HIGH; Stage B HIGH and one review. Original project unchanged. Native matches are lexical, including shared English terms; Stage C review and existing evidence/requirements gaps remain. Base code/source commit:
+0e3da3a (PR #135). All actual project/history/runtime stays outside protocol Git.
+
+## PR #135 P1: exclude plan template text (2026-10-13 JST)
+
+### Purpose / Big Picture
+Fix WORKS-HISTORY-133 false positives caused by whole Markdown tables and the
+unfiltered plan copied into creative-direction. Preserve deterministic conversion,
+creator scope, indexed works/plans paths and native scanner thresholds.
+
+### Progress
+- [x] Pull branch; reproduce template-label path and add unrelated balloon regression.
+- [x] Extract explicit proposal row values and requirement/acceptance columns; generate
+  both plan artifacts from those excerpts plus existing textual metadata values.
+- [x] Focused suite: 19 tests PASS, including malformed-table failure before publish.
+- [x] Rebuilt owner history and scanned a fresh copy; recorded pairs and native judgement.
+- [x] Qualified clean code 15f0026: local/shared 453 tests each PASS; validators PASS.
+- [x] Record final evidence for delivery to agent/133-selfrep-history / PR #135; do not merge.
+
+### Surprises & Discoveries
+Native similarity treats one shared long English term as 0.9; changing that rule
+would exceed this review's scope. Production-plan prose and generic content columns
+contain repeated operational boilerplate, so table-based plans use explicit
+comparison row/column allowlists. Plain narrative plans retain paragraph extraction.
+
+### Decision Log
+Use verbatim cell values with line/column provenance, never table labels or headers.
+For table-based plans omit template prose and administration tables; retain substantive
+encounter/theme/message/mechanism/hypothesis, requirement and acceptance values.
+Generate creative-direction from the same claims, with stable exact deduplication.
+Keep works byte preservation and metadata TEXT_FIELDS unchanged. Reject malformed
+row widths rather than silently reinterpret cells. Rejected: scanner threshold
+changes, inferred mechanisms, corpus-wide removal of shared substantive words.
+
+### Outcomes
+Qualified code 15f0026: focused 19 PASS; full local/shared 453 each PASS.
+Real copy scan: 11 indexed plans (P0001..P0011), 503 history signals, 50 candidate
+signals, 17 matches, native HIGH. Prior-comparable Stage B claims-only scan: 20
+candidate signals, 11 matches (previously 69), native HIGH. Balloon control: LOW,
+one weak 0.398 sequence match with no shared strong terms; no mechanism-label hit.
+Original project hash set and source catalog receipt hashes unchanged. Source code commit before
+this repair: 57510e34fcf4e7ae689415342724084ab810cff9. No sensitive content or actual
+project artifacts are committed; external history and verification copy stay outside Git.
+Next start: review the remaining lexical matches; use creator-scoped history in a fresh
+Stage B run. Original frozen project remains unchanged. PR #135 remains unmerged.

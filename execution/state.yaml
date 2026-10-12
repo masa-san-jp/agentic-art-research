@@ -355,3 +355,102 @@ scanner_recall_138:
   external_artifacts: Fresh external candidate copy and metadata-only reports; no project/runtime/raw artifacts added to protocol Git.
   remaining: None for PR 138 review; independent ELEMENT-RESEARCH-122 live blocker preserved.
   next_start: PR 138 review; do not merge.
+works_history_133:
+  task_id: WORKS-HISTORY-133
+  project: repository-maintenance; LIVE-20261012-A9 copy verification
+  status: DONE
+  branch: agent/133-selfrep-history
+  source_commit: 0e3da3a
+  code_candidate: 8cfcbeab1731e3ee458732c5a7a2c7d744f18876
+  catalog_source_commit: 8b023ac200d55aca00a6c283c85c95f478ea7da6
+  changed_paths:
+    - tools/works_history.py
+    - tests/test_works_history.py
+    - tests/fixtures/plans-history
+    - docs/research-elements.md
+    - PLANS.md
+    - execution/task-queue.yaml
+    - execution/state.yaml
+    - execution/handoff.md
+  verification:
+    focused: 17 tests PASS
+    full: "PASS: clean local 451 tests / 924.389s; shared 451 tests / 923.042s; both exit 0"
+    validator: PASS local and shared
+    docs_security_graph_diff: PASS
+    real_scan:
+      candidate_project: project/auto-live-20261012-a9-2a76271f9c04
+      candidate_source_commit: 283769f3096fd654717a0b4ceff408bb2a0fe7e3
+      explicit_catalog_scope: owner-catalog
+      candidate_creator_id: null
+      candidate_signals: 20
+      comparable_projects: 11
+      historical_signals: 756
+      matches: 69
+      native_v2_risk: HIGH
+      stage_b_risk: HIGH
+      self_repetition_reviews: 1
+      source_project_unchanged: true
+  remaining: Native lexical HIGH requires review; Stage C mechanism comparison remains required. Existing evidence minimum 22/30 and requirements minimum 0/4 keep Stage B INCOMPLETE.
+  next_start: Owner reviews HIGH matches; start a fresh run with explicit candidate creator and authorized catalog history pinned on first next. Do not replace history in the original frozen run. PR135 review; do not merge.
+  sensitive_git_content: none; fixtures are synthetic
+  external_artifacts: preserved old history, rebuilt history receipt, copied project, metadata-only scan/completion reports and test logs; not committed
+
+works_history_135_p1:
+  task_id: WORKS-HISTORY-133
+  project: repository-maintenance; real copy verification
+  status: DONE
+  branch: agent/133-selfrep-history
+  source_commit: 57510e34fcf4e7ae689415342724084ab810cff9
+  qualified_code_commit: 15f0026a2933d2b2ef2c9166213d76726fcade6c
+  changed_paths:
+  - tools/works_history.py
+  - tests/test_works_history.py
+  - docs/research-elements.md
+  - PLANS.md
+  - execution/task-queue.yaml
+  - execution/state.yaml
+  - execution/handoff.md
+  verification:
+    focused: 19 tests PASS
+    full:
+      local: 453 tests PASS / 905.902s
+      shared: 453 tests PASS / 902.947s
+    validator: PASS
+    docs_security_diff: PASS
+    real_scan:
+      scanned_project_count: 11
+      scanned_signal_count: 503
+      candidate_signal_count: 50
+      risk_level: HIGH
+      matches: 17
+      comparable_records:
+      - P0001
+      - P0002
+      - P0003
+      - P0004
+      - P0005
+      - P0006
+      - P0007
+      - P0008
+      - P0009
+      - P0010
+      - P0011
+      original_unchanged: true
+      source_commit: 15f0026a2933d2b2ef2c9166213d76726fcade6c
+    stage_b_comparable_scan:
+      candidate_signals: 20
+      matches: 11
+      native_v2_risk: HIGH
+    balloon_control:
+      matches: 1
+      score: 0.398
+      shared_strong_terms: []
+      risk: LOW
+      template_mechanism_matches: 0
+  remaining: Remaining native lexical HIGH is not proof of mechanism repetition; scanner
+    thresholds unchanged.
+  next_start: Review substantive matched pairs; preserve original frozen run; do not
+    merge PR135.
+  sensitive_git_content: none; synthetic regression only
+  external_artifacts: rebuilt and preserved histories, fresh candidate copy, scan/pair
+    JSON and full logs remain outside Git
