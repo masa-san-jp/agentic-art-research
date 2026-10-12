@@ -552,3 +552,17 @@ tasks:
       - git diff --check
     completion: Review code b3f60fc33d913aa84a8e2dbcb2866d6428e4abaf qualified with both full 410-test suites, focused 35 tests, fixture matrix 3, default fake CLI 118 first-attempt requests, small CLI 24, external validation and all prior checks (exit 0).
     blocked_reason: LIVE-ACCEPTANCE-NOT-RUN; no external browsing authorized in this implementation session.
+
+  - id: WORKS-HISTORY-133
+    milestone: G7
+    title: Adapt owner works and earlier proposals to creator-scoped self-repetition history
+    status: DONE
+    depends_on: [SELF-REPETITION-V2-001]
+    issue_refs: ["agentic-art-research#133"]
+    acceptance: Deterministic external history conversion passes synthetic scanner/Stage B tests and an owner run records at least one self-repetition review from indexed past works or explicitly authorized past proposals.
+    checks:
+      - .venv/bin/python -m unittest discover -s tests -p test_works_history.py -v
+      - .venv/bin/python -m unittest discover -s tests -v
+      - .venv/bin/python tools/validate.py --check
+      - git diff --check
+    completion: PR135 P1 repair code 15f0026; focused 19 and clean local/shared full 453 tests PASS; validators PASS. Table-based plans emit substantive values in both artifacts and omit template text. Real copy scan compares 11 plans, 503 history signals and 50 candidate signals, with 17 matches and native HIGH; prior-comparable 20-claim scan has 11 matches and HIGH. Original project unchanged; owner scope and paths preserved.
