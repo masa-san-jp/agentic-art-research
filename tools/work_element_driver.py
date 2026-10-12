@@ -71,7 +71,8 @@ def abandonable(state, identifier):
     parts = identifier.split('.')
     if identifier.startswith('plan.') and len(parts) >= 3:
         return parts[2] == 'exclude' or parts[1] != state['plans'][0]['id']
-    return False
+    # An unanswerable reference category stays unmapped; production reports it as a reference gap.
+    return identifier.startswith('reference.')
 
 
 def select_plans(research, count):
@@ -362,6 +363,39 @@ def requirements(state, plan, points, records):
                                             'executor': 'production-validator', 'result': 'NOT_RUN'})
 
 
+def cited_evidence(research, plan):
+    """Evidence the handoff will cite for this plan: the decision's and its insight's claims' evidence."""
+    ids = set(plan['decision']['evidence_ids'])
+    for claim in research['claims']:
+        if claim['id'] in plan['insight']['claim_ids']:
+            ids.update(claim['evidence_ids'])
+    return [e for e in research.get('evidence', []) if e['id'] in ids]
+
+
+def references(state, plan, records):
+    """Which cited evidence record answers each production reference category (one choice each)."""
+    research = state['research']
+    titles = {s['id']: s['title'] for s in research['sources']}
+    cited = cited_evidence(research, plan)
+    if not cited:
+        return
+    for length in (160, 80, 40, 0):
+        # Shorter quotes before anything else: every cited record must stay choosable.
+        sources = [{'id': e['id'], 'title': titles.get(e['source_id'], ''), 'url': e['url'],
+                    **({'quote': e['quote'][:length]} if length and e.get('quote') else {})} for e in cited]
+        if len(json.dumps(sources, ensure_ascii=False).encode()) <= state['config']['input_bytes'] - 600:
+            break
+    for entry in state['config'].get('reference_categories') or []:
+        category = entry['id']
+        value = yield from ask(state, f'reference.{category}',
+                               f'制作のための参考資料として「{entry["label"]}」に当たるものを、資料（sources）から1つ選んで ID を返してください。'
+                               '当たる資料が無ければ NONE を返してください。',
+                               {'work_title': plan['title'], 'mechanism': records['points']['mechanism'], 'sources': sources},
+                               ('mechanism',), choices=[*[s['id'] for s in sources], 'NONE'])
+        if value and value != 'NONE':
+            records['references'].setdefault(value, []).append(category)
+
+
 def schedule(state, records):
     for plan in state['plans']:
         values = yield from plan_items(state, plan, records)
@@ -374,10 +408,11 @@ def schedule(state, records):
     records['points'] = yield from key_points(state, recommended, records)
     records['prototype'] = yield from prototype(state, recommended)
     yield from requirements(state, recommended, records['points'], records)
+    yield from references(state, recommended, records)
 
 
 def advance(state):
-    records = {'plans': [], 'dropped_plans': [], 'requirements': [], 'acceptance_tests': []}
+    records = {'plans': [], 'dropped_plans': [], 'requirements': [], 'acceptance_tests': [], 'references': {}}
     pending = None
     for request in schedule(state, records):
         if request['element_id'] not in state['answers'] and request['element_id'] not in state.get('abandoned', {}):
@@ -429,6 +464,32 @@ def transcribed(research, decision_id):
     }
 
 
+def digital_prototype(plan, uncertainty_id, tests, step_count):
+    """The local digital prototype production requires (program, no inference, no physical effect).
+
+    It reads the production plan's dimensions, materials and quantity and draws the components as an
+    SVG; agentic-art-production `build_prototype.py` renders it. Physical steps stay in PP001.
+    """
+    first = step_count + 1
+    return {
+        'id': 'PP002', 'hypothesis_id': plan['id'],
+        'question': f"制作プランの寸法・素材・数量から描いた図で、「{plan['title']}」の構成要素の配置と大きさを確かめられるか？",
+        'uncertainty_ids': [uncertainty_id],
+        'method': '制作プランの寸法・素材・数量を読み、構成要素の配置を SVG の図に描いて、制作要件と照らす。',
+        'inputs': ['03_plan/production-plan.yaml dimensions（寸法）', '03_plan/production-plan.yaml materials（素材）',
+                   '03_plan/production-plan.yaml quantity（数量）', *plan['components']],
+        'constraints': ['物の制作・購入・公開・依頼をしない（READ_ONLY と REPOSITORY_WRITE の段取りだけ）。'],
+        'tasks': [
+            {'id': f'PT{first:03}', 'title': '制作プランの寸法・素材・数量を読み、描く構成要素を並べる。', 'depends_on': [],
+             'completion_condition': '構成要素ごとに寸法・素材・数量が一覧になっている。', 'effect_type': 'READ_ONLY'},
+            {'id': f'PT{first + 1:03}', 'title': '構成要素の配置を SVG の図に描いて試作の出力として保存する。', 'depends_on': [f'PT{first:03}'],
+             'completion_condition': 'SVG の図が保存され、すべての構成要素が寸法の比率どおりに描かれている。', 'effect_type': 'REPOSITORY_WRITE'}],
+        'acceptance_test_ids': list(tests),
+        'expected_evidence': '構成要素の配置と寸法を描いた SVG 画像（描画による試作で、物の制作ではない）。',
+        'estimated_cost_band': 'LOW', 'estimated_duration_band': 'HOURS',
+        'executor_capability': 'digital-prototype-renderer', 'status': 'PLANNED'}
+
+
 def dump(key, rows):
     return yaml.safe_dump({key: rows}, allow_unicode=True, sort_keys=False)
 
@@ -471,7 +532,12 @@ def assemble(state, records):
         'estimated_cost_band': recommended['cost'], 'estimated_duration_band': recommended['duration'],
         'executor_capability': 'production-agent（PHYSICAL_EXTERNAL・PUBLICATION・PURCHASE の段取りは人の承認後に実行）',
         'status': 'PLANNED'}]
-    comparisons = [] if len(plans) < 2 else [{
+    if config.get('digital_prototype_plan'):
+        prototypes.append(digital_prototype(recommended, chosen_uid, tests, len(recommended['steps'])))
+        for hypothesis in hypotheses:
+            if hypothesis['id'] == recommended['id']:
+                hypothesis['uncertainties'][0]['prototype_plan_ids'].append('PP002')
+    comparisons =[] if len(plans) < 2 else [{
         'id': 'HC001', 'hypothesis_ids': [p['id'] for p in plans], 'axes': records['axes'],
         'recommended_hypothesis_id': recommended['id'], 'reason': records['reason'], 'status': 'COMPLETE'}]
     brief = {
@@ -512,6 +578,10 @@ def assemble(state, records):
         paths['creative_direction']: direction,
         paths['brief']: yaml.safe_dump(brief, allow_unicode=True, sort_keys=False),
     }
+    if paths.get('reference_categories'):
+        files[paths['reference_categories']] = yaml.safe_dump(
+            {'categories': {key: records['references'][key] for key in sorted(records['references'])}},
+            allow_unicode=True, sort_keys=False)
     # Every answered value already passed the forbidden-word check. Transcribed values are checked
     # here: a field that is empty or only a template placeholder is never written.
     unfilled = [f'{name}:{field}' for name, value in (('hypotheses', hypotheses), ('prototype_plans', prototypes),

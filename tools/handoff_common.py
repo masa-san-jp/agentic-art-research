@@ -121,6 +121,8 @@ class HandoffSources:
     evidence: list[dict[str, Any]]
     claims: list[dict[str, Any]]
     handoff: dict[str, Any]
+    # Stage D start decision for element-route projects; None on the legacy route.
+    stage_d_start: dict[str, Any] | None = None
 
 
 def resolve_project(root: Path, target: str) -> Path:
@@ -200,7 +202,19 @@ def load_handoff_sources(root: Path, target: str, *, protocol_root: Path | None 
     project = resolve_project(root, target)
     manifest_path = project / "manifest.yaml"
     manifest = _mapping(manifest_path, load_yaml(manifest_path), label="manifest")
-    if manifest.get("workflow_mode", "RESEARCH_ONLY") != "PRODUCTION_HANDOFF":
+    stage_d = None
+    if (project / "07_runtime" / "work-elements.json").is_file():
+        # Element route (Stage B/C checkpoints own the manifest): the Stage D start rule
+        # decides instead of the manifest workflow mode, and supplies the completion report.
+        from work_elements import stage_d_start
+
+        try:
+            stage_d = stage_d_start(project, protocol_root=protocol)
+        except (ValueError, OSError, KeyError) as exc:
+            raise HandoffInputError(f"STAGE_D_NOT_READY: {exc}") from exc
+        if not stage_d["allowed"]:
+            raise HandoffInputError("STAGE_D_NOT_READY: " + "; ".join(stage_d["reasons"]))
+    elif manifest.get("workflow_mode", "RESEARCH_ONLY") != "PRODUCTION_HANDOFF":
         raise HandoffInputError(
             f"{manifest_path}: workflow_mode must be PRODUCTION_HANDOFF before building or exporting a handoff"
         )
@@ -258,7 +272,8 @@ def load_handoff_sources(root: Path, target: str, *, protocol_root: Path | None 
     constraints_path = project / "00_intake" / "constraints.yaml"
     constraints = _mapping(constraints_path, load_yaml(constraints_path), label="constraints")
     completion_path = project / "07_runtime" / "completion-report.json"
-    completion_report = _mapping(completion_path, load_json(completion_path), label="completion report")
+    completion_report = (stage_d["completion_report"] if stage_d is not None else
+                         _mapping(completion_path, load_json(completion_path), label="completion report"))
 
     handoff_path = project / "05_production" / "production-handoff.yaml"
     handoff_value = load_yaml(handoff_path) if handoff_path.exists() else {}
@@ -291,4 +306,5 @@ def load_handoff_sources(root: Path, target: str, *, protocol_root: Path | None 
         evidence=evidence,
         claims=claims,
         handoff=handoff,
+        stage_d_start=stage_d,
     )
