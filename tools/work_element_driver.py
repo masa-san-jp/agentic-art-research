@@ -567,6 +567,9 @@ def assemble(state, records):
         f"## 意図的に破る傾向\n\n{points['denies']}\n\n飛躍: {recommended['leap']}\n\n"
         f"## 必須制約\n\n{requirement_lines}\n\n"
         f"仕掛け（{points['without_the_technique']}）: {points['mechanism']}\n\n"
+        # The recommended plan's steps in order; production binds this path to its derived tasks.
+        + (f"## 完了経路\n\n" + ''.join(f"{n}. {s['title']}\n" for n, s in enumerate(recommended['steps'], 1)) + "\n"
+           if config.get('digital_prototype_plan') else '') +
         f"## 未解決事項\n\n{info['what_is_not_settled']}\n"
         + (f"\n## 比較した別の案\n\n{alternatives}\n\n{records['reason']}\n" if alternatives else ''))
     files = {
