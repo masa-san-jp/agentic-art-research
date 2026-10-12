@@ -1,0 +1,4 @@
+version: 1
+records:
+  - id: P0001
+    path: plans/P0001-interval

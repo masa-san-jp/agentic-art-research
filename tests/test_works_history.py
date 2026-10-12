@@ -187,3 +187,121 @@ class WorksHistoryTest(unittest.TestCase):
         with self.assertRaisesRegex(WorksHistoryError, 'works/index.yaml: invalid document'):
             build_history(self.catalog, self.output)
         self.assertFalse(self.output.exists())
+
+
+class PlansHistoryTest(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name).resolve()
+        self.catalog = self.root / 'catalog'
+        shutil.copytree(ROOT / 'tests/fixtures/plans-history', self.catalog)
+        self.plan = self.catalog / 'plans/P0001-interval'
+        self.output = self.root / 'history'
+
+    def test_plans_only_verbatim_determinism_and_native_scope(self):
+        before = {str(p): p.read_bytes() for p in self.catalog.rglob('*') if p.is_file()}
+        receipt = build_history(self.catalog, self.output)
+        self.assertEqual(receipt, build_history(self.catalog, self.output))
+        self.assertEqual(1, receipt['project_count'])
+        self.assertEqual('P0001', receipt['projects'][0]['plan_id'])
+        project = self.output / 'P0001'
+        self.assertEqual((self.plan / 'plan.md').read_bytes(), (project / '05_production/creative-direction.md').read_bytes())
+        claims = [json.loads(line) for line in (project / '03_knowledge/claims.jsonl').read_text().splitlines()]
+        self.assertEqual(3, len(claims))
+        for claim in claims:
+            source = claim['source_ref'].split('#')[0]
+            self.assertIn(claim['statement'], (self.catalog / source).read_text())
+        self.assertFalse(any('README.md' in ref for ref in receipt['source_hashes']))
+        candidate = self.root / 'candidate'
+        (candidate / '03_knowledge').mkdir(parents=True)
+        (candidate / '03_knowledge/claims.jsonl').write_text(json.dumps({'statement': claims[0]['statement']}) + '\n')
+        for creator, expected in [('creator-synthetic', 1), ('creator-other', 0)]:
+            (candidate / 'manifest.yaml').write_text(yaml.safe_dump({'project': {'id': 'project/new', 'creator_id': creator}}))
+            report = scan_projects(candidate, self.output, repository='example/research', source_commit='a'*40,
+                                   now=NOW, contract_version=CONTRACT_VERSION_V2)
+            self.assertEqual(expected, report['scanned_project_count'])
+            self.assertEqual(bool(expected), bool(report['matches']))
+        self.assertEqual(before, {str(p): p.read_bytes() for p in self.catalog.rglob('*') if p.is_file()})
+
+    def test_stage_b_records_plan_history_review(self):
+        helper = element_tests.ResearchElementsTest('test_explicit_history_reuses_native_scan_and_pins_changes')
+        helper.setUp()
+        self.addCleanup(helper.doCleanups)
+        manifest = helper.project / 'manifest.yaml'
+        doc = yaml.safe_load(manifest.read_text())
+        doc['project']['creator_id'] = 'creator-synthetic'
+        manifest.write_text(yaml.safe_dump(doc))
+        build_history(self.catalog, self.output)
+        helper.small_plan()
+        helper.engine.next(now=element_tests.NOW, history_root=self.output)
+        report, _ = helper.run_fake()
+        state = json.loads(helper.engine.path.read_text())
+        self.assertEqual(1, state['repetition_scan']['scanned_project_count'])
+        self.assertEqual(1, report['completion']['counts']['self_repetition_review'])
+        self.assertFalse(any('SELF_REPETITION_REVIEW' in str(item) for item in report['completion']['quality_failures']))
+
+    def test_mixed_catalog_and_empty_works_keep_plans(self):
+        shutil.copytree(FIXTURE / 'works', self.catalog / 'works')
+        receipt = build_history(self.catalog, self.output)
+        self.assertEqual(2, receipt['project_count'])
+        (self.catalog / 'works/index.yaml').write_text('version: 1\nrecords: []\n')
+        receipt = build_history(self.catalog, self.root / 'empty-works')
+        self.assertEqual(1, receipt['project_count'])
+        self.assertEqual('P0001', receipt['projects'][0]['plan_id'])
+
+    def test_metadata_only_uses_explicit_content_not_index_or_lineage(self):
+        (self.plan / 'plan.md').unlink()
+        (self.plan / 'metadata.yaml').write_text('id: P0001\ntitle: An explicit title\n')
+        receipt = build_history(self.catalog, self.output)
+        self.assertEqual(1, receipt['projects'][0]['claim_count'])
+        (self.plan / 'metadata.yaml').write_text('id: P0001\n')
+        with self.assertRaisesRegex(WorksHistoryError, 'no comparable plan text'):
+            build_history(self.catalog, self.root / 'no-content')
+
+    def test_plan_identity_and_source_boundaries_fail_before_publish(self):
+        index = self.catalog / 'plans/index.yaml'
+        original = index.read_text()
+        for path in ('../escape', 'plans/P0001-interval/../other'):
+            doc = yaml.safe_load(original)
+            doc['records'][0]['path'] = path
+            index.write_text(yaml.safe_dump(doc))
+            with self.assertRaisesRegex(WorksHistoryError, 'unsafe plan path'):
+                build_history(self.catalog, self.output)
+        index.write_text(original)
+        (self.plan / 'metadata.yaml').write_text('id: P0002\n')
+        with self.assertRaisesRegex(WorksHistoryError, 'plan identity differs'):
+            build_history(self.catalog, self.output)
+        (self.plan / 'metadata.yaml').write_text('id: P0001\ncreator_id: creator-other\n')
+        with self.assertRaisesRegex(WorksHistoryError, 'conflicting creator_id'):
+            build_history(self.catalog, self.output)
+        (self.plan / 'metadata.yaml').write_text('id: P0001\n')
+        (self.plan / 'plan.md').unlink()
+        (self.plan / 'plan.md').symlink_to(self.plan / 'README.md')
+        with self.assertRaisesRegex(WorksHistoryError, 'symlink'):
+            build_history(self.catalog, self.output)
+        self.assertFalse(self.output.exists())
+
+    def test_explicit_owner_scope_keeps_source_identity_and_accepts_missing_identity(self):
+        receipt = build_history(self.catalog, self.output, creator_id='creator-owner')
+        self.assertEqual('creator-owner', receipt['projects'][0]['creator_id'])
+        self.assertEqual('creator-synthetic', receipt['projects'][0]['source_creator_id'])
+        (self.plan / 'lineage.json').unlink()
+        receipt = build_history(self.catalog, self.root / 'missing-owner', creator_id='creator-owner')
+        self.assertIsNone(receipt['projects'][0]['source_creator_id'])
+        with self.assertRaisesRegex(WorksHistoryError, 'creator_id'):
+            build_history(self.catalog, self.root / 'no-scope')
+        with self.assertRaisesRegex(WorksHistoryError, 'explicit creator_id'):
+            build_history(self.catalog, self.root / 'invalid-scope', creator_id='unknown')
+        (self.plan / 'lineage.json').write_text('{"creator_id": "creator-one"}')
+        (self.plan / 'metadata.yaml').write_text('creator_id: creator-two\n')
+        with self.assertRaisesRegex(WorksHistoryError, 'conflicting creator_id'):
+            build_history(self.catalog, self.root / 'conflict', creator_id='creator-owner')
+
+    def test_unindexed_plan_is_ignored_and_missing_index_rejected(self):
+        (self.catalog / 'plans/P0002-unindexed').mkdir()
+        receipt = build_history(self.catalog, self.output)
+        self.assertEqual(1, receipt['project_count'])
+        (self.catalog / 'plans/index.yaml').unlink()
+        with self.assertRaisesRegex(WorksHistoryError, 'plans/index.yaml'):
+            build_history(self.catalog, self.root / 'missing-index')

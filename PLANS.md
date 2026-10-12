@@ -1331,3 +1331,35 @@ failed 10 memory tests with `execute a clean pinned code checkout`. This is not
 passing evidence. Full qualification must run after committing code, then append
 verification evidence in a separate commit. Shared Python 3.12 release gate also
 returned base_release FAIL on the uncommitted tree; inspect clean qualification.
+
+
+## PR #135 follow-up: include earlier proposals (2026-10-13 JST)
+
+### Purpose / Big Picture
+The owner explicitly defines self-repetition to include earlier harness proposals.
+Extend WORKS-HISTORY-133 to indexed plans while retaining produced works, using
+only plan.md / metadata.yaml comparison content and explicit creator scope.
+Rebuild external history, scan a copy of the supplied Stage B project, qualify
+clean committed code, push the same branch and update PR #135; do not merge.
+
+### Progress
+- [x] Extend adapter and docs; add small synthetic plan fixture, native scope and Stage B tests.
+- [x] Rebuilt real external history: 11 plans, 756 historical signals, 69 matches, native/Stage B HIGH, one review; original project hashes unchanged.
+- [ ] Commit code; run full unittest and declared checks on clean pinned checkout.
+- [ ] Record final evidence, push agent/133-selfrep-history and update PR #135.
+
+### Surprises & Discoveries
+Ten indexed plans have explicit but mixed synthetic creator IDs; P0004 lacks lineage/creator identity. Add an explicit authorized catalog owner scope option, retain original identity in receipt, and keep default fail-closed behavior. Candidate creator is null, so native scan uses its existing all-creator behavior. Works index
+is empty. This owner instruction supersedes the previous NO-INDEXED-WORKS blocker.
+
+### Decision Log
+Use plans/index.yaml for enumeration and lineage only for identity. Extract plan
+paragraphs and explicit metadata TEXT_FIELDS values verbatim; never derive a
+mechanism from title, index, README or media. Keep W/P IDs distinct and the existing
+immutable-output guard. Preserve the previous history by moving it aside before
+rebuilding the requested external location. Rejected: fabricating produced works,
+inferring creator from Git owner, replacing history in a frozen original run.
+
+### Outcomes
+Pending clean qualification and real-scan evidence. Base code/source commit:
+0e3da3a (PR #135). All actual project/history/runtime stays outside protocol Git.

@@ -134,9 +134,9 @@ fakeの資格確認は `tests/test_research_elements.py`。架空資料は `exam
 オーナーprofile・段階 A の中心問い・実資料による実 run と
 オーナーの出力確認は別の完了証跡であり、fake合格で代替しない。
 
-## 過去作品の記録を history-root に変換する（Issue #133）
+## 過去作品・制作提案の記録を history-root に変換する（Issue #133）
 
-作品カタログのroot（`works/index.yaml`を含むディレクトリ）を明示して、
+カタログのroot（`works/index.yaml`または`plans/index.yaml`を含むディレクトリ）を明示して、
 決定論的adapterを実行する。モデル・networkは使わず、入力は読み取り専用。
 
 ```bash
@@ -146,7 +146,11 @@ fakeの資格確認は `tests/test_research_elements.py`。架空資料は `exam
 
 indexの`version: 1`、`records`内の`id: W0001`、`path: works/W0001-short-slug`を読み、
 列挙された作品だけを変換する。`creator_id`はindex、`metadata.yaml`または`lineage.json`の
-明示値を使う。欠落、`unknown`、宣言間の不一致はエラー。候補projectがcreatorを宣言して
+明示値を使う。既定では欠落、`unknown`、宣言間の不一致はエラー。
+利用者がカタログ全体を同一creatorの履歴と明示した場合だけ、`--creator-id <owner-scope>`で
+works/plans共通の比較scopeを指定できる。欠落identityもこの明示scopeで扱い、元の
+creator（欠落ならnull）はreceiptのsource_creator_idへ残す。元の宣言間の不一致や
+unknownは、この指定でも拒否する。candidateにも同じcreator IDを使う。候補projectがcreatorを宣言して
 いれば、その値と一致する作品だけが比較される。creator未宣言の候補はnative scannerの
 既存動作どおり全creatorと比較されるため、本人の比較には一致するIDを設定する。
 
@@ -154,17 +158,24 @@ indexの`version: 1`、`records`内の`id: W0001`、`path: works/W0001-short-slu
 `03_knowledge/claims.jsonl`の`statement`へ写す。これは出典付き抜粋で、推論で生成した
 主張ではない。`05_production/creative-direction.md`には`record.md`を丸ごと写し、
 無ければREADMEを使う。`manifest.yaml`には安定した作品project IDとcreatorを記録する。
-metadataはidentityにだけ使い、機構や制作命題をタイトルから推測しない。
+worksのmetadataはidentityにだけ使う。plansは過去の提案として比較し、完成作品とはみなさない。
+`plans/index.yaml`のversion 1 / records、`id: P0001`、`path: plans/P0001-short-slug`から
+1 planにつき1履歴projectを作る。同じcreator検査を適用する。比較本文は`plan.md`の
+原文段落と`metadata.yaml`の明示的な比較テキストfield（native scannerのTEXT_FIELDS、
+例: title / statement / mechanism）の値のみ。plan.md全体をcreative-directionへ写す。
+README、lineage、indexの表示値、mediaは比較文にしない。lineageはidentityにのみ使う。
+片方の本文sourceだけでも比較テキストがあれば受理し、内容が無ければエラーにする。
+タイトルから機構や制作命題を推測しない。
 履歴はscanner向けの最小入力であり、通常のresearch project全体のschemaは満たさない。
 
-`works-history.json`に作品数・creator・相対出典パス・入力SHA-256を保存する。
+`works-history.json`に履歴project数・work_idまたはplan_id・creator・相対出典パス・入力SHA-256を保存する。
 実作品本文・履歴・receiptはGit外に置く。symlink、パス逸脱、Git配下への出力、入力との
 重なりは拒否する。同じ入力・出力の再実行は無変更で、変更済み入力や非空の異なる出力は
 上書きしない。更新時は新しい履歴ディレクトリを使う。最初の`next`がmanifestとscanner
 artifactのhashを固定するため、進行中のrunの履歴は変更できない。
 
-`records: []`は空の履歴として明示的に出力する。制作プラン（`plans/`）、未登録作品、mediaを
-代わりに採用しない。比較可能な作品が1件以上あればStage Bは測定結果から`SR001`を記録し、
-類似が無くても履歴hashを比較根拠にする。0件ならStage Bは`UNKNOWN`・review 0件を維持し、
-`QUALITY-REQUIRED-SELF_REPETITION_REVIEW`は解消しない。実作品記録を登録して新しいrunで再検証する。
+空のworks indexでもplans indexの提案を取り込む。両indexが空なら空の履歴となる。
+未登録の作品・planやmediaは採用しない。比較可能な履歴が1件以上あればStage Bは
+測定結果から`SR001`を記録し、類似が無くても履歴hashを比較根拠にする。0件なら
+`UNKNOWN`・review 0件を維持し、`QUALITY-REQUIRED-SELF_REPETITION_REVIEW`は解消しない。
 段階Cの機構レビューは、引き続きその工程のnative scannerで別途行う。
