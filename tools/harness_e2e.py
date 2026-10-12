@@ -720,8 +720,8 @@ def run_request(
             project = work / 'projects' / manifest['project_id'].split('/')[1]
             selected_route = select_route(protocol, project, override=research_route)
             if selected_route == 'research_elements':
-                from research_elements import Engine
-                return Engine(project).next(now=_timestamp(now), run_id=run_id)
+                from work_elements import next_element
+                return next_element(project, now=_timestamp(now), run_id=run_id)
             existing = _existing_output(
                 protocol_root=protocol,
                 output_root=output,

@@ -194,6 +194,10 @@ class WorkElementsTest(unittest.TestCase):
         report, requests = self.run_engine(WorkEngine(self.project), plainer)
         self.assertEqual('COMPLETED', report['status'])
         self.assertEqual('MERELY_PLAINER', report['completion']['without_the_technique'])
+        self.assertIn('WORK-MECHANISM-MERELY-PLAINER', [f['id'] for f in report['completion']['quality_failures']])
+        self.assertEqual('INCOMPLETE', report['completion']['status'])
+        last = [r for r in requests if r['element_id'] == 'point.PH001.mechanism.3'][0]
+        self.assertEqual(2, len(last['inputs']['earlier_mechanisms']))
         self.assertEqual(3, sum(r['element_id'].startswith('point.PH001.mechanism.') for r in requests))
         brief = yaml.safe_load((self.project / '05_production/production-brief.yaml').read_text())
         self.assertIn('camera', brief['concept']['mechanism'])
@@ -211,10 +215,41 @@ class WorkElementsTest(unittest.TestCase):
         path.write_text(original)
         state_path = self.project / '07_runtime/research-elements.json'
         state = load_json(state_path)
-        state['last_now'] = '2026-10-08T00:00:01Z'
+        state['completion']['status'] = 'COMPLETE'
         state_path.write_text(json.dumps(state))
         with self.assertRaisesRegex(ValueError, 'Stage B checkpoint changed'):
             engine.next(now=NOW)
+
+    def test_driver_entry_keeps_stage_c_running_across_stage_b_clock(self):
+        from next_action import build_next_action
+        from work_elements import next_element
+        self.stage_b()
+        first = next_element(self.project, now='2026-10-08T00:01:00Z')
+        self.assertEqual('C', first['stage'])
+        request = first['next_action']['request']
+        # Asking Stage B again advances its clock; Stage C must still accept answers.
+        Engine(self.project).next(now='2026-10-08T00:05:00Z')
+        report = WorkEngine(self.project).answer(fake.answer(request), now='2026-10-08T00:06:00Z')
+        self.assertEqual(1, report['accepted_count'])
+        again = next_element(self.project, now='2026-10-08T00:07:00Z')
+        self.assertEqual(report['next_action'], again['next_action'])
+        self.assertTrue(callable(build_next_action))
+
+    def test_placeholder_and_nobody_answers_are_retried(self):
+        self.stage_b()
+        def empty(request, answer):
+            if request['element_id'] == 'plan.PH001.exclude':
+                answer['value'] = 'なし'
+            if request['element_id'] == 'point.PH001.who-disagrees' and request['attempt'] == 1:
+                answer['value'] = '誰もいない'
+        report, requests = self.run_engine(WorkEngine(self.project), empty)
+        self.assertEqual('COMPLETED', report['status'])
+        self.assertIn('plan.PH001.exclude', report['abandoned'])
+        retried = [r for r in requests if r['element_id'] == 'point.PH001.who-disagrees']
+        self.assertEqual(2, len(retried))
+        self.assertTrue(retried[1]['previous_failure'][0]['check'].startswith('not_one_of:'))
+        brief = yaml.safe_load((self.project / '05_production/production-brief.yaml').read_text())
+        self.assertEqual('Collectors who need a single final object to buy', brief['message']['who_disagrees'])
 
     def test_existing_work_content_is_not_overwritten(self):
         self.stage_b()

@@ -16,11 +16,12 @@ forbidden:
 - 未記入
 - 未確定
 # Requirements of the recommended plan: one per category, each with one acceptance test.
+# A list, so the RQ numbering follows this order after the checkpoint is reloaded.
 requirement_categories:
-  experience: 鑑賞者の体験（出会いから3分後まで）
-  material: 素材と振る舞い
-  interaction: 鑑賞者の行為と作品の応答
-  mechanism: 仕掛け（技術を外すと成り立たない部分）
+- {id: experience, label: 鑑賞者の体験（出会いから3分後まで）}
+- {id: material, label: 素材と振る舞い}
+- {id: interaction, label: 鑑賞者の行為と作品の応答}
+- {id: mechanism, label: 仕掛けが鑑賞者に起こすこと}
 acceptance_methods:
 - observation
 - prototype_review

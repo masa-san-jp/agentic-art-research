@@ -8,6 +8,7 @@ research and writing files are program work.
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 
 import yaml
 
@@ -15,8 +16,9 @@ from research_element_driver import element
 
 PLAINER = 'MERELY_PLAINER'
 CEASES = 'CEASES_TO_WORK'
-# Words that leave "who disagrees" empty in substance; production rejects them as well.
-NOBODY = 'なし,特にいない,誰も反対しない,反対者はいない'
+# Whole answers that leave "who disagrees" empty in substance; the same set production rejects
+# (agentic-art-production tools/lib/production_brief.py), compared as whole values.
+NOBODY = 'なし,特にいない,特にいません,誰もいない,誰も反対しない,反対者はいない,none,no one,nobody,no-one'
 
 
 def fit(state, inputs, optional=()):
@@ -24,6 +26,7 @@ def fit(state, inputs, optional=()):
 
     Inputs named by a check are never in `optional`, so a check never loses its material.
     """
+    inputs = deepcopy(inputs)  # never shorten the caller's lists
     limit = state['config']['input_bytes']
 
     def size():
@@ -50,7 +53,14 @@ def fit(state, inputs, optional=()):
 def ask(state, identifier, instruction, inputs, optional=(), **kwargs):
     """Yield one request; return the accepted value, or None when the element was abandoned."""
     kwargs.setdefault('max_chars', 240)
-    yield element(state, identifier, instruction, fit(state, inputs, optional), **kwargs)
+    checks = list(kwargs.pop('checks', ()))
+    if not kwargs.get('choices') and not kwargs.get('boolean'):
+        # A value accepted here is written into the work's files; "なし" or "TBD" must be retried now,
+        # not discovered when the files are assembled.
+        checks.append('not_placeholder')
+    if 'ends_with_question' in checks:
+        instruction += '最後は「？」で終えてください。'
+    yield element(state, identifier, instruction, fit(state, inputs, optional), checks=checks, **kwargs)
     if identifier in state.get('abandoned', {}):
         return None
     return state['answers'][identifier]
@@ -81,6 +91,22 @@ def select_plans(research, count):
         if len(plans) >= count:
             break
     return plans
+
+
+def precedents_for(research, decision_id):
+    """Stage B prior-art records written against this decision; others only when there are none.
+
+    A difference written against another decision's option is labelled with that decision, so it is
+    never presented as a difference of this plan.
+    """
+    own = [p for p in research['prior_art'] if p['relation_to_proposal'].endswith(f'decision {decision_id}.')]
+    if own:
+        return own
+    other = []
+    for p in research['prior_art']:
+        decision = p['relation_to_proposal'].rsplit('decision ', 1)[-1].rstrip('.')
+        other.append({**p, 'difference': f"（判断 {decision} の採用案との違いとして記録）{p['difference']}"})
+    return other
 
 
 # Optional work fields, dropped first when a request would exceed the byte budget.
@@ -148,8 +174,8 @@ def plan_items(state, plan, records):
         return None
     # Optional: an abandoned "exclude" leaves the list empty, which the schema allows.
     yield from item('exclude', 'この案に意図して入れないものを1つ、短く返してください。', max_chars=80)
-    prior = [p for p in research['prior_art'] if p['relation_to_proposal'].endswith(f"decision {decision['id']}.")] or research['prior_art']
-    precedents = [{'title': p['work_title'], 'difference': p['difference']} for p in prior[:2]]
+    precedents = [{'title': p['work_title'], 'difference': p['difference']}
+                  for p in precedents_for(research, decision['id'])[:2]]
     read = [s['title'] for s in research['sources'] if s['id'] in decision['source_ids']][:3]
     if (yield from item('difference', '先行作品（precedents）または調査で読んだ資料（sources_read）と比べた、この案の違いを1文で返してください。資料にない事実は加えないでください。',
                         {'precedents': precedents, 'sources_read': read},
@@ -257,7 +283,7 @@ def key_points(state, plan, records):
                      min_chars=10, max_chars=200, checks=['one_sentence'])
     yield from point('claim', 'この作品の主張を1文で返してください。', min_chars=15, max_chars=200, checks=['one_sentence'])
     yield from point('who-disagrees', 'この主張に反対する立場の人を、具体的に1つ返してください。',
-                     {'claim': values['claim']}, min_chars=3, max_chars=120, checks=['forbidden:' + NOBODY])
+                     {'claim': values['claim']}, min_chars=3, max_chars=120, checks=['not_one_of:' + NOBODY])
     yield from point('denies', 'この作品が否定するものを1文で返してください。',
                      {'claim': values['claim']}, min_chars=10, max_chars=200, checks=['one_sentence'])
     yield from point('shown-not-told', 'この作品が言葉で説明せずに見せるものを1文で返してください。',
@@ -270,11 +296,12 @@ def key_points(state, plan, records):
         instruction = 'この作品の仕掛け（どの技術・手順で、鑑賞者に何が起きるか）を30文字以上で返してください。'
         checks = []
         if rounds:
+            # Compared with every earlier mechanism, so a later round cannot repeat the first one.
             extra.update(previous_mechanism=rounds[-1]['mechanism'], judgement_reason=rounds[-1]['reason'],
-                         similarity_threshold=threshold)
+                         earlier_mechanisms=[r['mechanism'] for r in rounds], similarity_threshold=threshold)
             instruction = ('前の仕掛け（previous_mechanism）は、技術を外しても地味になるだけと判定されました（judgement_reason）。'
                            '技術を外すと作品が成り立たなくなる仕掛けに作り直し、30文字以上で返してください。')
-            checks = ['not_similar_to:previous_mechanism']
+            checks = ['not_similar_to:earlier_mechanisms']
         mechanism = yield from point(f'mechanism.{number}', instruction, extra, min_chars=30, max_chars=300, checks=checks)
         verdict = yield from ask(state, f'point.{pid}.without-technique.{number}',
                                  'この仕掛けの技術を外したとき、作品は成り立たなくなりますか（はい）、それとも地味になるだけで成り立ちますか（いいえ）。理由を1文で添えてください。',
@@ -312,7 +339,8 @@ def requirements(state, plan, points, records):
         'interaction': {'viewer_action': plan['viewer_action'], 'position': points['position']},
         'mechanism': {'mechanism': points['mechanism'], 'without_the_technique': points['without_the_technique']},
     }
-    for index, (category, label) in enumerate(config['requirement_categories'].items(), 1):
+    for index, entry in enumerate(config['requirement_categories'], 1):
+        category, label = entry['id'], entry['label']
         rid, tid = f'RQ{index:03}', f'AT{index:03}'
         statement = yield from ask(state, f'requirement.{plan["id"]}.{category}',
                                    f'この作品が必ず満たすこと（{label}）を、完成後に確かめられる形で1文で返してください。',
@@ -368,7 +396,7 @@ def advance(state):
 
 # ---- Assembly (program only) ----
 
-def transcribed(research):
+def transcribed(research, decision_id):
     """Key points taken from Stage B records instead of asked for (design section 6)."""
     sources = research['sources']
     independent = [s for s in sources if not s['duplicate_of']]
@@ -388,12 +416,12 @@ def transcribed(research):
     return {
         'questions': [q['question'] for q in research['questions']],
         'what_was_read': (f"取得資料 {len(sources)} 件（内容が重複しない資料 {len(independent)} 件）から、"
-                          f"根拠 {counts.get('evidence', 0)} 件・抜き書き {counts.get('excerpts', 0)} 件を取った。主な資料: {titles}。"),
+                          f"根拠 {counts.get('evidence', 0)} 件・抜き書き {counts.get('excerpts', 0)} 件を取った。" + (f"主な資料: {titles}。" if titles else '')),
         'what_came_out': (f"主張 {counts.get('claims', 0)} 件、洞察 {counts.get('insights', 0)} 件、判断 {counts.get('decisions', 0)} 件。"
                           + ' '.join(f"{i['id']}: {i['statement']}" for i in research['insights'][:3])),
         'what_is_not_settled': '。'.join(open_items) + '。',
         'precedents': [{'reference': f"{p['work_title']} <{p['source_url']}>", 'difference': p['difference']}
-                       for p in research['prior_art']],
+                       for p in precedents_for(research, decision_id)],
         'self_repetition_risk': {
             'reference': ', '.join(refs) if refs else (
                 'creator history not supplied (Stage B --history-root)' if risk == 'UNKNOWN' else 'pinned creator history'),
@@ -410,7 +438,7 @@ def assemble(state, records):
     config = state['config']
     paths = config['paths']
     plans, recommended, points = records['plans'], records['recommended'], records['points']
-    info = transcribed(research)
+    info = transcribed(research, recommended['decision']['id'])
     tests = [t['id'] for t in records['acceptance_tests']]
     hypotheses = []
     for index, plan in enumerate(plans):
@@ -453,8 +481,9 @@ def assemble(state, records):
                              'after_30s': points['after-30s'], 'after_3min': points['after-3min']},
         'theme': {'field': points['field'], 'stands_against': points['stands-against'],
                   'difference': recommended['difference'],
-                  'why_now': (f"{research['acquired_through']} までに取得した資料から、次の洞察が出たため。"
-                              f"{recommended['insight']['statement']}")},
+                  # Transcribed, not judged: the dated research finding this plan answers.
+                  'why_now': (f"{research['acquired_through']} 時点の公開資料の調査で、この案の元になった洞察"
+                              f"（{recommended['insight']['id']}）が得られた: {recommended['insight']['statement']}")},
         'message': {'claim': points['claim'], 'who_disagrees': points['who-disagrees'],
                     'denies': points['denies'], 'shown_not_told': points['shown-not-told']},
         'concept': {'mechanism': points['mechanism'], 'without_the_technique': points['without_the_technique'],
@@ -468,7 +497,7 @@ def assemble(state, records):
         f"# {research['title']} — Creative direction\n\n"
         f"## 作品の核\n\n{recommended['id']}「{recommended['title']}」: {recommended['proposition']}\n\n"
         f"核の問い: {recommended['core_question']}\n\n"
-        f"## 継承する美的傾向\n\n{recommended['material']}\n\n構成要素: {'、'.join(recommended['components'])}\n\n"
+        f"## 継承する美的傾向\n\n素材と振る舞い: {recommended['material']}\n\n構成要素: {'、'.join(recommended['components'])}\n\n"
         f"## 意図的に破る傾向\n\n{points['denies']}\n\n飛躍: {recommended['leap']}\n\n"
         f"## 必須制約\n\n{requirement_lines}\n\n"
         f"仕掛け（{points['without_the_technique']}）: {points['mechanism']}\n\n"

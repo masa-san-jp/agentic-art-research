@@ -28,6 +28,23 @@ from research_elements import Engine as ResearchEngine, canonical, digest, times
 CONTRACT = 'work-elements/v1'
 
 
+def stage_b_digest(state):
+    """Hash of the completed Stage B content. `last_now` is excluded: every Stage B `next` advances
+    it, and a driver that asks Stage B first must not invalidate a running Stage C."""
+    return digest(canonical({key: value for key, value in state.items() if key != 'last_now'}))
+
+
+def next_element(project, *, now, run_id='research', dry_run=False):
+    """One entry for drivers: Stage B until it is COMPLETED with a decision, then Stage C."""
+    work = WorkEngine(project)
+    if not work.path.exists():
+        research = work.research
+        report = research.preview(now=now, run_id=run_id) if dry_run else research.next(now=now, run_id=run_id)
+        if report['status'] != 'COMPLETED' or not report['completion']['counts'].get('decisions'):
+            return report
+    return work.preview(now=now, run_id=run_id) if dry_run else work.next(now=now, run_id=run_id)
+
+
 def jsonl(text):
     return [json.loads(line) for line in text.splitlines() if line.strip()]
 
@@ -107,7 +124,7 @@ class WorkEngine:
         state = self.research.read()  # Verifies Stage B inputs and pinned source hashes.
         if state['status'] != 'COMPLETED':
             raise ValueError(f"Stage C needs a COMPLETED Stage B run (status {state['status']})")
-        return state, digest(self.research.path.read_text(encoding='utf-8'))
+        return state, stage_b_digest(state)
 
     def fresh_outputs(self):
         """Current output files; refuse anything but the untouched project templates."""
@@ -191,6 +208,12 @@ class WorkEngine:
         counts = dict(research['stage_b_counts'])
         counts['requirements'] = state['record_counts'].get('requirements', 0)
         failures = quality_failures(CompletionQualityPolicy(research['minimums'], tuple(research['required_records'])), counts)
+        judgement = (state.get('mechanism_rounds') or [{}])[-1].get('judgement')
+        if judgement == 'MERELY_PLAINER':
+            # The plan is kept, but production treats this as a blocking gap; do not report COMPLETE.
+            failures.append({'id': 'WORK-MECHANISM-MERELY-PLAINER',
+                             'reason': 'After every mechanism round the work still only gets plainer without its technique.',
+                             'impact': 'Production records a blocking gap; revise the mechanism before handoff.'})
         state['completion'] = {
             'stage': 'C', 'status': 'INCOMPLETE' if failures or state['status'] == 'BLOCKED' else 'COMPLETE',
             'counts': counts, 'quality_failures': failures,
@@ -201,7 +224,7 @@ class WorkEngine:
             'project_completed': False}
 
     def report(self, state):
-        return {'run_id': state['run_id'], 'stage': 'C', 'status': state['status'],
+        return {'run_id': state['run_id'], 'stage': 'C', 'answer_with': 'tools/work_elements.py answer', 'status': state['status'],
                 'accepted_count': len(state['answers']), 'abandoned': sorted(state['abandoned']),
                 'blocked': state.get('blocked'), 'completion': state.get('completion'),
                 'next_action': {'kind': 'element', 'request': deepcopy(state['pending'])} if state['pending'] else None}

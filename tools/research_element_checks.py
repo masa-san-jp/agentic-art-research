@@ -38,8 +38,8 @@ def valid_url(value: object) -> bool:
 
 def parse_check(spec: str) -> tuple[str, str]:
     name, _, arg = spec.partition(':')
-    plain = {'non_empty', 'ends_with_question', 'url_shape', 'url_in_ledger', 'one_sentence'}
-    lists = {'contains_terms', 'contains_source_terms', 'forbidden', 'one_of'}
+    plain = {'non_empty', 'ends_with_question', 'url_shape', 'url_in_ledger', 'one_sentence', 'not_placeholder'}
+    lists = {'contains_terms', 'contains_source_terms', 'forbidden', 'one_of', 'not_one_of'}
     keyed = {'reference_exists', 'exact_excerpt', 'not_similar_to', 'source_terms_or_sentence'}
     if name in plain and not arg and ':' not in spec:
         return name, arg
@@ -130,6 +130,15 @@ def sentence_ends(text: str) -> int:
     return count
 
 
+PLACEHOLDERS = {'', 'なし', '無し', '特になし', 'ない', '未記入', '未確定', 'tbd', 'todo', 'n/a', 'na', 'none', '-', '—'}
+
+
+def normalized_value(text: str) -> str:
+    """Whole-value comparison form: NFKC, casefold, single spaces, no closing period."""
+    value = ' '.join(unicodedata.normalize('NFKC', text).casefold().split())
+    return value.rstrip('。.').strip()
+
+
 def check_value(value: object, checks: list[str], *, inputs: dict,
                 ledger: dict, previous_answers: dict) -> list[dict[str, str]]:
     text = value.get('reason', '') if isinstance(value, dict) else value
@@ -185,6 +194,12 @@ def check_value(value: object, checks: list[str], *, inputs: dict,
             ok = all(isinstance(term, str) and term.strip() and unicodedata.normalize('NFKC', term).casefold() in folded
                      for term in terms)
             reason = 'Include every required term (input key or literal).'
+        elif name == 'not_placeholder':
+            ok = normalized_value(text) not in PLACEHOLDERS
+            reason = 'Write the actual content, not a placeholder such as なし or TBD.'
+        elif name == 'not_one_of':
+            ok = normalized_value(text) not in {normalized_value(item) for item in arg.split(',')}
+            reason = 'This answer is empty in substance; name a concrete value.'
         elif name == 'forbidden':
             ok = all(term not in text for term in arg.split(','))
             reason = 'Remove the forbidden terms.'

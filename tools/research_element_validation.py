@@ -73,7 +73,8 @@ def check_stage_c(project, protocol):
         require_schema(protocol, 'work-elements', state)
         from research_elements import canonical, digest
         from research_element_contracts import require_message
-        if digest((project / '07_runtime/research-elements.json').read_text(encoding='utf-8')) != state['stage_b_hash']:
+        from work_elements import stage_b_digest
+        if stage_b_digest(load_json(project / '07_runtime/research-elements.json')) != state['stage_b_hash']:
             errors.append(('WORK-ELEMENT-STAGE-B', 'Stage B checkpoint changed after Stage C started'))
         for relative, content in state['files'].items():
             target = project / relative
