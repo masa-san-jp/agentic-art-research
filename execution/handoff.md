@@ -155,3 +155,14 @@ Next: AAK-09 after AAK-05/07 owner gates; parent can continue independent AAK-12
   }
 }
 ```
+
+## 2026-10-13 / SCANNER-OVERLAP-137
+
+- Target: repository maintenance / Issue #137; branch `agent/137-scanner-overlap`.
+- Implementation `9d7c606169fe8f6e6d9f1c25ea4275399bb832ce`; verified checkout `2e60f0c`; base/history-scan source commit `8ec422c2bb0597787f164dc8447897c2689a4ff9`.
+- Paths: tools/self_repetition.py, tests/test_self_repetition.py, five synthetic self-repetition fixture texts, docs/self-repetition-scan.md, PLANS.md, execution/task-queue.yaml, execution/state.yaml, execution/handoff.md.
+- Shared Python `-m unittest discover -s tests`: 438 tests PASS (544.079s). `.venv/bin/python -m unittest discover -s tests -v`: 438 tests PASS (546.649s). `.venv/bin/python -m unittest tests.test_self_repetition -v`: 8 PASS.
+- `.venv/bin/python tools/validate.py --check`, docs/security checks: PASS. Scanner fixture `--check`: HIGH / four matches / four projects. `git diff --check`: PASS.
+- Real-copy check: A9-B2 / auto-live-20261012-a9-2a76271f9c04 against works-history, 11 projects, 503 history signals, 50 candidate signals; 17 HIGH matches before, 0 LOW matches after. Old material, describe/device, and drawings pairs differ in subject/proposal; corrected scores 0.058, 0.217, 0.058. SHA-256 snapshots confirm original, history and copied input unchanged.
+- Existing fixture change: compound title overlap alone was defective evidence of HIGH. Both generated and checked-in texts now paraphrase the same delayed-device/unreachable-relation proposal; HIGH assertions remain. No other existing expectations changed.
+- No sensitive information or actual project/runtime/raw added to Git. Fresh copy and metadata-only scan reports stay in an OS temporary external root. No issue-137 implementation work remains. Next: branch push and PR review; no merge. Existing ELEMENT-RESEARCH-122 live acceptance remains independently blocked.

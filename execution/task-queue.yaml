@@ -556,7 +556,7 @@ tasks:
   - id: SCANNER-OVERLAP-137
     milestone: G7
     title: Prevent sparse content overlap from inflating self-repetition scores
-    status: IN_PROGRESS
+    status: DONE
     depends_on: [SELF-REPETITION-V2-001]
     issue_refs: ["agentic-art-research#137"]
     acceptance: Sparse one/two-content-anchor pairs are LOW, paraphrases remain high, both full suites and validator pass, and a fresh external candidate copy is rescanned without modifying originals.
@@ -565,3 +565,4 @@ tasks:
       - .venv/bin/python -m unittest discover -s tests -v
       - .venv/bin/python tools/validate.py --check
       - git diff --check
+    completion: Both full suites 438 tests PASS; focused 8 PASS; validator/docs/security/deterministic fixture PASS. Fresh A9-B2 copy against 11 history projects (503 signals; candidate 50) changed 17 matches HIGH to 0 LOW; original/history/copy hashes unchanged. See PLANS.md and execution/handoff.md.

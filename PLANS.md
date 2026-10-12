@@ -1298,8 +1298,9 @@ Base/source commit: `8ec422c2bb0597787f164dc8447897c2689a4ff9`.
 
 - [x] (2026-10-13 JST) Fetch main and create `agent/137-scanner-overlap`; read protocol/execution contracts and scanner.
 - [x] (2026-10-13 JST) Gate scores using `research_element_checks.source_terms`; add sparse-overlap, stop-word, paraphrase and low-coverage regressions. Focused 8 tests PASS.
-- [ ] Run both required full suites and validator; review fresh external candidate copy against existing works-history.
-- [ ] Record results, commit, push and open Japanese PR with `Closes #137`; do not merge.
+- [x] (2026-10-13 JST) Both full suites 438 PASS; validator/docs/security PASS; deterministic fixture HIGH/4 matches; real-copy scan LOW/0 matches.
+- [x] (2026-10-13 JST) Record results and implementation commits.
+- [ ] Push and open Japanese PR with `Closes #137`; do not merge.
 
 ### Surprises & Discoveries
 
@@ -1327,7 +1328,19 @@ before running full suites, then record verification in a separate commit.
 
 ### Outcomes
 
-Pending full validation and real-copy rescan. No actual project or raw input is
-added to this repository. Real reports remain in an external temporary root.
-Resume with full suites after the implementation commit; preserve the existing
-ELEMENT-RESEARCH-122 live-acceptance blocker independently.
+Implementation commit `9d7c606169fe8f6e6d9f1c25ea4275399bb832ce`, verified checkout
+`2e60f0c`. Shared Python full suite: 438 PASS in 544.079s; local Python full
+suite: 438 PASS in 546.649s. Focused 8 PASS. Validator initially reported
+EXECUTION-NEXT-TASK because the new IN_PROGRESS task was not selected in state;
+state corrected and validator PASS. Docs/security and deterministic fixture PASS.
+
+A9-B2 fresh external copy against 11 history projects / 503 signals (candidate
+50 signals): 17 matches HIGH before, zero matches LOW after. Three former matches:
+material/production requirements versus ADOPT-HOLD-REJECT workflow (0.9 to 0.058),
+describe-device valuation versus reviewer description (0.9 to 0.217), and LeWitt
+catalogue versus distorted line drawing installation (0.9 to 0.058). None looks
+like repetition of the same proposal. Original project, history and copied input
+hashes remained unchanged. No actual project or raw input is added to this Git;
+copy/reports remain in an external OS temporary root. No unresolved issue-137
+implementation concerns; existing ELEMENT-RESEARCH-122 live blocker is preserved.
+Next: push branch and PR review, without merge.

@@ -1,8 +1,8 @@
 version: 9
 updated_at: "2026-10-08T12:12:28+00:00"
 current_milestone: G7
-next_task: SCANNER-OVERLAP-137
-last_completed_task: AAK-02-NATIVE-AUTHORING
+next_task: null
+last_completed_task: SCANNER-OVERLAP-137
 terminal: false
 blocked_by: [LIVE-ACCEPTANCE-NOT-RUN]
 resume_from:
@@ -298,3 +298,31 @@ element_research_122:
     exit_code: 0
   - command: $SHARED_PYTHON /tmp/issue122_cli_smoke.py
     exit_code: 0
+
+scanner_overlap_137:
+  task_id: SCANNER-OVERLAP-137
+  project: repository-maintenance
+  status: DONE
+  branch: agent/137-scanner-overlap
+  implementation_commit: 9d7c606169fe8f6e6d9f1c25ea4275399bb832ce
+  verification_checkout: 2e60f0c
+  source_commit: 8ec422c2bb0597787f164dc8447897c2689a4ff9
+  verification:
+    shared_full: {tests: 438, seconds: 544.079, exit_code: 0}
+    local_full: {tests: 438, seconds: 546.649, exit_code: 0}
+    focused: {tests: 8, exit_code: 0}
+    validator: PASS
+    docs: PASS
+    security: PASS
+    deterministic_fixture: {matches: 4, risk: HIGH, exit_code: 0}
+  real_check:
+    history_projects: 11
+    history_signals: 503
+    candidate_signals: 50
+    before: {matches: 17, risk: HIGH}
+    after: {matches: 0, risk: LOW}
+    original_history_and_copy_hashes_unchanged: true
+  sensitive_information_added: false
+  external_artifacts: Fresh candidate copy and metadata-only before/after reports in OS temporary output root; no real artifacts in protocol Git.
+  remaining: No issue-137 implementation work; existing ELEMENT-RESEARCH-122 live blocker remains independent.
+  next_start: PR review; do not merge. Resume existing blocked live task only in its separately authorized context.
