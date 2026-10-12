@@ -161,8 +161,9 @@ unknownは、この指定でも拒否する。candidateにも同じcreator IDを
 worksのmetadataはidentityにだけ使う。plansは過去の提案として比較し、完成作品とはみなさない。
 `plans/index.yaml`のversion 1 / records、`id: P0001`、`path: plans/P0001-short-slug`から
 1 planにつき1履歴projectを作る。同じcreator検査を適用する。比較本文は`plan.md`の
-原文段落と`metadata.yaml`の明示的な比較テキストfield（native scannerのTEXT_FIELDS、
-例: title / statement / mechanism）の値のみ。plan.md全体をcreative-directionへ写す。
+原文段落（表形式のplanでは比較用の行・列の本文値のみ）と`metadata.yaml`の明示的な比較テキストfield（native scannerのTEXT_FIELDS、
+例: title / statement / mechanism）の値のみ。creative-directionには同じ抜粋を重複除去して写す。
+表の見出し・field名・管理用の行・定型文は、どちらの比較artifactにも入れない。
 README、lineage、indexの表示値、mediaは比較文にしない。lineageはidentityにのみ使う。
 片方の本文sourceだけでも比較テキストがあれば受理し、内容が無ければエラーにする。
 タイトルから機構や制作命題を推測しない。

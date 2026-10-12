@@ -1376,8 +1376,9 @@ creator scope, indexed works/plans paths and native scanner thresholds.
 - [x] Extract explicit proposal row values and requirement/acceptance columns; generate
   both plan artifacts from those excerpts plus existing textual metadata values.
 - [x] Focused suite: 19 tests PASS, including malformed-table failure before publish.
-- [ ] Rebuild owner history, scan a fresh real project copy, record pairs and judgement.
-- [ ] Qualify committed clean code with local and requested shared full suites; push.
+- [x] Rebuilt owner history and scanned a fresh copy; recorded pairs and native judgement.
+- [x] Qualified clean code 15f0026: local/shared 453 tests each PASS; validators PASS.
+- [x] Record final evidence for delivery to agent/133-selfrep-history / PR #135; do not merge.
 
 ### Surprises & Discoveries
 Native similarity treats one shared long English term as 0.9; changing that rule
@@ -1395,8 +1396,13 @@ row widths rather than silently reinterpret cells. Rejected: scanner threshold
 changes, inferred mechanisms, corpus-wide removal of shared substantive words.
 
 ### Outcomes
-Pending real verification and clean full qualification. Source code commit before
+Qualified code 15f0026: focused 19 PASS; full local/shared 453 each PASS.
+Real copy scan: 11 indexed plans (P0001..P0011), 503 history signals, 50 candidate
+signals, 17 matches, native HIGH. Prior-comparable Stage B claims-only scan: 20
+candidate signals, 11 matches (previously 69), native HIGH. Balloon control: LOW,
+one weak 0.398 sequence match with no shared strong terms; no mechanism-label hit.
+Original project hash set and source catalog receipt hashes unchanged. Source code commit before
 this repair: 57510e34fcf4e7ae689415342724084ab810cff9. No sensitive content or actual
 project artifacts are committed; external history and verification copy stay outside Git.
-Next start: finish real copy verification and full suites, append final evidence, push
-agent/133-selfrep-history; do not merge.
+Next start: review the remaining lexical matches; use creator-scoped history in a fresh
+Stage B run. Original frozen project remains unchanged. PR #135 remains unmerged.

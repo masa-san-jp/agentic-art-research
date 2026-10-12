@@ -264,3 +264,49 @@ history, copy, reports and logs remain external.
 Full log SHA-256:
 - local: `53d2c372efba0c03943ee320466d30f8d802ba38ed51c92599a92232dc9fe160`
 - shared: `54757d59f0d3ef5a8d031db33f560859469f5f398671eda32805c92eb941caf8`
+
+## PR #135 P1 template-text repair (2026-10-13 JST)
+
+Task WORKS-HISTORY-133; repository maintenance and external real-copy verification.
+Source 57510e34fcf4e7ae689415342724084ab810cff9; qualified code
+15f0026a2933d2b2ef2c9166213d76726fcade6c. Changed paths in execution/state.yaml.
+
+Plans now extract verbatim proposal cell values using explicit comparison rows
+and requirement/acceptance columns. Labels, headers, admin rows and template prose
+are absent from both claims.jsonl and creative-direction.md. Narrative plans retain
+paragraph extraction; works byte preservation, creator scope, paths, deterministic
+immutable publication and native scanner thresholds remain unchanged.
+
+Acceptance (from repository root):
+- `.venv/bin/python -m unittest discover -s tests -p test_works_history.py -v`: 19 PASS.
+- `.venv/bin/python -m unittest discover -s tests -v`: 453 PASS.
+- User-specified shared interpreter `-m unittest discover -s tests`: 453 PASS.
+- `.venv/bin/python tools/validate.py --check`: PASS.
+- `tools/security_check.py --check`, `tools/docs_check.py --check`, `git diff --check`: PASS.
+Both full suites run on clean committed code, isolated TMPDIR, no bytecode writes.
+
+External verification rebuilds requested works-history from the authorized owner
+catalog with `creator_id=owner-catalog`, preserving the previous history by rename.
+Scan a new copy of the supplied original project: comparable P0001..P0011 (11
+plans), 503 history signals, 50 candidate signals, 17 matches, native v2 HIGH.
+Repeat scan and build deterministic. Original project's complete hash set unchanged;
+catalog hashes match receipt. For direct comparison with previous acceptance, scan
+the copied Stage B state's frozen manifest/20 claims only: 11 matches (down from 69),
+native HIGH. No original project/runtime files are modified.
+
+Example references (full pairs remain in external JSON):
+- CL019 <=> P0005 acceptance value: score 0.9, terms describe/device.
+- CL007 <=> P0006 prototype statement: score 0.9, term drawings.
+- Candidate claim <=> P0008 proposition: score 0.9, term becomes.
+
+Balloon control against all 11 real plans: LOW, one weak 0.398 sequence match
+without strong terms; zero mechanism-label matches. Synthetic regression has zero
+matches/LOW. Remaining HIGH reflects substantive lexical overlaps under existing
+native thresholds, not established mechanism repetition. Next: review these pairs;
+use a fresh creator-scoped run, preserve frozen original, do not merge PR135.
+No sensitive data, real plan/project/raw or generated graph added to Git. External
+artifacts: previous/rebuilt history, fresh copy, scan reports, matched pairs and logs.
+
+local full: 453 tests / 905.902s; log SHA-256 549a0f87b3092085e39655798c89a8a2cd045b0efdc5f42a71ec39c3376e132b.
+
+shared full: 453 tests / 902.947s; log SHA-256 a33be163ec1499fcec7a051c56a0c8b5a2a1e6e05000fed6cd077bc7f0cac4c7.

@@ -565,4 +565,4 @@ tasks:
       - .venv/bin/python -m unittest discover -s tests -v
       - .venv/bin/python tools/validate.py --check
       - git diff --check
-    completion: PR135 follow-up code 8cfcbea; focused 17 and clean local/shared full 451 tests PASS; validators PASS. Real copy scan compares 11 plans, 756 history signals and 20 candidate signals, finds 69 matches, native and Stage B HIGH, and generates one review. Original project unchanged. Owner-authorized catalog scope preserves source creator IDs in receipt.
+    completion: PR135 P1 repair code 15f0026; focused 19 and clean local/shared full 453 tests PASS; validators PASS. Table-based plans emit substantive values in both artifacts and omit template text. Real copy scan compares 11 plans, 503 history signals and 50 candidate signals, with 17 matches and native HIGH; prior-comparable 20-claim scan has 11 matches and HIGH. Original project unchanged; owner scope and paths preserved.
