@@ -356,7 +356,7 @@ class ResearchElementsTest(unittest.TestCase):
                     break
             report = self.engine.answer(self.fake(request), now=NOW)
 
-    def test_search_body_conflict_retries_only_the_pending_search(self):
+    def test_refetched_url_with_changed_body_keeps_the_first_pin(self):
         self.small_plan()
         path = self.project / '01_planning/research-plan.yaml'
         plan = yaml.safe_load(path.read_text())
@@ -370,12 +370,13 @@ class ResearchElementsTest(unittest.TestCase):
             if request['contract_version'] == 'search-request/v1':
                 searches += 1
                 if searches == 2:
+                    url = answer['results'][0]['url']
+                    pinned = load_json(self.engine.path)['ledger'][url]['body']
                     answer['results'][0]['body'] += ' Changed.'
                     report = self.engine.answer(answer, now=NOW)
-                    self.assertEqual(request['element_id'], report['next_action']['request']['element_id'])
-                    self.assertEqual(2, report['next_action']['request']['attempt'])
-                    self.assertIn('source_conflict', [f['check'] for f in report['next_action']['request']['previous_failure']])
-                    self.assertNotIn('Changed.', load_json(self.engine.path)['ledger']['https://example.invalid/choice']['body'])
+                    # Accepted, not retried: the re-fetch is the same source and the first pin stays.
+                    self.assertNotEqual(request['element_id'], report['next_action']['request']['element_id'])
+                    self.assertEqual(pinned, load_json(self.engine.path)['ledger'][url]['body'])
                     break
             report = self.engine.answer(answer, now=NOW)
 

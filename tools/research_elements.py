@@ -403,9 +403,9 @@ class Engine:
                 fail('source_metadata_bytes', 'Source metadata leaves insufficient room for a bounded body window.')
             if len(source['body'].encode()) > state['config']['max_search_body_bytes']:
                 fail('body_bytes', 'Retrieved body exceeds the configured byte budget.')
-            old = state['ledger'].get(source['url'])
-            if old and (old['body'] != source['body'] or old['title'] != source['title']):
-                fail('source_conflict', 'This URL already has different pinned content.')
+            # A URL fetched again may come back changed (dynamic pages). The first retrieval stays
+            # pinned in the ledger and every later step reads the ledger, so a re-fetch is the same
+            # source, not a conflict; failing the whole answer blocked live run B10 (research #127).
         return failures
 
 
