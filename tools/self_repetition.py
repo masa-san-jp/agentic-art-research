@@ -20,7 +20,7 @@ from typing import Any, Iterable, Mapping
 import unicodedata
 
 from _common import InputParseError, atomic_write_text, load_json, load_yaml, read_jsonl
-from research_element_checks import source_terms
+from research_element_checks import normalized_value, source_terms
 
 
 CONTRACT_VERSION = "self-repetition-scan/v1"
@@ -265,16 +265,35 @@ def _similarity(left: str, right: str) -> tuple[float, list[str]]:
     sequence_score = SequenceMatcher(None, _normalized(left), _normalized(right)).ratio()
     score = max(word_score, gram_score, sequence_score * 0.9)
     strong_terms = sorted(term for term in common if "-" in term or "_" in term or (term.isascii() and len(term) >= 6))
-    # Lexical anchors must support the whole proposal, not a single long word.
-    # Use the shared extractor so connectives and compound token fragments do
-    # not satisfy the content-word minimum. Gate every scoring path, including
-    # character/sequence similarity, before report rounding and aggregation.
-    left_content = source_terms(left)
-    right_content = source_terms(right)
-    shared_content = left_content & right_content
-    if len(shared_content) < 3:
+    # Exact/near-exact wording is evidence even for a one-word proposal.
+    # Use the existing whole-value normalizer; there is no particle normalizer.
+    normalized_left = normalized_value(left)
+    normalized_right = normalized_value(right)
+    if normalized_left and normalized_left == normalized_right:
+        return 1.0, strong_terms[:8]
+    near_exact = SequenceMatcher(None, normalized_left, normalized_right).ratio() >= 0.95
+    if near_exact:
+        return min(1.0, score), strong_terms[:8]
+
+    def content_terms(value: str) -> set[str]:
+        terms = source_terms(value)
+        # Compound identifiers carry multiple literal anchors. Count their
+        # content components as well, using the same connective-word filter.
+        for term in tuple(terms):
+            if term.isascii() and ("-" in term or "_" in term):
+                terms.update(source_terms(re.sub(r"[-_]", " ", term)))
+        return terms
+
+    left_content = content_terms(left)
+    right_content = content_terms(right)
+    shared_count = len(left_content & right_content)
+    size = max(len(left_content), len(right_content))
+    # Require a quarter of BOTH inputs and a two-anchor floor. Very short
+    # phrases need wording agreement: a reordered two-word vocabulary alone
+    # is too little evidence (exact and near-exact phrases bypass above).
+    if shared_count < 2 or shared_count * 4 < size or min(len(left_content), len(right_content)) <= 2:
         score = min(score, 0.34)
-    elif len(shared_content) * 2 < max(len(left_content), len(right_content)):
+    elif shared_count * 2 < size and (shared_count < 4 or shared_count * 3 < size):
         score = min(score, 0.84)
     elif strong_terms:
         score = max(score, 0.9)

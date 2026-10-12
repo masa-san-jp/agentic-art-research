@@ -44,6 +44,36 @@ class SelfRepetitionScanTest(unittest.TestCase):
             )
         return candidate, history, temporary
 
+    def test_review_recall_bands(self) -> None:
+        cases = [
+            ("A closed transparent box holds paper packets; viewers walk around it to inspect an empty cell and an inaccessible packet.",
+             "Viewers circle a sealed transparent box containing paper packets, observing a vacant compartment and a parcel they cannot touch.", 0.9, 1.0),
+            ("像が消える", "像は消える", 0.35, 1.0),
+            ("delayed response", "delayed response", 1.0, 1.0),
+            # Translation remains outside this lexical scanner's scope.
+            ("像が消える", "The image disappears", 0.0, 0.34),
+        ]
+        for left, right, lower, upper in cases:
+            with self.subTest(left=left, right=right):
+                score = _similarity(left, right)[0]
+                self.assertGreaterEqual(score, lower)
+                self.assertLessEqual(score, upper)
+
+    def test_normalized_exact_and_near_exact_short_phrases(self) -> None:
+        self.assertEqual(1.0, _similarity(" delayed\n response. ", "delayed response")[0])
+        self.assertGreaterEqual(_similarity("delayed response", "delayed responses")[0], 0.85)
+
+    def test_original_unmodified_four_project_fixture_is_high(self) -> None:
+        fixture = ROOT / "tests/fixtures/self-repetition"
+        report = scan_projects(fixture / "candidate", fixture / "history",
+            repository="masa-san-jp/agentic-art-research",
+            source_commit="ce7e214f22e25c277c8f7277d83cd8cd85a3a8c1",
+            now="2026-09-03T10:00:00+09:00")
+        self.assertEqual("HIGH", report["risk_level"])
+        self.assertEqual(4, report["scanned_project_count"])
+        self.assertEqual(4, len({m["prior_signal_ref"].split("::", 1)[0] for m in report["matches"]}))
+        self.assertTrue(all(m["score"] >= 0.9 for m in report["matches"]))
+
     def test_sparse_content_overlap_is_low_even_across_four_projects(self) -> None:
         pairs = [
             ("describe された device は光の状態を記録する", "describe the unreachable relation through an access device"),

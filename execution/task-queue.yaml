@@ -566,3 +566,15 @@ tasks:
       - .venv/bin/python tools/validate.py --check
       - git diff --check
     completion: Both full suites 438 tests PASS; focused 8 PASS; validator/docs/security/deterministic fixture PASS. Fresh A9-B2 copy against 11 history projects (503 signals; candidate 50) changed 17 matches HIGH to 0 LOW; original/history/copy hashes unchanged. See PLANS.md and execution/handoff.md.
+
+  - id: SCANNER-RECALL-138
+    milestone: G7
+    title: Repair scanner recall overcorrection from PR 138 review
+    status: IN_PROGRESS
+    depends_on: [SCANNER-OVERLAP-137]
+    issue_refs: ["agentic-art-research#137", "agentic-art-research#138"]
+    acceptance: All existing assertions, six review bands, original four-project HIGH fixture, both full suites, validator and fresh external scan pass.
+    checks:
+      - .venv/bin/python -m unittest discover -s tests -v
+      - .venv/bin/python tools/validate.py --check
+      - git diff --check

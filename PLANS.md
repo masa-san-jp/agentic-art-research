@@ -1344,3 +1344,47 @@ hashes remained unchanged. No actual project or raw input is added to this Git;
 copy/reports remain in an external OS temporary root. No unresolved issue-137
 implementation concerns; existing ELEMENT-RESEARCH-122 live blocker is preserved.
 Next: push branch and PR review, without merge.
+
+## PR #138 review / SCANNER-RECALL-138 ExecPlan
+
+### Purpose / Big Picture
+
+Repair #137's recall overcorrection on branch agent/137-scanner-overlap, source
+commit bd9b6e8, while preserving every existing assertion and sparse false-positive
+suppression. Repository maintenance only; real scans use fresh external copies.
+
+### Progress
+
+- [x] (2026-10-13 JST) git pull (already up to date); inspect scanner and original main fixtures.
+- [x] (2026-10-13 JST) Relative content coverage, normalized exact/near-exact bypass, restored original checked-in four-project fixture; focused 11 tests PASS.
+- [ ] Run shared and repository-local full suites, validator and real-copy scan; record outcomes, commit and push without merge.
+
+### Surprises & Discoveries
+
+The original compound identifier is one source_terms anchor but carries several
+literal content components. Counting its filtered components restores the original
+fixture without granting unrelated isolated words the same boost. The existing
+normalized_value helper handles NFKC/case/whitespace/closing periods, but the repo
+has no particle normalizer; Japanese particle variation uses normal scoring.
+
+### Decision Log
+
+- Agent-recommended: detect only with >=25% coverage of each input and a floor
+  of two anchors. Inputs with at most two content terms require exact/near-exact
+  wording (normalized sequence ratio >=0.95), preserving the existing reordered
+  two-word LOW assertion. Rejected unconditional token-set equality because it
+  would weaken that assertion. Exact nonempty normalized values score 1.0.
+- Agent-recommended: allow the strong-term HIGH boost at >=50% coverage, or
+  >=one-third coverage with four anchors. Rejected a fixed three-anchor gate
+  because it loses short Japanese text; rejected boosting three shared generic
+  terms at one-third coverage because the existing unrelated-long-text assertion
+  must remain. Compound components use the shared stop-word filter.
+- Restore checked-in fixtures verbatim from origin/main; retain the added
+  paraphrase fixture/test as additional recall coverage. Translation remains
+  outside this lexical scanner's scope and is explicitly tested as LOW.
+
+### Outcomes
+
+Pending full qualification and external real-check. No sensitive or actual project
+artifacts are added to protocol Git. Next: commit clean implementation, run the
+full commands and external scan, then record evidence and push.

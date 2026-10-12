@@ -1,7 +1,7 @@
 version: 9
 updated_at: "2026-10-08T12:12:28+00:00"
 current_milestone: G7
-next_task: null
+next_task: SCANNER-RECALL-138
 last_completed_task: SCANNER-OVERLAP-137
 terminal: false
 blocked_by: [LIVE-ACCEPTANCE-NOT-RUN]

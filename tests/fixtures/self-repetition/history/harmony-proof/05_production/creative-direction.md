@@ -1,3 +1,3 @@
 # harmony-proof
 
-A delayed device response exposes the unreachable relation in close-but-cannot-reach.
+The project tests close-but-cannot-reach through a distinct arrangement.

@@ -1,3 +1,3 @@
 # Candidate
 
-close-but-cannot-reach exposes an unreachable relation through a delayed device response.
+close-but-cannot-reach is the selected claim.
