@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/agentic-art-research/work-elements.schema.json",
+  "title": "Stage C element checkpoint",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "run_id", "project_id", "stage_b_run_id", "stage_b_hash", "source_commit",
+               "started_at", "last_now", "config", "research", "plans", "answers", "abandoned", "history",
+               "attempt", "previous_failure", "status", "pending", "files", "previous_files", "record_counts"],
+  "properties": {
+    "contract_version": {"const": "work-elements/v1"},
+    "run_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
+    "project_id": {"type": "string", "minLength": 1},
+    "stage_b_run_id": {"type": "string", "minLength": 1},
+    "stage_b_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "source_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "started_at": {"type": "string", "minLength": 1},
+    "last_now": {"type": "string", "minLength": 1},
+    "config": {"$ref": "work-elements-config.schema.json"},
+    "research": {
+      "type": "object",
+      "required": ["title", "proposition", "questions", "claims", "insights", "decisions", "prior_art", "sources",
+                   "counts", "question_gaps", "quality_failures", "repetition_scan", "max_uncertainty",
+                   "acquired_through", "minimums", "required_records", "stage_b_counts"]
+    },
+    "plans": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["id", "decision_id"],
+        "properties": {"id": {"type": "string", "pattern": "^PH[0-9]{3,}$"}, "decision_id": {"type": "string", "pattern": "^DC[0-9]{3,}$"}}
+      }
+    },
+    "answers": {"type": "object"},
+    "abandoned": {"type": "object", "additionalProperties": {"type": "array"}},
+    "history": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["element_id", "attempt", "answer_hash", "occurred_at", "failures"],
+        "properties": {
+          "element_id": {"type": "string", "minLength": 1},
+          "attempt": {"type": "integer", "minimum": 1},
+          "answer_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "occurred_at": {"type": "string", "minLength": 1},
+          "failures": {"type": "array"}
+        }
+      }
+    },
+    "attempt": {"type": "integer", "minimum": 1},
+    "previous_failure": {"type": ["array", "null"]},
+    "status": {"enum": ["WAITING", "COMPLETED", "BLOCKED"]},
+    "pending": {"type": ["object", "null"]},
+    "files": {"type": "object", "additionalProperties": {"type": "string"}},
+    "previous_files": {"type": "object", "additionalProperties": {"type": "string"}},
+    "record_counts": {"type": "object"},
+    "recommended_hypothesis_id": {"type": "string", "pattern": "^PH[0-9]{3,}$"},
+    "mechanism_rounds": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["element_id", "mechanism", "judgement", "reason"],
+        "properties": {
+          "element_id": {"type": "string"}, "mechanism": {"type": "string", "minLength": 1},
+          "judgement": {"enum": ["CEASES_TO_WORK", "MERELY_PLAINER"]}, "reason": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "completion": {"type": "object"},
+    "blocked": {"type": "object"}
+  }
+}

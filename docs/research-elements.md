@@ -3,7 +3,7 @@
 Issue #122 は、親の `element-request/v1` / `element-answer/v1` と
 `search-request/v1` / `search-answer/v1` を使う研究単体の入口を追加する。
 出所は [契約 provenance](contracts/research-elements-provenance.md) に固定する。
-親 `run.py` からの接続は別 issue、作品内容を設計する段階 C も別 issue である。
+親 `run.py` からの接続は別 issue。作品内容を設計する段階 C は [段階 C の要素 CLI](work-elements.md)（#129）。
 
 新規調査の既定経路は `research_elements`。`new_project.py` と依頼受理で生成する
 research plan にこの値を保存し、`next_action.py` / `harness.py run` も1要素の依頼を返す。

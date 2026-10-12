@@ -305,7 +305,13 @@ def build_next_action(
     if select_route(protocol, project, override=research_route) == 'research_elements':
         from research_elements import Engine
         engine = Engine(project)
-        return engine.preview(now=now, run_id=run_id or 'research') if dry_run else engine.next(now=now, run_id=run_id or 'research')
+        report = engine.preview(now=now, run_id=run_id or 'research') if dry_run else engine.next(now=now, run_id=run_id or 'research')
+        if report['status'] != 'COMPLETED' or not report['completion']['counts'].get('decisions'):
+            return report
+        # Stage B is done: the next element is Stage C (the work's content), same wire contract.
+        from work_elements import WorkEngine
+        work = WorkEngine(project)
+        return work.preview(now=now) if dry_run else work.next(now=now)
     events = read_jsonl(project / "07_runtime" / "run-log.jsonl")
     budget = budget_remaining(project, events)
     preview = task_runtime.peek_next(work, target, worker_id, now=now)
