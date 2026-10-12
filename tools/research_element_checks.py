@@ -180,7 +180,10 @@ def check_value(value: object, checks: list[str], *, inputs: dict,
             reason = 'Include a question content term, or copy one complete source sentence.'
         elif name == 'contains_terms':
             terms = [inputs.get(item, item) for item in arg.split(',')]
-            ok = all(isinstance(term, str) and term.strip() and term in text for term in terms)
+            # Case-insensitive for Latin terms ("Conceptual Art" contains "conceptual art").
+            folded = unicodedata.normalize('NFKC', text).casefold()
+            ok = all(isinstance(term, str) and term.strip() and unicodedata.normalize('NFKC', term).casefold() in folded
+                     for term in terms)
             reason = 'Include every required term (input key or literal).'
         elif name == 'forbidden':
             ok = all(term not in text for term in arg.split(','))
