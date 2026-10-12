@@ -635,6 +635,22 @@ class ResearchElementsTest(unittest.TestCase):
         self.assertEqual('二つ目の観察である。', request['inputs']['observation'])
         self.assertEqual(['ELEMENT_ABANDONED'], [e['event_type'] for e in records['log']])
 
+    def test_exhausted_pair_records_no_relation_instead_of_blocking(self):
+        from research_element_driver import analyze
+        records = {'questions': [{'id': 'Q001', 'question': '何か?'}],
+                   'excerpts': [self._excerpt(1, '一つ目の抜き書きの本文である。'), self._excerpt(2, '二つ目の抜き書きの本文である。')],
+                   'observations': [], 'claims': [], 'relationships': [], 'log': []}
+        state = self._analysis_state(dedupe_identical_quotes=True, max_claim_pairs=10, pair_relations=['supports', 'opposes', 'unrelated'])
+        state['answers'].update({'observation.OB001': '一つ目の観察である。', 'observation.OB002': '二つ目の観察である。',
+                                 'claim.CL001': '一つ目の主張である。', 'claim-type.CL001': 'INFERENCE',
+                                 'claim.CL002': '二つ目の主張である。', 'claim-type.CL002': 'INFERENCE'})
+        state['abandoned'] = {'pair.CL001.CL002': [{'check': 'one_of'}]}
+        state['history'] = [{'element_id': 'pair.CL001.CL002', 'occurred_at': NOW, 'failures': [{'check': 'one_of'}]}]
+        pending = [r['element_id'] for r in analyze(state, records) if r['element_id'] not in state['answers']]
+        self.assertNotIn('pair.CL001.CL002', pending)
+        self.assertEqual([], records['relationships'])
+        self.assertIn('ELEMENT_ABANDONED', [e['event_type'] for e in records['log']])
+
     def test_relevance_is_judged_against_the_proposition_too(self):
         request = self.until_search()
         request = self.engine.answer(self.fake(request), now=NOW)['next_action']['request']

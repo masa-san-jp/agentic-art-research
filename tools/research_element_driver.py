@@ -342,6 +342,10 @@ def analyze(state, records):
                             'truncated': len(candidates) > state['config']['max_claim_pairs']}
     for left, right in candidates[:state['config']['max_claim_pairs']]:
         identifier = f"pair.{left['id']}.{right['id']}"
+        if identifier in state.get('abandoned', {}):
+            # An undecidable pair is treated as no recorded relation, not a reason to stop the run.
+            event(state, records, 'ELEMENT_ABANDONED', identifier, question_id=left['scope'])
+            continue
         yield element(state, identifier, '左の主張は右の主張を支持、対立、無関係のどれにしますか。1つ選んでください。',
                       {'left': left['statement'], 'right': right['statement']},
                       choices=state['config']['pair_relations'])
