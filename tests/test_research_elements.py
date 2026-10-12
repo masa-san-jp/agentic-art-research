@@ -128,7 +128,7 @@ class ResearchElementsTest(unittest.TestCase):
         report = self.engine.answer(answer, now=NOW)
         request = report['next_action']['request']
         self.assertTrue(request['element_id'].startswith('relevance.'))
-        self.assertEqual({'question', 'title', 'body'}, set(request['inputs']))
+        self.assertEqual({'question', 'title', 'body', 'proposition'}, set(request['inputs']))
         report = self.engine.answer(self.fake(request), now=NOW)
         request = report['next_action']['request']
         report = self.engine.answer(self.reply(request, 'Changed quotation.'), now=NOW)
@@ -453,6 +453,8 @@ class ResearchElementsTest(unittest.TestCase):
         plan = yaml.safe_load(path.read_text())
         plan['element_research'] = {'question_count': 4}
         path.write_text(yaml.safe_dump(plan, sort_keys=False))
+        # The synthetic answerer repeats one passage across questions; these counts are without de-duplication.
+        self.engine.config['dedupe_identical_quotes'] = False
         report, requests = self.run_fake()
         self.assertEqual('COMPLETED', report['status'])
         self.assertEqual(118, len(requests))
@@ -597,6 +599,48 @@ class ResearchElementsTest(unittest.TestCase):
             if request['element_id'] == 'question.Q008':
                 break
 
+    def _analysis_state(self, **config):
+        return {'run_id': 'r', 'attempt': 1, 'previous_failure': None, 'answers': {}, 'history': [],
+                'config': {'forbidden': ['∩'], 'input_bytes': 4096, 'derivation_similarity_threshold': '0.9',
+                           'max_claim_pairs': 0, **config},
+                'vocabulary': {'claim_types': ['INFERENCE']}}
+
+    def _excerpt(self, n, quote):
+        return {'id': f'EX{n:03}', 'question_id': 'Q001', 'evidence_id': f'EV{n:03}', 'quote': quote}
+
+    def test_identical_quotes_yield_one_observation_and_claim(self):
+        from research_element_driver import analyze
+        quote = '「概念芸術」というその直訳の通りに、作品の物質的側面よりも観念的側面を重視した一連の作品群のこと。'
+        records = {'questions': [{'id': 'Q001', 'question': '何か?'}], 'excerpts': [self._excerpt(1, quote), self._excerpt(2, quote)],
+                   'observations': [], 'claims': [], 'log': []}
+        for dedupe, expected in [(True, 'claim.CL001'), (False, 'observation.OB002')]:
+            state = self._analysis_state(dedupe_identical_quotes=dedupe)
+            state['answers']['observation.OB001'] = '作品は物質より観念を重視する傾向がある。'
+            gen = analyze(state, {**records, 'observations': [], 'claims': [], 'log': []})
+            first, second = next(gen), next(gen)
+            self.assertEqual(('observation.OB001', expected), (first['element_id'], second['element_id']))
+
+    def test_exhausted_claim_skips_that_observation_instead_of_blocking(self):
+        from research_element_driver import analyze
+        records = {'questions': [{'id': 'Q001', 'question': '何か?'}],
+                   'excerpts': [self._excerpt(1, '一つ目の抜き書きの本文である。'), self._excerpt(2, '二つ目の抜き書きの本文である。')],
+                   'observations': [], 'claims': [], 'log': []}
+        state = self._analysis_state(dedupe_identical_quotes=True)
+        state['answers'].update({'observation.OB001': '一つ目の観察である。', 'observation.OB002': '二つ目の観察である。'})
+        state['abandoned'] = {'claim.CL001': [{'check': 'forbidden'}]}
+        state['history'] = [{'element_id': 'claim.CL001', 'occurred_at': NOW, 'failures': [{'check': 'forbidden'}]}]
+        request = next(r for r in analyze(state, records) if r['element_id'] not in state['answers'])
+        self.assertEqual('claim.CL002', request['element_id'])
+        self.assertEqual('二つ目の観察である。', request['inputs']['observation'])
+        self.assertEqual(['ELEMENT_ABANDONED'], [e['event_type'] for e in records['log']])
+
+    def test_relevance_is_judged_against_the_proposition_too(self):
+        request = self.until_search()
+        request = self.engine.answer(self.fake(request), now=NOW)['next_action']['request']
+        self.assertTrue(request['element_id'].startswith('relevance.'))
+        self.assertEqual(load_json(self.engine.path)['proposition'], request['inputs']['proposition'])
+        self.assertIn('中心命題', request['instruction'])
+
     def test_claim_rejects_a_non_claim(self):
         from research_element_checks import check_value
         checks = ['forbidden:主張できない,主張はできない,言うことはできない']
@@ -631,6 +675,8 @@ class ResearchElementsTest(unittest.TestCase):
 
     def test_pair_cap_is_a_reported_gap_without_extra_inference(self):
         self.engine.config['max_claim_pairs'] = 1
+        # The synthetic answerer repeats one passage; keep every copy so there are pairs to cap.
+        self.engine.config['dedupe_identical_quotes'] = False
         report, requests = self.run_fake()
         pairs = [r for r in requests if r['element_id'].startswith('pair.')]
         self.assertEqual(1, len(pairs))

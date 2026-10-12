@@ -65,7 +65,8 @@ def grounding(intent: str) -> str:
 
 
 # Per-source-window elements: exhausting retries skips that window rather than blocking the run.
-ABANDONABLE = ('relevance.', 'excerpt.')
+# A claim that cannot be stated from a weak observation is skipped too (research #127).
+ABANDONABLE = ('relevance.', 'excerpt.', 'claim.')
 
 
 class Engine:

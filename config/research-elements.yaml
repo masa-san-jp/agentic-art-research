@@ -52,3 +52,5 @@ paths:
   reviews: 04_decisions/self-repetition-review.yaml
   repetition_report: 07_runtime/element-repetition-scan.json
 insight_group_size: 2
+dedupe_identical_quotes: true
+relevance_with_proposition: true
