@@ -60,10 +60,45 @@ Issue #129。段階 B（[要素リサーチ](research-elements.md)）が `COMPLE
   （その案は比較から外し、1案なら `single_hypothesis_rationale` を書く）。
 - それ以外（1案目、要点、試作、要件）が上限に達したら `BLOCKED` で止まり、要素名と最後の検査を返す。
 
+## 制作への受け渡しの準備（#134）
+
+- 参照の分類（`reference.<カテゴリ>`）: 制作側が URL を求める CONCEPT / VISUAL / METHOD ごとに、推薦案の根拠資料
+  （判断の根拠と、洞察の主張の根拠）から当たるものを1つ選ぶ。当たるものが無ければ `NONE`。飛ばせる要素で、
+  上限に達したらそのカテゴリは未対応のまま（制作側の参照の gap になる）。結果は
+  `05_production/reference-categories.yaml` に書く。
+- デジタル試作の計画（`PP002`）: プログラムが書く。制作プランの寸法・素材・数量を読んで構成要素を SVG に描く
+  2つの段取り（READ_ONLY → REPOSITORY_WRITE）で、物の制作・購入・公開・依頼はしない。制作側は handoff に
+  この種の計画を求める。
+- `creative-direction.md` の「完了経路」: 推薦案の段取りを順に番号付きで書く（プログラム）。制作側はこれを
+  計画の作業に結びつける。
+
+## 段階 D を始めてよい条件（#134）
+
+`work_elements.stage_d_start()`（CLI: `tools/work_elements.py stage-d-start --project <dir>`）が判定する。
+次をすべて満たすときだけ、制作プラン（段階 D、agentic-art-production `tools/plan_elements.py`）を始めてよい。
+
+1. 段階 B と段階 C の checkpoint がどちらも `COMPLETED`（`BLOCKED` ではない）で、段階 C の出力ファイルが
+   checkpoint と一致する。
+2. 制作要件の数が完了の下限（`minimums.requirements`、1以上）以上で、必須要件はすべて受け入れテストを持つ。
+3. 仕掛けの判定が `CEASES_TO_WORK`。`MERELY_PLAINER` のままなら段階 C の仕掛けを直すまで始めない。
+4. `complete.py` の中核の検査（manifest、問いの終端、根拠台帳、主張の参照、判断の追跡、要件のテスト可能性、
+   私的データなし、完了報告）がすべて通る。
+
+数の下限（根拠・主張など）、自己反復レビュー、権利・プライバシーのレビュー、独立した資料の不足は段階 D を
+止めない。止めずに、handoff の open gap（`blocking: false`、担当 research）として制作へ渡す。制作側の段階 D は
+gap ごとに確かめ方と解消の条件を聞く。調査は `INCOMPLETE` のままで、完了扱いにはしない（`project_completed: false`）。
+小さく絞った実 run（問い2つなど）では数の下限に届かないことが多く、それを理由に制作プランの検討まで止めると、
+要件と受け入れテストがそろっているのに先へ進めないため。
+
+`build_handoff.py` / `export_handoff.py` は、段階 C の checkpoint がある project ではこの判定を使う。
+条件を満たせば manifest（段階 B の checkpoint が持つファイル）を書き換えずに handoff を作り、満たさなければ
+`STAGE_D_NOT_READY: <理由>` で止まる。段階 C の checkpoint が無い project は従来どおり
+`workflow_mode: PRODUCTION_HANDOFF` と `complete.py` の完了を求める。
+
 ## 完了の意味
 
 `completion.stage: C` は段階 B の数に要件の数を足して完了の下限を数え直す。
-`project_completed: false` のままで、権利・プライバシーのレビューと段階 D は従来の工程に残す。
+`project_completed: false` のままで、権利・プライバシーのレビューは従来の工程に残す。段階 D は上の条件で始める。
 `validate.py --check` は段階 C の checkpoint と生成ファイルの一致も検査する（`WORK-ELEMENT-*`）。
 
 fake の資格確認は `tests/test_work_elements.py`（段階 B → C を要素単位で最後まで通す）。

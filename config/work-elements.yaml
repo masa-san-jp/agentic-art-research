@@ -37,6 +37,16 @@ cost_bands: [LOW, MEDIUM, HIGH]
 duration_bands: [HOURS, DAYS, WEEKS, MONTHS]
 venue_dependency: [NONE, LOW, MEDIUM, HIGH]
 without_the_technique: [CEASES_TO_WORK, MERELY_PLAINER]
+# Production requires a permanent URL for each of these reference categories (agentic-art-production
+# config/reference-policy.yaml). One request per category picks the recommended plan's evidence
+# record that answers it, or NONE; the mapping is written to reference-categories.yaml.
+reference_categories:
+- {id: CONCEPT, label: 作品の考え方（コンセプト）の参考になる資料}
+- {id: VISUAL, label: 作品の見た目（ビジュアル）の参考になる資料}
+- {id: METHOD, label: 作り方・手法の参考になる資料}
+# Program-written local digital prototype plan (PP002): renders the production plan's dimensions,
+# materials and quantity as an SVG, which production requires before planning (no physical effect).
+digital_prototype_plan: true
 paths:
   state: 07_runtime/work-elements.json
   lock: 07_runtime/work-elements.lock
@@ -47,3 +57,4 @@ paths:
   prototype_plans: 05_production/prototype-plans.yaml
   creative_direction: 05_production/creative-direction.md
   brief: 05_production/production-brief.yaml
+  reference_categories: 05_production/reference-categories.yaml

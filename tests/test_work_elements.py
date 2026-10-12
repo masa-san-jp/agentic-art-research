@@ -268,3 +268,95 @@ class WorkElementsTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class StageDStartTest(unittest.TestCase):
+    """Issue #134: when the production plan may start, and the handoff it then receives."""
+    setUp = WorkElementsTest.setUp
+    run_engine = WorkElementsTest.run_engine
+    stage_b = WorkElementsTest.stage_b
+
+    def plainer(self, request, answer):
+        if '.without-technique.' in request['element_id']:
+            answer['value'] = {'answer': False, 'reason': 'Without the ink it is still a drawing wall.'}
+        if '.mechanism.' in request['element_id']:
+            number = request['element_id'].rsplit('.', 1)[1]
+            answer['value'] = [
+                'Visitors stamp over the grid and the ink fades slowly, so each layer stays faintly visible.',
+                'Each day uses a new ink color and the logbook dates it, so revisions can be ordered by eye.',
+                'A camera photographs the wall hourly and prints the sequence as a strip beside the wall.'][int(number) - 1]
+
+    def test_stage_c_to_handoff_and_export_by_elements(self):
+        from build_handoff import build_handoff
+        from export_handoff import export_handoff
+        from research_element_validation import check_project
+        from work_elements import stage_d_start
+        self.stage_b()
+        self.assertEqual(['STAGE_C_NOT_STARTED'], stage_d_start(self.project)['reasons'])
+        report, requests = self.run_engine(WorkEngine(self.project))
+        ids = [r['element_id'] for r in requests]
+        self.assertEqual(['reference.CONCEPT', 'reference.VISUAL', 'reference.METHOD'], [i for i in ids if i.startswith('reference.')])
+        reference = next(r for r in requests if r['element_id'] == 'reference.VISUAL')
+        self.assertEqual('choice', reference['answer_format']['type'])
+        self.assertEqual('NONE', reference['answer_format']['choices'][-1])
+        categories = yaml.safe_load((self.project / '05_production/reference-categories.yaml').read_text())['categories']
+        self.assertEqual({'EV001': ['CONCEPT', 'VISUAL', 'METHOD']}, categories)
+        plans = yaml.safe_load((self.project / '05_production/prototype-plans.yaml').read_text())['prototype_plans']
+        self.assertEqual(['PP001', 'PP002'], [p['id'] for p in plans])
+        self.assertEqual('digital-prototype-renderer', plans[1]['executor_capability'])
+        self.assertEqual({'READ_ONLY', 'REPOSITORY_WRITE'}, {t['effect_type'] for t in plans[1]['tasks']})
+        direction = (self.project / '05_production/creative-direction.md').read_text()
+        self.assertIn('## 完了経路\n\n1. Print the grid', direction)
+
+        start = stage_d_start(self.project)
+        self.assertTrue(start['allowed'], start['reasons'])
+        gaps = start['completion_report']['gaps']
+        self.assertIn('QUALITY-REQUIRED-SELF_REPETITION_REVIEW', [g['id'] for g in gaps])
+        self.assertIn('GAP-RIGHTS_REVIEW_COMPLETE', [g['id'] for g in gaps])
+        self.assertTrue(all(g['blocking'] is False and g['resolution_owner'] == 'research' for g in gaps))
+        self.assertEqual('INCOMPLETE', start['completion_report']['status'])
+        manifest = (self.project / 'manifest.yaml').read_text()
+
+        root = Path(self.temp.name).resolve()
+        path = build_handoff(root, 'project/elements', protocol_root=ROOT, generated_at=NOW, research_commit='a' * 40)
+        handoff = yaml.safe_load(path.read_text())
+        self.assertEqual('READY', handoff['status'])
+        self.assertEqual('PH001', handoff['selection']['selected_hypothesis_id'])
+        self.assertEqual(['PP001', 'PP002'], handoff['prototype_plan_ids'])
+        self.assertEqual(len(gaps), len(handoff['open_gaps']))
+        self.assertFalse(any(g['blocking'] for g in handoff['open_gaps']))
+        self.assertEqual(manifest, (self.project / 'manifest.yaml').read_text())  # Stage B's file is untouched
+        bundle = export_handoff(root, 'project/elements', root / 'bundle', allow_dirty=True, protocol_root=ROOT)
+        index = yaml.safe_load((bundle / 'artifacts/source-ref-index.yaml').read_text())
+        access = {row['category']: row for row in index['category_access']}
+        for category in ('CONCEPT', 'VISUAL', 'METHOD'):
+            self.assertEqual('https://example.invalid/choice', access[category]['access_url'])
+        self.assertEqual([], check_project(self.project.resolve(), ROOT))
+
+    def test_stage_d_waits_for_a_mechanism_that_ceases_to_work(self):
+        from build_handoff import HandoffBuildError, build_handoff
+        from handoff_common import HandoffInputError
+        from work_elements import stage_d_start
+        self.stage_b()
+        report, _ = self.run_engine(WorkEngine(self.project), self.plainer)
+        self.assertEqual('COMPLETED', report['status'])
+        start = stage_d_start(self.project)
+        self.assertFalse(start['allowed'])
+        self.assertTrue(any(r.startswith('MECHANISM_MERELY_PLAINER') for r in start['reasons']), start['reasons'])
+        with self.assertRaisesRegex((HandoffInputError, HandoffBuildError), 'STAGE_D_NOT_READY: MECHANISM_MERELY_PLAINER'):
+            build_handoff(Path(self.temp.name).resolve(), 'project/elements', protocol_root=ROOT,
+                          generated_at=NOW, research_commit='a' * 40)
+        command = [sys.executable, str(ROOT / 'tools/work_elements.py'), 'stage-d-start', '--project', str(self.project)]
+        result = subprocess.run(command, capture_output=True, text=True)
+        self.assertEqual(1, result.returncode)
+        self.assertFalse(json.loads(result.stdout)['allowed'])
+
+    def test_stage_d_waits_for_the_requirement_minimum(self):
+        from work_elements import stage_d_start
+        path = self.project / '01_planning/research-plan.yaml'
+        plan = yaml.safe_load(path.read_text())
+        plan['minimums']['requirements'] = 5
+        path.write_text(yaml.safe_dump(plan, sort_keys=False))
+        self.stage_b()
+        self.run_engine(WorkEngine(self.project))
+        self.assertIn('REQUIREMENTS_BELOW_MINIMUM: 4/5', stage_d_start(self.project)['reasons'])

@@ -59,6 +59,9 @@ def answer(request):
         value = {'answer': True, 'reason': 'The synthetic title describes a comparison work.'}
     elif identifier.startswith('difference.'):
         value = 'The fixed image closes revision while the selected shared image keeps deferred choice open.'
+    elif identifier.startswith('reference.'):
+        # The first cited evidence record answers every category in the synthetic fixture.
+        value = request['answer_format']['choices'][0]
     elif identifier.startswith(('plan.', 'point.', 'prototype.', 'requirement.', 'acceptance.')):
         value = stage_c(request, identifier)
     else:

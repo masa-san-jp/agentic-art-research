@@ -418,7 +418,10 @@ def build_handoff(
 ) -> Path:
     work = (work_root or root).resolve()
     sources = load_handoff_sources(work, target, protocol_root=protocol_root)
-    if sources.project_data.get("status") == "INCOMPLETE" or sources.completion_report.get("status") == "INCOMPLETE":
+    # An element-route project passed the Stage D start rule (work_elements.stage_d_start): its
+    # unmet counts and reviews travel as open non-blocking gaps instead of stopping the handoff.
+    incomplete = sources.project_data.get("status") == "INCOMPLETE" or sources.completion_report.get("status") == "INCOMPLETE"
+    if incomplete and sources.stage_d_start is None:
         raise HandoffBuildError(
             "cannot build a production handoff from an INCOMPLETE project; satisfy completion quality requirements and rerun completion"
         )

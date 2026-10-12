@@ -59,6 +59,9 @@ def research_snapshot(stage_b, manifest):
     evidence = jsonl(files[paths['evidence']])
     by_url = {s['url']: s['id'] for s in sources}
     evidence_source = {e['id']: by_url.get(e['source_location']) for e in evidence}
+    quotes = {}
+    for excerpt in jsonl(files.get(paths.get('excerpts', ''), '')):
+        quotes.setdefault(excerpt.get('evidence_id'), excerpt.get('quote', ''))
     decisions = collection('decisions', 'decisions')
     for decision in decisions:
         decision['source_ids'] = [evidence_source[e] for e in decision['evidence_ids'] if evidence_source.get(e)]
@@ -79,6 +82,9 @@ def research_snapshot(stage_b, manifest):
         'prior_art': [{k: p[k] for k in ('id', 'work_title', 'source_url', 'difference', 'relation_to_proposal')}
                       for p in jsonl(files[paths['prior_art']])],
         'sources': [{'id': s['id'], 'title': s['title'], 'url': s['url'], 'duplicate_of': s.get('duplicate_of')} for s in sources],
+        # Evidence records the handoff cites; the reference-category requests choose among them.
+        'evidence': [{'id': e['id'], 'source_id': evidence_source.get(e['id']), 'url': e['source_location'],
+                      'quote': quotes.get(e['id'], '')} for e in evidence],
         'counts': {**stage_b['record_counts'], **{k: v for k, v in counts.items() if isinstance(v, int)}},
         'question_gaps': list(stage_b['question_gaps']),
         'quality_failures': failures,
@@ -295,15 +301,75 @@ class WorkEngine:
             return self.report(state)
 
 
+# When the production plan (Stage D) may start from an element-route project. Program only.
+STAGE_D_RULE = (
+    'Stage D starts when Stage B and Stage C are COMPLETED, the Stage C files match their checkpoint, '
+    'the requirements reach the minimum and each mandatory one has an acceptance test, the mechanism '
+    'ceases to work without its technique, and every core completion check passes. Unmet record counts '
+    'and the rights, privacy, self-repetition and source-independence reviews do not stop Stage D: they '
+    'are handed to production as open, non-blocking gaps and the research stays INCOMPLETE.')
+NON_BLOCKING_CHECKS = {
+    'rights_review_complete': ('Rights review of the cited sources is not recorded.',
+                               'Confirm the rights of every reused source before any publication or physical use.'),
+    'privacy_review_complete': ('Privacy review of the project is not recorded.',
+                                'Confirm no private data is used before publication.'),
+    'sources_independent_enough': ('A mandatory question rests on fewer independent sources than the policy asks.',
+                                   'Treat the related findings as provisional until another independent source is read.'),
+}
+
+
+def stage_d_start(project, *, protocol_root=None):
+    """Decide whether Stage D may start and the completion report the handoff carries (program only).
+
+    Returns {'allowed', 'reasons', 'rule', 'completion_report'}; never writes project files.
+    """
+    from complete import CORE_CHECKS, evaluate_project
+    from research_element_validation import check_stage_c
+    project = Path(project).resolve()
+    protocol = Path(protocol_root or ROOT).resolve()
+    reasons = []
+    engine = WorkEngine(project)
+    if not engine.path.exists():
+        return {'allowed': False, 'reasons': ['STAGE_C_NOT_STARTED'], 'rule': STAGE_D_RULE, 'completion_report': None}
+    state = engine.read()  # Also requires a COMPLETED Stage B whose hash Stage C pinned.
+    if state['status'] != 'COMPLETED':
+        reasons.append(f"STAGE_C_{state['status']}")
+    reasons += [f'{rule}: {message}' for rule, message in check_stage_c(project, protocol)]
+    research = state['research']
+    minimum = max(1, int(research['minimums'].get('requirements', 1)))
+    count = state['record_counts'].get('requirements', 0)
+    if count < minimum:
+        reasons.append(f'REQUIREMENTS_BELOW_MINIMUM: {count}/{minimum}')
+    judgement = (state.get('mechanism_rounds') or [{}])[-1].get('judgement')
+    if state['status'] == 'COMPLETED' and judgement != 'CEASES_TO_WORK':
+        reasons.append(f'MECHANISM_{judgement or "MISSING"}: revise the Stage C mechanism before production planning')
+    report = evaluate_project(project.parent.parent, f'project/{project.name}', protocol_root=protocol)
+    reasons += [f'CORE_CHECK_FAILED: {name}' for name in sorted(CORE_CHECKS) if not report['checks'][name]]
+    gaps = [{**gap, 'resolution_owner': 'research', 'blocking': False}
+            for gap in (report['gaps'] if report['status'] == 'INCOMPLETE' else [])]
+    for name, (reason, impact) in NON_BLOCKING_CHECKS.items():
+        if not report['checks'].get(name):
+            gaps.append({'id': f'GAP-{name.upper()}', 'reason': reason, 'impact': impact,
+                         'resolution_owner': 'research', 'blocking': False})
+    report = {**report, 'gaps': gaps, 'blockers': [],
+              'stage_d_start': {'allowed': not reasons, 'rule': STAGE_D_RULE, 'stage_c_run_id': state['run_id']}}
+    return {'allowed': not reasons, 'reasons': reasons, 'rule': STAGE_D_RULE, 'completion_report': report}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=['next', 'answer'])
+    parser.add_argument('command', choices=['next', 'answer', 'stage-d-start'])
     parser.add_argument('--project', type=Path, required=True)
     parser.add_argument('--run-id', default='work', help='identity for a new Stage C run')
     parser.add_argument('--now', help='RFC3339; defaults to current UTC time')
     args = parser.parse_args()
     try:
         now = args.now or datetime.now(timezone.utc).isoformat(timespec='seconds')
+        if args.command == 'stage-d-start':
+            # Read-only decision for drivers: may the production plan (Stage D) start?
+            decision = stage_d_start(args.project)
+            print(stable_json({key: decision[key] for key in ('allowed', 'reasons', 'rule')}), end='')
+            return 0 if decision['allowed'] else 1
         engine = WorkEngine(args.project)
         if args.command == 'next':
             result = engine.next(now=now, run_id=args.run_id)
