@@ -565,5 +565,5 @@ tasks:
       - .venv/bin/python -m unittest discover -s tests -v
       - .venv/bin/python tools/validate.py --check
       - git diff --check
-    completion: Adapter implemented; synthetic Stage B records SR001 and removes the self-repetition quality failure. Real read-only scan executed; supplied works index contains zero records, so zero comparable history projects and zero reviews remain.
+    completion: Code d751f28 qualified with local/shared full 444-test suites and 10 focused tests; synthetic Stage B records SR001 and removes the self-repetition quality failure. Real read-only scan executed; supplied works index contains zero records, so zero comparable history projects and zero reviews remain.
     blocked_reason: NO-INDEXED-WORKS; real owner acceptance requires at least one indexed work with explicit creator identity. Do not substitute plans or fabricate reviews.

@@ -302,9 +302,10 @@ element_research_122:
 works_history_133:
   task_id: WORKS-HISTORY-133
   project: repository-maintenance; LIVE-20261012-A9 read-only verification
-  status: CODE_IMPLEMENTED_REAL_INPUT_EMPTY
+  status: CODE_VERIFIED_REAL_INPUT_EMPTY
   branch: agent/133-selfrep-history
   source_commit: 0fa1509a2aef991a355665a912219d2cfde0f393
+  code_candidate: d751f28b6eaa99c38b155e3ff1537c1a1364b9f3
   catalog_source_commit: 8b023ac200d55aca00a6c283c85c95f478ea7da6
   catalog_index_sha256: 5e08ec7a5d35b7866c1f5dca863f0998f8073209cb099f91a15c195daa06bb9f
   changed_paths:
@@ -318,8 +319,8 @@ works_history_133:
     - execution/handoff.md
   verification:
     focused: 10 tests PASS
-    full: pending
-    validator: PASS before completion evidence update
+    full: "PASS: local 444 tests / 686.561s; shared 444 tests / 682.755s; both exit 0 on clean pinned code"
+    validator: PASS with both interpreters on pinned code
     real_scan:
       candidate_project: project/auto-live-20261012-a9-2a76271f9c04
       candidate_source_commit: 283769f3096fd654717a0b4ceff408bb2a0fe7e3

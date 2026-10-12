@@ -200,3 +200,24 @@ memory setup checks (`execute a clean pinned code checkout`). Shared interpreter
 release gate returned base_release FAIL on the same dirty source. These runs are
 not accepted evidence. Commit code before clean full qualification; append final
 verification in a subsequent evidence commit. Do not weaken the pinned-code guard.
+
+Final qualification on clean code `d751f28b6eaa99c38b155e3ff1537c1a1364b9f3`:
+
+| Command (from repo root) | Exit | Result |
+| --- | --- | --- |
+| `.venv/bin/python -m unittest discover -s tests -v` | 0 | 444 tests / 686.561s, OK |
+| `<shared-venv>/bin/python -m unittest discover -s tests` | 0 | 444 tests / 682.755s, OK |
+| `.venv/bin/python -m unittest discover -s tests -p test_works_history.py -v` | 0 | 10 tests, OK |
+| Shared interpreter, same focused command | 0 | 10 tests, OK |
+| Local/shared `tools/validate.py --check` | 0 | repository validation passed |
+| `tools/security_check.py --check`, `tools/docs_check.py --check`, `git diff --check` | 0 | PASS |
+
+Full-suite temporary roots were isolated and PYTHONDONTWRITEBYTECODE=1 was set.
+System python3 lacks yaml, so the user-specified shared interpreter was used.
+The two superseded dirty-tree suites and the dirty-tree release diagnostic were
+stopped before clean qualification; they are not passing evidence. The preliminary
+442-test run's 10 errors were pinned-code setup failures, resolved by the code commit.
+Log hashes: local `f9e7bc46483a217b9f3cf8a585e13ba8ca2f452497591722e7bfc65b6e80c375`, shared
+`0760e195d711d338a7f53f8433f0ab7dce2b808238bfd7d60411598c19308960`. No code changed after this qualification;
+this follow-up updates completion evidence only. Real acceptance remains blocked
+for the empty works index; publishing the requested PR does not claim a live review.

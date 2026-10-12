@@ -1298,7 +1298,8 @@ These are scanner inputs, not complete research projects or inferred art claims.
 ### Progress
 - [x] (2026-10-13 JST) Updated main and created agent/133-selfrep-history; read scanner, Stage B snapshot/finish and source catalog contracts.
 - [x] (2026-10-13 JST) Implemented adapter, synthetic fixtures, scanner/Stage B integration tests and usage docs; focused 10 tests PASS.
-- [ ] Run full unittest/validator and read-only real scan, record evidence, commit and open PR.
+- [x] (2026-10-13 JST) Code committed as d751f28; clean local/shared full suites each passed 444 tests, validators passed; read-only real scan and restart evidence recorded.
+- [ ] Real owner review acceptance: blocked on NO-INDEXED-WORKS. Delivery proceeds via the explicitly requested branch push and PR; do not merge.
 
 ### Surprises & Discoveries
 The supplied catalog has `works/index.yaml: records: []`; works/ contains only
@@ -1318,8 +1319,12 @@ empty corpus. Base/source Research commit recorded in final evidence; source cat
 revision will be recorded in external build receipt / verification evidence.
 
 ### Outcomes
-Pending implementation and verification. Real acceptance cannot show a review
-until at least one indexed work with explicit creator identity is supplied.
+Adapter and synthetic acceptance verified at d751f28b6eaa99c38b155e3ff1537c1a1364b9f3.
+Clean full suites: local 444 tests / 686.561s; shared 444 tests / 682.755s; both OK
+and exit 0. Local/shared validators, docs/security checks and diff check pass.
+Real acceptance remains blocked until at least one indexed work with explicit
+creator identity is supplied: 20 candidate signals, 0 comparable projects,
+0 matches, native LOW normalized by Stage B to UNKNOWN, 0 reviews.
 
 Qualification discovery: preliminary dirty-tree full run executed 442 tests and
 failed 10 memory tests with `execute a clean pinned code checkout`. This is not
