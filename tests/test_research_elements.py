@@ -642,6 +642,16 @@ class ResearchElementsTest(unittest.TestCase):
         self.assertEqual(load_json(self.engine.path)['proposition'], request['inputs']['proposition'])
         self.assertIn('中心命題', request['instruction'])
 
+    def test_long_proposition_never_shrinks_the_relevance_window_to_nothing(self):
+        request = self.until_search()
+        state = load_json(self.engine.path)
+        state['proposition'] = '"' * 1990 + '?'  # JSON escaping doubles every quote
+        self.engine.path.write_text(json.dumps(state, ensure_ascii=False))
+        request = self.engine.answer(self.fake(request), now=NOW)['next_action']['request']
+        self.assertTrue(request['element_id'].startswith('relevance.'))
+        self.assertNotIn('proposition', request['inputs'])
+        self.assertGreaterEqual(len(request['inputs']['body'].encode()), 1)
+
     def test_claim_rejects_a_non_claim(self):
         from research_element_checks import check_value
         checks = ['forbidden:主張できない,主張はできない,言うことはできない']

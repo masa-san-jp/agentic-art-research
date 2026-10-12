@@ -171,10 +171,17 @@ def collect(state, records):
                     # Judge against the central proposition too: surface words such as 制作/命題 let
                     # off-topic pages through when only the question was shown (research #127).
                     relevance_inputs['proposition'] = state['proposition']
-                metadata_bytes = max(len(json.dumps(inputs, ensure_ascii=False).encode()) for inputs in (
-                    relevance_inputs,
-                    {'question': q['question'], 'body': '', 'source_url': source['url']}))
-                window_bytes = min(config['body_chunk_bytes'], config['input_bytes'] - metadata_bytes)
+                def window():
+                    metadata = max(len(json.dumps(inputs, ensure_ascii=False).encode()) for inputs in (
+                        relevance_inputs,
+                        {'question': q['question'], 'body': '', 'source_url': source['url']}))
+                    return min(config['body_chunk_bytes'], config['input_bytes'] - metadata)
+                window_bytes = window()
+                if window_bytes < 256 and 'proposition' in relevance_inputs:
+                    # A long proposition must not shrink the body window to nothing (one window per
+                    # character); judge this source against the question alone.
+                    del relevance_inputs['proposition']
+                    window_bytes = window()
                 for part, (body, offset) in enumerate(chunks(source['body'], window_bytes), 1):
                     prefix_source = f'{qid}.{source_id}.{part}'
                     relevance_id = f'relevance.{prefix_source}'
