@@ -110,7 +110,8 @@ engineはGit配下のprojectを拒否するため、protocol repositoryだけの
 ```
 
 成功した値を捨てず、失敗した要素だけを既定5回まで再依頼する。
-資料の窓ごとの要素（関係判定 `relevance.*`・抜き書き `excerpt.*`）が上限に達した場合は、その窓を根拠なしとして飛ばし、checkpoint の `abandoned` に最後の検査結果を残して次へ進む。それ以外の要素が上限に達した場合、または時間予算到達は `BLOCKED` と要素名・最後の検査名を返す。
+資料の窓ごとの要素（関係判定 `relevance.*`・抜き書き `excerpt.*`）が上限に達した場合は、その窓を根拠なしとして飛ばし、checkpoint の `abandoned` に最後の検査結果を残して次へ進む。主張 `claim.*` が上限に達した場合も、その観察から主張を作らずに次へ進む。
+設定の `dedupe_identical_quotes` が真なら、同じ文の抜き書き（別の URL・別の問いから得たもの）からは観察と主張を1回だけ作る。`relevance_with_proposition` が真なら、関係判定に中心命題も渡す。どちらも新しい run の既定で、設定は checkpoint に固定されるため、それより前に始めた run の要素 ID は変わらない。それ以外の要素が上限に達した場合、または時間予算到達は `BLOCKED` と要素名・最後の検査名を返す。
 探索を `SEARCH_ATTEMPT`、`SOURCE_REVIEWED`、`ANSWER_FOUND`、`EVIDENCE_ROUND` に記録し、
 飽和・戦略数・資料上限で問いを理由付き `UNRESOLVED` に終端化する。
 不正な envelope、別のID・試行番号は exit 2 で拒否し、試行を消費しない。

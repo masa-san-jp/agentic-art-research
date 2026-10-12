@@ -166,15 +166,30 @@ def collect(state, records):
                 event(state, records, 'SOURCE_REVIEWED', search_id, question_id=qid, source_id=source_id)
                 # Offer successive windows until one relevant passage is pinned.
                 # The full retrieved body remains in the ledger.
-                metadata_bytes = max(len(json.dumps(inputs, ensure_ascii=False).encode()) for inputs in (
-                    {'question': q['question'], 'title': source['title'], 'body': ''},
-                    {'question': q['question'], 'body': '', 'source_url': source['url']}))
-                window_bytes = min(config['body_chunk_bytes'], config['input_bytes'] - metadata_bytes)
+                relevance_inputs = {'question': q['question'], 'title': source['title'], 'body': ''}
+                if config.get('relevance_with_proposition'):
+                    # Judge against the central proposition too: surface words such as 制作/命題 let
+                    # off-topic pages through when only the question was shown (research #127).
+                    relevance_inputs['proposition'] = state['proposition']
+                def window():
+                    metadata = max(len(json.dumps(inputs, ensure_ascii=False).encode()) for inputs in (
+                        relevance_inputs,
+                        {'question': q['question'], 'body': '', 'source_url': source['url']}))
+                    return min(config['body_chunk_bytes'], config['input_bytes'] - metadata)
+                window_bytes = window()
+                if window_bytes < 256 and 'proposition' in relevance_inputs:
+                    # A long proposition must not shrink the body window to nothing (one window per
+                    # character); judge this source against the question alone.
+                    del relevance_inputs['proposition']
+                    window_bytes = window()
                 for part, (body, offset) in enumerate(chunks(source['body'], window_bytes), 1):
                     prefix_source = f'{qid}.{source_id}.{part}'
                     relevance_id = f'relevance.{prefix_source}'
-                    yield element(state, relevance_id, 'この取得本文は問いに関係しますか。はい/いいえと理由1文を返してください。',
-                                  {'question': q['question'], 'title': source['title'], 'body': body}, boolean=True,
+                    yield element(state, relevance_id,
+                                  'この取得本文は問いと中心命題（proposition）の両方に関係しますか。はい/いいえと理由1文を返してください。'
+                                  if 'proposition' in relevance_inputs else
+                                  'この取得本文は問いに関係しますか。はい/いいえと理由1文を返してください。',
+                                  {**relevance_inputs, 'body': body}, boolean=True,
                                   checks=['one_sentence', 'contains_source_terms:body'])
                     if relevance_id in state.get('abandoned', {}):
                         event(state, records, 'ELEMENT_ABANDONED', relevance_id, question_id=qid, source_id=source_id)
@@ -254,7 +269,15 @@ def candidate_claim_pairs(claims):
 
 def analyze(state, records):
     answers = state['answers']
+    seen_quotes = set()
     for excerpt in records['excerpts']:
+        # The same passage reached through another URL or another question adds no new knowledge;
+        # deriving a second observation and claim from it only duplicated claims (research #127).
+        # Gated by config so checkpoints started before this change keep their element ids.
+        quote_key = ' '.join(excerpt['quote'].split())
+        if state['config'].get('dedupe_identical_quotes') and quote_key in seen_quotes:
+            continue
+        seen_quotes.add(quote_key)
         oid = f"OB{len(records['observations'])+1:03}"
         identifier = f'observation.{oid}'
         question = next(q['question'] for q in records['questions'] if q['id'] == excerpt['question_id'])
@@ -264,9 +287,15 @@ def analyze(state, records):
                       checks=['one_sentence', 'contains_source_terms:quote', 'not_similar_to:quote'])
         records['observations'].append({'id': oid, 'statement': answers[identifier],
             'scope': excerpt['question_id'], 'evidence_ids': [excerpt['evidence_id']]})
+    skipped_claims = 0
     for observation in records['observations']:
-        cid = f"CL{len(records['claims'])+1:03}"
+        # Abandoned claims keep their number so the next observation gets a fresh element id.
+        cid = f"CL{len(records['claims']) + skipped_claims + 1:03}"
         identifier = f'claim.{cid}'
+        if identifier in state.get('abandoned', {}):
+            skipped_claims += 1
+            event(state, records, 'ELEMENT_ABANDONED', identifier, question_id=observation['scope'])
+            continue
         # A claim states what the observation supports; "cannot be claimed" is not a claim (research #125).
         yield element(state, identifier, 'この観察が根拠となる主張を1文で返してください。「主張できない」とは書かず、観察から言える内容を主張として書いてください。',
                       {'observation': observation['statement'],
