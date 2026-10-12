@@ -57,9 +57,11 @@ def schedule(state, records):
             inputs['previous_questions'] = inputs['previous_questions'][1:]
         yield element(state, identifier, '命題について調べる問いを1文で返してください。背景（grounding）の制作意図と参照の観点から問いを立ててください。',
                       inputs, checks=['ends_with_question', 'one_sentence', 'not_similar:0.8'], max_chars=120)
+        # The extra art-reference round is recorded in the strategy limit so the register stays truthful.
+        art_round = 1 if state['config'].get('art_reference_search') and state.get('art_topics') else 0
         records['questions'].append({'id': qid, 'question': answers[identifier], 'priority': 'mandatory', 'status': 'OPEN',
                                      'stop_condition': {'sufficient_answers': state['budget']['sufficient_answers'],
-                                        'max_search_strategies': min(len(state['config']['search_strategies']), state['stopping']['max_search_strategies_per_question']),
+                                        'max_search_strategies': min(len(state['config']['search_strategies']), state['stopping']['max_search_strategies_per_question']) + art_round,
                                         'max_sources_reviewed': state['stopping']['max_sources_reviewed_per_question']}})
     yield from collect(state, records)
     yield from analyze(state, records)
@@ -131,9 +133,10 @@ def collect(state, records):
         qid = q['id']
         seen, saturation, found = set(), 0, set()
         reason = 'search_strategy_limit'
-        strategies = config['search_strategies'][:q['stop_condition']['max_search_strategies']]
         topics = state.get('art_topics') or []
-        if config.get('art_reference_search') and topics:
+        art_round = bool(config.get('art_reference_search') and topics)
+        strategies = config['search_strategies'][:q['stop_condition']['max_search_strategies'] - art_round]
+        if art_round:
             # One query mixing the art reference with money/life words returned only money pages
             # (orchestration #293, run A9-B1). Search the art reference on its own, first.
             strategies = ['art-reference', *strategies]
@@ -154,7 +157,7 @@ def collect(state, records):
             if strategy == 'art-reference':
                 topic = topics[(int(qid[1:]) - 1) % len(topics)]
                 yield element(state, query_id,
-                              '問いが拠る芸術の参照（art_topic）を調べる検索語を1つ返してください。art_topic をそのまま含め、費用・お金・生活の語は入れないでください。',
+                              '問いが拠る芸術の参照（art_topic）を調べる検索語を1つ返してください。art_topic を翻訳せず英語の綴りのまま含め、費用・お金・生活の語は入れないでください。',
                               {'question': q['question'], 'strategy': strategy, 'art_topic': topic,
                                'strategy_description': ART_REFERENCE_DESCRIPTION}, max_chars=160,
                               checks=['contains_terms:art_topic', 'forbidden:費用,貯蓄,お金,価格,料金'])
@@ -251,7 +254,9 @@ def collect(state, records):
                     # claim. Long pages must not multiply the all-pairs workload.
                     break
             new_count = len(found) - before
-            saturation = saturation + 1 if new_count == 0 else 0
+            # The added art-reference round must not use up the regular strategies' saturation budget.
+            if strategy != 'art-reference':
+                saturation = saturation + 1 if new_count == 0 else 0
             event(state, records, 'EVIDENCE_ROUND', search_id, question_id=qid, new_evidence_count=new_count)
         if len(found) >= state['budget']['sufficient_answers']:
             reason = 'sufficient_answers'

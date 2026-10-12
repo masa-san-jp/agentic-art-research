@@ -674,6 +674,12 @@ class ResearchElementsTest(unittest.TestCase):
         self.assertEqual(request['element_id'], retry['element_id'])
         accepted = self.engine.answer(self.reply(retry, 'Conceptual Art LeWitt instructions'), now=NOW)['next_action']['request']
         self.assertEqual('search.Q001.art-reference', accepted['element_id'])
+        # An empty art round does not count toward saturation, and the register records the extra round.
+        report = self.engine.answer({**{k: accepted[k] for k in ('run_id', 'element_id', 'attempt')},
+                                     'contract_version': 'search-answer/v1', 'results': []}, now=NOW)
+        self.assertEqual('query.Q001.primary', report['next_action']['request']['element_id'])
+        register = yaml.safe_load((self.project / '01_planning/question-register.yaml').read_text())['questions']
+        self.assertEqual(4, register[0]['stop_condition']['max_search_strategies'])  # 3 regular strategies + art
 
     def test_claim_rejects_a_non_claim(self):
         from research_element_checks import check_value
