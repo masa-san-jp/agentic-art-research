@@ -326,3 +326,4 @@ scanner_overlap_137:
   external_artifacts: Fresh candidate copy and metadata-only before/after reports in OS temporary output root; no real artifacts in protocol Git.
   remaining: No issue-137 implementation work; existing ELEMENT-RESEARCH-122 live blocker remains independent.
   next_start: PR review; do not merge. Resume existing blocked live task only in its separately authorized context.
+  pull_request: https://github.com/masa-san-jp/agentic-art-research/pull/138

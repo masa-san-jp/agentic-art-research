@@ -1300,7 +1300,7 @@ Base/source commit: `8ec422c2bb0597787f164dc8447897c2689a4ff9`.
 - [x] (2026-10-13 JST) Gate scores using `research_element_checks.source_terms`; add sparse-overlap, stop-word, paraphrase and low-coverage regressions. Focused 8 tests PASS.
 - [x] (2026-10-13 JST) Both full suites 438 PASS; validator/docs/security PASS; deterministic fixture HIGH/4 matches; real-copy scan LOW/0 matches.
 - [x] (2026-10-13 JST) Record results and implementation commits.
-- [ ] Push and open Japanese PR with `Closes #137`; do not merge.
+- [x] (2026-10-13 JST) Push branch and open PR #138 with Japanese body and `Closes #137`; no merge.
 
 ### Surprises & Discoveries
 
