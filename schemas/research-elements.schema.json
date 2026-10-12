@@ -256,6 +256,11 @@
       "maxLength": 500,
       "description": "Stage A intent and reference labels given to question elements alongside the proposition."
     },
+    "art_topics": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "description": "Art-history references of the Stage A intent, searched on their own first (orchestration #293)."
+    },
     "pair_review": {
       "type": "object",
       "additionalProperties": false,

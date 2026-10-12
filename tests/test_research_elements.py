@@ -652,6 +652,29 @@ class ResearchElementsTest(unittest.TestCase):
         self.assertNotIn('proposition', request['inputs'])
         self.assertGreaterEqual(len(request['inputs']['body'].encode()), 1)
 
+    def test_each_question_first_searches_its_art_reference_alone(self):
+        from research_elements import art_topics
+        intent = ('# T\n\n## 現時点の中心命題\n\nコンセプチュアル・アートと費用の不安はどう分かれるか?\n\n## 参照候補\n\n'
+                  '- self:claim:cost-decision-pulls-both-ways: urn:s:x (rights_status=UNKNOWN)\n'
+                  '- art-history:conceptual-art: urn:art-history:y (rights_status=UNKNOWN)\n'
+                  '- art-history:method:automatism: urn:art-history:z (rights_status=UNKNOWN)\n'
+                  '- marketing:specificity-over-relatability-expectation: urn:m:w (rights_status=UNKNOWN)\n')
+        self.assertEqual(['conceptual art', 'automatism'], art_topics(intent))
+        (self.project / '00_intake/creative-intent.md').write_text(intent)
+        self.engine = Engine(self.project)
+        self.small_plan()
+        report = self.engine.next(now=NOW)
+        while report['next_action']['request']['element_id'].startswith('question.'):
+            report = self.engine.answer(self.fake(report['next_action']['request']), now=NOW)
+        request = report['next_action']['request']
+        self.assertEqual('query.Q001.art-reference', request['element_id'])
+        self.assertEqual('conceptual art', request['inputs']['art_topic'])
+        # Mixing money words in is refused; the plain art query is accepted (case-insensitively).
+        retry = self.engine.answer(self.reply(request, 'conceptual art 費用 不安'), now=NOW)['next_action']['request']
+        self.assertEqual(request['element_id'], retry['element_id'])
+        accepted = self.engine.answer(self.reply(retry, 'Conceptual Art LeWitt instructions'), now=NOW)['next_action']['request']
+        self.assertEqual('search.Q001.art-reference', accepted['element_id'])
+
     def test_claim_rejects_a_non_claim(self):
         from research_element_checks import check_value
         checks = ['forbidden:主張できない,主張はできない,言うことはできない']

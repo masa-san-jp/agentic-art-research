@@ -40,6 +40,15 @@ def timestamp(value):
     return result
 
 
+def art_topics(intent: str) -> list[str]:
+    """Art-history references of the Stage A intent as search topics ("art-history:conceptual-art" -> "conceptual art")."""
+    refs = re.search(r'^## (?:参照候補|References)\s*\n(.*?)(?=^## |\Z)', intent, re.M | re.S)
+    if not refs:
+        return []
+    labels = re.findall(r'^- art-history:([^\s:]+(?::[^\s:]+)*):\s', refs.group(1), re.M)
+    return list(dict.fromkeys(label.rsplit(':', 1)[-1].replace('-', ' ').strip() for label in labels if label.strip()))
+
+
 def grounding(intent: str) -> str:
     """Stage A context beyond the one-sentence proposition: the intent and the reference labels.
 
@@ -148,6 +157,7 @@ class Engine:
         state = {'contract_version': 'research-elements/v1', 'run_id': run_id, 'project_id': plan['project_id'],
                  'source_commit': commit, 'started_at': now, 'last_now': now,
                  'inputs': inputs, 'proposition': proposition, 'grounding': grounding(intent),
+                 'art_topics': art_topics(intent),
                  'config': config, 'stopping': policy, 'budget': budget,
                  'minimums': quality.minimums, 'required_records': list(quality.required_records),
                  'vocabulary': load_yaml(ROOT / 'config/vocabularies.yaml'),

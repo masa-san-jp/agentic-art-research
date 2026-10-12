@@ -77,6 +77,10 @@
       "type": "boolean",
       "description": "Show the central proposition to relevance elements (research #127)."
     },
+    "art_reference_search": {
+      "type": "boolean",
+      "description": "Before the configured strategies, search each question's art reference on its own (orchestration #293)."
+    },
     "search_strategies": {
       "type": "array",
       "minItems": 1,

@@ -54,3 +54,4 @@ paths:
 insight_group_size: 2
 dedupe_identical_quotes: true
 relevance_with_proposition: true
+art_reference_search: true

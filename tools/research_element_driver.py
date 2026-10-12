@@ -14,6 +14,10 @@ def managed_empty_files(config):
             for key, path in config['paths'].items() if key not in ('state', 'lock', 'log', 'repetition_report')}
 
 
+ART_REFERENCE_DESCRIPTION = ('命題が拠る芸術の動向・作品・作家の一次資料や解説を探し、その考え方と実践を確認する。'
+                             '費用や生活の話題とは混ぜない。')
+
+
 def element(state, identifier, instruction, inputs, *, choices=None, boolean=False, checks=(), min_chars=1, max_chars=240):
     # A literal-term check is invisible to the answerer unless the instruction names it; across
     # languages (Japanese answer, English source) it is otherwise failed on every attempt.
@@ -127,7 +131,13 @@ def collect(state, records):
         qid = q['id']
         seen, saturation, found = set(), 0, set()
         reason = 'search_strategy_limit'
-        for strategy in config['search_strategies'][:q['stop_condition']['max_search_strategies']]:
+        strategies = config['search_strategies'][:q['stop_condition']['max_search_strategies']]
+        topics = state.get('art_topics') or []
+        if config.get('art_reference_search') and topics:
+            # One query mixing the art reference with money/life words returned only money pages
+            # (orchestration #293, run A9-B1). Search the art reference on its own, first.
+            strategies = ['art-reference', *strategies]
+        for strategy in strategies:
             if len(found) >= state['budget']['sufficient_answers']:
                 reason = 'sufficient_answers'
                 break
@@ -141,10 +151,18 @@ def collect(state, records):
                 break
             prefix = f'{qid}.{strategy}'
             query_id = f'query.{prefix}'
-            yield element(state, query_id, '問いを調べる検索語を1つ返してください。',
-                          {'question': q['question'], 'strategy': strategy,
-                           'strategy_description': config['search_strategy_descriptions'][strategy]}, max_chars=160,
-                          checks=['contains_source_terms:question'])
+            if strategy == 'art-reference':
+                topic = topics[(int(qid[1:]) - 1) % len(topics)]
+                yield element(state, query_id,
+                              '問いが拠る芸術の参照（art_topic）を調べる検索語を1つ返してください。art_topic をそのまま含め、費用・お金・生活の語は入れないでください。',
+                              {'question': q['question'], 'strategy': strategy, 'art_topic': topic,
+                               'strategy_description': ART_REFERENCE_DESCRIPTION}, max_chars=160,
+                              checks=['contains_terms:art_topic', 'forbidden:費用,貯蓄,お金,価格,料金'])
+            else:
+                yield element(state, query_id, '問いを調べる検索語を1つ返してください。',
+                              {'question': q['question'], 'strategy': strategy,
+                               'strategy_description': config['search_strategy_descriptions'][strategy]}, max_chars=160,
+                              checks=['contains_source_terms:question'])
             search_id = f'search.{prefix}'
             request = {'contract_version': 'search-request/v1', 'run_id': state['run_id'],
                        'element_id': search_id, 'attempt': state['attempt'], 'previous_failure': state['previous_failure'],
