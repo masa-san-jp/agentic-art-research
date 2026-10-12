@@ -1285,3 +1285,49 @@ Review full log SHA-256: shared `19b5c396d52d9194428f25f8cea4b0786adacd214186532
 Review decisions: complete-sentence quotation boundaries are determined by source start/end punctuation when no literal question content term is present; 20 characters and exact source/window match are always required. Claim pairs prioritize same-question comparisons, with only shared-evidence comparisons across questions, capped at config max_claim_pairs 120; truncation remains a reported gap. Similarity checks are lexical (0.9 for quote/observation derivation), not a semantic guarantee. Config v1 checkpoints stay on their pinned code; the new v2 policy is not silently substituted. Whole-role fixture/gate assertions remain unchanged; their setup explicitly selects legacy. README/AGENTS/element docs explain the new default, temporary legacy policy, and Git-external validator procedure. All changed paths are listed in execution/state.yaml.
 
 Remaining condition is unchanged: LIVE-ACCEPTANCE-NOT-RUN, because external site browsing is explicitly prohibited and no owner Stage A proposition plus actual retrieved bodies was provided as a live acceptance input. Task remains BLOCKED; next start is the orchestrator's owner-profile external CLI run and grounded ledger review. No sensitive data, real profile/project/raw/runtime or actual graph was committed; no GitHub write, public artifact or real production output occurred. Synthetic CLI/element/full-suite project directories were cleaned normally. The isolated full-suite temporary roots retain only empty runtime locks; OS-temp cleanup of the prior interrupted legacy run remains unverified.
+
+## Issue #137 / SCANNER-OVERLAP-137 ExecPlan
+
+### Purpose / Big Picture
+
+Repository maintenance only: prevent incidental lexical overlap from becoming HIGH
+self-repetition while preserving the CLI, report schemas, thresholds and labels.
+Base/source commit: `8ec422c2bb0597787f164dc8447897c2689a4ff9`.
+
+### Progress
+
+- [x] (2026-10-13 JST) Fetch main and create `agent/137-scanner-overlap`; read protocol/execution contracts and scanner.
+- [x] (2026-10-13 JST) Gate scores using `research_element_checks.source_terms`; add sparse-overlap, stop-word, paraphrase and low-coverage regressions. Focused 8 tests PASS.
+- [ ] Run both required full suites and validator; review fresh external candidate copy against existing works-history.
+- [ ] Record results, commit, push and open Japanese PR with `Closes #137`; do not merge.
+
+### Surprises & Discoveries
+
+A single ASCII term of length six (or compound) forced score 0.9, irrespective of
+coverage. Scanner `_tokens` includes compound fragments and connective words;
+use the existing content-anchor extractor and its stop words for the gate.
+Research-memory tests require a clean pinned checkout, so commit the implementation
+before running full suites, then record verification in a separate commit.
+
+### Decision Log
+
+- Agent-recommended: require three distinct shared content anchors for any detected
+  match; cap sparse pairs at 0.34 (below the existing 0.35 detection threshold).
+  For high scores require at least half of each side's content anchors; cap lower
+  coverage at 0.84 (below the existing 0.85 HIGH path). Keep the 0.9 strong-term
+  boost only after both gates. Rejected removing only the boost because character
+  and sequence paths could still promote sparse/boilerplate pairs.
+- Existing four-project fixture had only the compound title in common. Replace
+  its texts (both generated and checked-in fixtures) with paraphrases explicitly
+  describing the same unreachable relation and delayed device response; preserve
+  the HIGH assertion and four-project/interface checks. This repairs a fixture
+  that depended on the defective title-only boost, rather than lowering coverage.
+- Content anchors for Japanese remain deterministic character shingles from the
+  shared extractor; this is lexical similarity, not semantic equivalence.
+
+### Outcomes
+
+Pending full validation and real-copy rescan. No actual project or raw input is
+added to this repository. Real reports remain in an external temporary root.
+Resume with full suites after the implementation commit; preserve the existing
+ELEMENT-RESEARCH-122 live-acceptance blocker independently.

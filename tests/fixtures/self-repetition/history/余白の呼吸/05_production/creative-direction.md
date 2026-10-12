@@ -1,3 +1,3 @@
 # 余白の呼吸
 
-The project tests close-but-cannot-reach through a distinct arrangement.
+A delayed device response exposes the unreachable relation in close-but-cannot-reach.

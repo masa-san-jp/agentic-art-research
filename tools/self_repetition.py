@@ -20,6 +20,7 @@ from typing import Any, Iterable, Mapping
 import unicodedata
 
 from _common import InputParseError, atomic_write_text, load_json, load_yaml, read_jsonl
+from research_element_checks import source_terms
 
 
 CONTRACT_VERSION = "self-repetition-scan/v1"
@@ -264,7 +265,18 @@ def _similarity(left: str, right: str) -> tuple[float, list[str]]:
     sequence_score = SequenceMatcher(None, _normalized(left), _normalized(right)).ratio()
     score = max(word_score, gram_score, sequence_score * 0.9)
     strong_terms = sorted(term for term in common if "-" in term or "_" in term or (term.isascii() and len(term) >= 6))
-    if strong_terms:
+    # Lexical anchors must support the whole proposal, not a single long word.
+    # Use the shared extractor so connectives and compound token fragments do
+    # not satisfy the content-word minimum. Gate every scoring path, including
+    # character/sequence similarity, before report rounding and aggregation.
+    left_content = source_terms(left)
+    right_content = source_terms(right)
+    shared_content = left_content & right_content
+    if len(shared_content) < 3:
+        score = min(score, 0.34)
+    elif len(shared_content) * 2 < max(len(left_content), len(right_content)):
+        score = min(score, 0.84)
+    elif strong_terms:
         score = max(score, 0.9)
     return min(1.0, score), strong_terms[:8]
 
