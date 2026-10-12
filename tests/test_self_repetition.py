@@ -12,7 +12,8 @@ from jsonschema import Draft202012Validator
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
-from self_repetition import apply_report, scan_projects
+from self_repetition import _similarity, apply_report, scan_projects
+from research_element_checks import source_terms
 
 
 class SelfRepetitionScanTest(unittest.TestCase):
@@ -27,7 +28,7 @@ class SelfRepetitionScanTest(unittest.TestCase):
             encoding="utf-8",
         )
         (candidate / "05_production/creative-direction.md").write_text(
-            "# Candidate\n\nclose-but-cannot-reach is the selected claim.\n",
+            "# Candidate\n\nclose-but-cannot-reach exposes an unreachable relation through a delayed device response.\n",
             encoding="utf-8",
         )
         for name in ("close-but-cannot-reach", "harmony-proof", "auto-auto-plan-repository-202", "yohaku-no-iki"):
@@ -38,10 +39,73 @@ class SelfRepetitionScanTest(unittest.TestCase):
                 encoding="utf-8",
             )
             (project / "creative-direction.md").write_text(
-                f"# {name}\n\nThe project tests close-but-cannot-reach through a distinct arrangement.\n",
+                f"# {name}\n\nA delayed device response exposes the unreachable relation in close-but-cannot-reach.\n",
                 encoding="utf-8",
             )
         return candidate, history, temporary
+
+    def test_review_recall_bands(self) -> None:
+        cases = [
+            ("A closed transparent box holds paper packets; viewers walk around it to inspect an empty cell and an inaccessible packet.",
+             "Viewers circle a sealed transparent box containing paper packets, observing a vacant compartment and a parcel they cannot touch.", 0.9, 1.0),
+            ("像が消える", "像は消える", 0.35, 1.0),
+            ("delayed response", "delayed response", 1.0, 1.0),
+            # Translation remains outside this lexical scanner's scope.
+            ("像が消える", "The image disappears", 0.0, 0.34),
+        ]
+        for left, right, lower, upper in cases:
+            with self.subTest(left=left, right=right):
+                score = _similarity(left, right)[0]
+                self.assertGreaterEqual(score, lower)
+                self.assertLessEqual(score, upper)
+
+    def test_normalized_exact_and_near_exact_short_phrases(self) -> None:
+        self.assertEqual(1.0, _similarity(" delayed\n response. ", "delayed response")[0])
+        self.assertGreaterEqual(_similarity("delayed response", "delayed responses")[0], 0.85)
+
+    def test_original_unmodified_four_project_fixture_is_high(self) -> None:
+        fixture = ROOT / "tests/fixtures/self-repetition"
+        report = scan_projects(fixture / "candidate", fixture / "history",
+            repository="masa-san-jp/agentic-art-research",
+            source_commit="ce7e214f22e25c277c8f7277d83cd8cd85a3a8c1",
+            now="2026-09-03T10:00:00+09:00")
+        self.assertEqual("HIGH", report["risk_level"])
+        self.assertEqual(4, report["scanned_project_count"])
+        self.assertEqual(4, len({m["prior_signal_ref"].split("::", 1)[0] for m in report["matches"]}))
+        self.assertTrue(all(m["score"] >= 0.9 for m in report["matches"]))
+
+    def test_sparse_content_overlap_is_low_even_across_four_projects(self) -> None:
+        pairs = [
+            ("describe された device は光の状態を記録する", "describe the unreachable relation through an access device"),
+            ("LeWitt の wall drawings は施工指示を扱う", "at least four distorted line drawings"),
+            ("the and with describe", "the and with describe device"),
+            ("unreachable device", "device unreachable"),
+        ]
+        candidate, history, _ = self.make_fixture()
+        for left, right in pairs:
+            with self.subTest(left=left, right=right):
+                self.assertLessEqual(len(source_terms(left) & source_terms(right)), 2)
+                self.assertLess(_similarity(left, right)[0], 0.35)
+                (candidate / "05_production/creative-direction.md").write_text(left)
+                for project in history.iterdir():
+                    (project / "05_production/creative-direction.md").write_text(right)
+                report = scan_projects(candidate, history,
+                    repository="masa-san-jp/agentic-art-research",
+                    source_commit="ce7e214f22e25c277c8f7277d83cd8cd85a3a8c1",
+                    now="2026-09-03T10:00:00+09:00")
+                self.assertEqual("LOW", report["risk_level"])
+                self.assertEqual([], report["matches"])
+
+    def test_paraphrased_proposal_keeps_high_similarity(self) -> None:
+        left = "An unreachable relation is exposed through a delayed device response."
+        right = "A delayed device response exposes the unreachable relation."
+        self.assertGreaterEqual(_similarity(left, right)[0], 0.9)
+        self.assertEqual(_similarity(left, right), _similarity(left, right))
+
+    def test_three_shared_words_do_not_boost_unrelated_long_statements(self) -> None:
+        left = "describe device drawings alongside botanical pigment archival sculpture lighting"
+        right = "describe device drawings within distorted geometric access unreachable relation"
+        self.assertLess(_similarity(left, right)[0], 0.85)
 
     def test_four_prior_projects_are_detected_with_high_risk(self) -> None:
         candidate, history, _ = self.make_fixture()

@@ -1286,6 +1286,131 @@ Review decisions: complete-sentence quotation boundaries are determined by sourc
 
 Remaining condition is unchanged: LIVE-ACCEPTANCE-NOT-RUN, because external site browsing is explicitly prohibited and no owner Stage A proposition plus actual retrieved bodies was provided as a live acceptance input. Task remains BLOCKED; next start is the orchestrator's owner-profile external CLI run and grounded ledger review. No sensitive data, real profile/project/raw/runtime or actual graph was committed; no GitHub write, public artifact or real production output occurred. Synthetic CLI/element/full-suite project directories were cleaned normally. The isolated full-suite temporary roots retain only empty runtime locks; OS-temp cleanup of the prior interrupted legacy run remains unverified.
 
+## Issue #137 / SCANNER-OVERLAP-137 ExecPlan
+
+### Purpose / Big Picture
+
+Repository maintenance only: prevent incidental lexical overlap from becoming HIGH
+self-repetition while preserving the CLI, report schemas, thresholds and labels.
+Base/source commit: `8ec422c2bb0597787f164dc8447897c2689a4ff9`.
+
+### Progress
+
+- [x] (2026-10-13 JST) Fetch main and create `agent/137-scanner-overlap`; read protocol/execution contracts and scanner.
+- [x] (2026-10-13 JST) Gate scores using `research_element_checks.source_terms`; add sparse-overlap, stop-word, paraphrase and low-coverage regressions. Focused 8 tests PASS.
+- [x] (2026-10-13 JST) Both full suites 438 PASS; validator/docs/security PASS; deterministic fixture HIGH/4 matches; real-copy scan LOW/0 matches.
+- [x] (2026-10-13 JST) Record results and implementation commits.
+- [x] (2026-10-13 JST) Push branch and open PR #138 with Japanese body and `Closes #137`; no merge.
+
+### Surprises & Discoveries
+
+A single ASCII term of length six (or compound) forced score 0.9, irrespective of
+coverage. Scanner `_tokens` includes compound fragments and connective words;
+use the existing content-anchor extractor and its stop words for the gate.
+Research-memory tests require a clean pinned checkout, so commit the implementation
+before running full suites, then record verification in a separate commit.
+
+### Decision Log
+
+- Agent-recommended: require three distinct shared content anchors for any detected
+  match; cap sparse pairs at 0.34 (below the existing 0.35 detection threshold).
+  For high scores require at least half of each side's content anchors; cap lower
+  coverage at 0.84 (below the existing 0.85 HIGH path). Keep the 0.9 strong-term
+  boost only after both gates. Rejected removing only the boost because character
+  and sequence paths could still promote sparse/boilerplate pairs.
+- Existing four-project fixture had only the compound title in common. Replace
+  its texts (both generated and checked-in fixtures) with paraphrases explicitly
+  describing the same unreachable relation and delayed device response; preserve
+  the HIGH assertion and four-project/interface checks. This repairs a fixture
+  that depended on the defective title-only boost, rather than lowering coverage.
+- Content anchors for Japanese remain deterministic character shingles from the
+  shared extractor; this is lexical similarity, not semantic equivalence.
+
+### Outcomes
+
+Implementation commit `9d7c606169fe8f6e6d9f1c25ea4275399bb832ce`, verified checkout
+`2e60f0c`. Shared Python full suite: 438 PASS in 544.079s; local Python full
+suite: 438 PASS in 546.649s. Focused 8 PASS. Validator initially reported
+EXECUTION-NEXT-TASK because the new IN_PROGRESS task was not selected in state;
+state corrected and validator PASS. Docs/security and deterministic fixture PASS.
+
+A9-B2 fresh external copy against 11 history projects / 503 signals (candidate
+50 signals): 17 matches HIGH before, zero matches LOW after. Three former matches:
+material/production requirements versus ADOPT-HOLD-REJECT workflow (0.9 to 0.058),
+describe-device valuation versus reviewer description (0.9 to 0.217), and LeWitt
+catalogue versus distorted line drawing installation (0.9 to 0.058). None looks
+like repetition of the same proposal. Original project, history and copied input
+hashes remained unchanged. No actual project or raw input is added to this Git;
+copy/reports remain in an external OS temporary root. No unresolved issue-137
+implementation concerns; existing ELEMENT-RESEARCH-122 live blocker is preserved.
+Next: push branch and PR review, without merge.
+
+## PR #138 review / SCANNER-RECALL-138 ExecPlan
+
+### Purpose / Big Picture
+
+Repair #137's recall overcorrection on branch agent/137-scanner-overlap, source
+commit bd9b6e8, while preserving every existing assertion and sparse false-positive
+suppression. Repository maintenance only; real scans use fresh external copies.
+
+### Progress
+
+- [x] (2026-10-13 JST) git pull (already up to date); inspect scanner and original main fixtures.
+- [x] (2026-10-13 JST) Relative content coverage, normalized exact/near-exact bypass, restored original checked-in four-project fixture; focused 11 tests PASS.
+- [x] (2026-10-13 JST) Both full suites PASS; validator/docs/security/deterministic original fixture PASS; external fresh-copy scan LOW/0 matches. Record evidence and push without merge.
+
+### Surprises & Discoveries
+
+The original compound identifier is one source_terms anchor but carries several
+literal content components. Counting its filtered components restores the original
+fixture without granting unrelated isolated words the same boost. The existing
+normalized_value helper handles NFKC/case/whitespace/closing periods, but the repo
+has no particle normalizer; Japanese particle variation uses normal scoring.
+
+### Decision Log
+
+- Agent-recommended: detect only with >=25% coverage of each input and a floor
+  of two anchors. Inputs with at most two content terms require exact/near-exact
+  wording (normalized sequence ratio >=0.95), preserving the existing reordered
+  two-word LOW assertion. Rejected unconditional token-set equality because it
+  would weaken that assertion. Exact nonempty normalized values score 1.0.
+- Agent-recommended: allow the strong-term HIGH boost at >=50% coverage, or
+  >=one-third coverage with four anchors. Rejected a fixed three-anchor gate
+  because it loses short Japanese text; rejected boosting three shared generic
+  terms at one-third coverage because the existing unrelated-long-text assertion
+  must remain. Compound components use the shared stop-word filter.
+- Restore checked-in fixtures verbatim from origin/main; retain the added
+  paraphrase fixture/test as additional recall coverage. Translation remains
+  outside this lexical scanner's scope and is explicitly tested as LOW.
+
+### Outcomes
+
+Implementation/verified checkout `3efddeda889b84ac7db7f7e2abb6292f03e77c4e`; source bd9b6e8.
+Shared Python full suite: 441 tests PASS in 469.728s;
+repository-local full suite: 441 tests PASS in 473.504s.
+Focused 11 PASS; `.venv/bin/python tools/validate.py --check`, docs/security checks,
+original fixture CLI `--check`, and `git diff --check` PASS. Shared full command:
+`$SHARED_PYTHON -m unittest discover -s tests` (user-specified shared interpreter);
+local full command: `.venv/bin/python -m unittest discover -s tests -v`.
+Shared log SHA-256 `98d773f6a0c72cd5564e1f8248a6a01abd804303a6b2ce293427077f7a33abf3`;
+local log SHA-256 `8400004ee75759d17f589e6152d472198a92545b8f811316b7b91bfae69b7761`.
+
+Six review scores in request order: 0.900, 0.720, 1.000, 0.000 (Japanese-to-English
+translation remains out of scope), 0.327273, 0.340. Existing assertions unchanged;
+original checked-in fixture restored verbatim from origin/main, HIGH/4 matches
+at 0.900 each, with additional paraphrase recall fixture retained.
+
+Real fresh-copy scan of A9-B2 against works-history: 11 projects, 503 history
+signals, 50 candidate signals, zero matches/LOW. No apply; original, history and
+copy content hashes unchanged. Example rejected comparisons: CL007 vs
+P0006/WH0018 (LeWitt vs distorted drawings) 0.058; CL019 vs P0005/WH0020
+(describe/device) 0.217; creative-direction paragraph-12 vs P0001/WH0020
+(material vs ADOPT-HOLD-REJECT workflow) 0.058. External copy and metadata-only
+reports stay outside protocol Git. No sensitive/project/runtime/raw artifacts
+were added. Preliminary fixture CLI invocation used an invalid-length commit
+argument and failed closed; rerun with the actual verified SHA passed.
+No review work remains; next: PR #138 review, do not merge. Existing
+ELEMENT-RESEARCH-122 live acceptance blocker remains independent.
 ## Issue #133: deterministic works history adapter
 
 ### Purpose / Big Picture

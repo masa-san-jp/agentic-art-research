@@ -553,6 +553,32 @@ tasks:
     completion: Review code b3f60fc33d913aa84a8e2dbcb2866d6428e4abaf qualified with both full 410-test suites, focused 35 tests, fixture matrix 3, default fake CLI 118 first-attempt requests, small CLI 24, external validation and all prior checks (exit 0).
     blocked_reason: LIVE-ACCEPTANCE-NOT-RUN; no external browsing authorized in this implementation session.
 
+  - id: SCANNER-OVERLAP-137
+    milestone: G7
+    title: Prevent sparse content overlap from inflating self-repetition scores
+    status: DONE
+    depends_on: [SELF-REPETITION-V2-001]
+    issue_refs: ["agentic-art-research#137"]
+    acceptance: Sparse one/two-content-anchor pairs are LOW, paraphrases remain high, both full suites and validator pass, and a fresh external candidate copy is rescanned without modifying originals.
+    checks:
+      - .venv/bin/python -m unittest tests.test_self_repetition -v
+      - .venv/bin/python -m unittest discover -s tests -v
+      - .venv/bin/python tools/validate.py --check
+      - git diff --check
+    completion: Both full suites 438 tests PASS; focused 8 PASS; validator/docs/security/deterministic fixture PASS. Fresh A9-B2 copy against 11 history projects (503 signals; candidate 50) changed 17 matches HIGH to 0 LOW; original/history/copy hashes unchanged. See PLANS.md and execution/handoff.md.
+
+  - id: SCANNER-RECALL-138
+    milestone: G7
+    title: Repair scanner recall overcorrection from PR 138 review
+    status: DONE
+    depends_on: [SCANNER-OVERLAP-137]
+    issue_refs: ["agentic-art-research#137", "agentic-art-research#138"]
+    acceptance: All existing assertions, six review bands, original four-project HIGH fixture, both full suites, validator and fresh external scan pass.
+    checks:
+      - .venv/bin/python -m unittest discover -s tests -v
+      - .venv/bin/python tools/validate.py --check
+      - git diff --check
+    completion: Implementation 3efddeda889b84ac7db7f7e2abb6292f03e77c4e; both full suites 441 PASS, focused 11 PASS, all six bands and original fixture HIGH preserved; external 11-project scan LOW/0 matches with unchanged input hashes.
   - id: WORKS-HISTORY-133
     milestone: G7
     title: Adapt owner works and earlier proposals to creator-scoped self-repetition history

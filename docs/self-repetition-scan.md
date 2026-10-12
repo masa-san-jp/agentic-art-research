@@ -40,3 +40,13 @@ python3 tools/self_repetition.py \
 The fixture must report four scanned projects, four matches, and `risk_level: HIGH`. To reflect the result into
 the candidate's human-readable production direction, add `--project <candidate>` and `--apply`. Applying is
 explicit, atomic, and idempotent; without `--apply` the candidate is never modified.
+
+## Content overlap guard
+
+Scores use the existing `research_element_checks.source_terms` lexical anchors and
+stop-word filtering. Fewer than three distinct shared content anchors cap every
+scoring path at 0.34, below the unchanged 0.35 match threshold. Otherwise, less than
+50% overlap on either side caps scores at 0.84, below the existing HIGH path.
+Only pairs passing both guards can receive the existing 0.9 strong-term boost.
+Japanese anchors are deterministic character shingles; scores remain lexical
+review signals and do not establish semantic equivalence.
