@@ -570,7 +570,7 @@ tasks:
   - id: SCANNER-RECALL-138
     milestone: G7
     title: Repair scanner recall overcorrection from PR 138 review
-    status: IN_PROGRESS
+    status: DONE
     depends_on: [SCANNER-OVERLAP-137]
     issue_refs: ["agentic-art-research#137", "agentic-art-research#138"]
     acceptance: All existing assertions, six review bands, original four-project HIGH fixture, both full suites, validator and fresh external scan pass.
@@ -578,3 +578,4 @@ tasks:
       - .venv/bin/python -m unittest discover -s tests -v
       - .venv/bin/python tools/validate.py --check
       - git diff --check
+    completion: Implementation 3efddeda889b84ac7db7f7e2abb6292f03e77c4e; both full suites 441 PASS, focused 11 PASS, all six bands and original fixture HIGH preserved; external 11-project scan LOW/0 matches with unchanged input hashes.

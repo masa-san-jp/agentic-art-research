@@ -1357,7 +1357,7 @@ suppression. Repository maintenance only; real scans use fresh external copies.
 
 - [x] (2026-10-13 JST) git pull (already up to date); inspect scanner and original main fixtures.
 - [x] (2026-10-13 JST) Relative content coverage, normalized exact/near-exact bypass, restored original checked-in four-project fixture; focused 11 tests PASS.
-- [ ] Run shared and repository-local full suites, validator and real-copy scan; record outcomes, commit and push without merge.
+- [x] (2026-10-13 JST) Both full suites PASS; validator/docs/security/deterministic original fixture PASS; external fresh-copy scan LOW/0 matches. Record evidence and push without merge.
 
 ### Surprises & Discoveries
 
@@ -1385,6 +1385,29 @@ has no particle normalizer; Japanese particle variation uses normal scoring.
 
 ### Outcomes
 
-Pending full qualification and external real-check. No sensitive or actual project
-artifacts are added to protocol Git. Next: commit clean implementation, run the
-full commands and external scan, then record evidence and push.
+Implementation/verified checkout `3efddeda889b84ac7db7f7e2abb6292f03e77c4e`; source bd9b6e8.
+Shared Python full suite: 441 tests PASS in 469.728s;
+repository-local full suite: 441 tests PASS in 473.504s.
+Focused 11 PASS; `.venv/bin/python tools/validate.py --check`, docs/security checks,
+original fixture CLI `--check`, and `git diff --check` PASS. Shared full command:
+`$SHARED_PYTHON -m unittest discover -s tests` (user-specified shared interpreter);
+local full command: `.venv/bin/python -m unittest discover -s tests -v`.
+Shared log SHA-256 `98d773f6a0c72cd5564e1f8248a6a01abd804303a6b2ce293427077f7a33abf3`;
+local log SHA-256 `8400004ee75759d17f589e6152d472198a92545b8f811316b7b91bfae69b7761`.
+
+Six review scores in request order: 0.900, 0.720, 1.000, 0.000 (Japanese-to-English
+translation remains out of scope), 0.327273, 0.340. Existing assertions unchanged;
+original checked-in fixture restored verbatim from origin/main, HIGH/4 matches
+at 0.900 each, with additional paraphrase recall fixture retained.
+
+Real fresh-copy scan of A9-B2 against works-history: 11 projects, 503 history
+signals, 50 candidate signals, zero matches/LOW. No apply; original, history and
+copy content hashes unchanged. Example rejected comparisons: CL007 vs
+P0006/WH0018 (LeWitt vs distorted drawings) 0.058; CL019 vs P0005/WH0020
+(describe/device) 0.217; creative-direction paragraph-12 vs P0001/WH0020
+(material vs ADOPT-HOLD-REJECT workflow) 0.058. External copy and metadata-only
+reports stay outside protocol Git. No sensitive/project/runtime/raw artifacts
+were added. Preliminary fixture CLI invocation used an invalid-length commit
+argument and failed closed; rerun with the actual verified SHA passed.
+No review work remains; next: PR #138 review, do not merge. Existing
+ELEMENT-RESEARCH-122 live acceptance blocker remains independent.
