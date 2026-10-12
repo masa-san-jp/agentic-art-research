@@ -582,8 +582,8 @@ def main() -> int:
             project = args.work_root.resolve() / 'projects' / target.split('/')[1]
             route = select_route(args.protocol_root.resolve(), project, override=args.research_route)
             if route == 'research_elements':
-                from research_elements import Engine
-                result = Engine(project).next(now=_timestamp(args.now), run_id=args.run_id)
+                from work_elements import next_element
+                result = next_element(project, now=_timestamp(args.now), run_id=args.run_id)
             else:
                 supervisor = harness_supervisor.Supervisor(
                     research_route=args.research_route,

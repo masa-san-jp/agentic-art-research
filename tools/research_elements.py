@@ -384,7 +384,7 @@ class Engine:
             'COMPLETE_WITH_GAPS' if state.get('pair_review', {}).get('truncated') or state['question_gaps'] or state['record_counts']['contradictions'] or state['record_counts']['uncertainties'] else 'COMPLETE'),
             'pair_review': state.get('pair_review'),
             'counts': counts, 'quality_failures': failures, 'unresolved_questions': state['question_gaps'],
-            'next_start': 'Stage C and the existing production-brief / native project acceptance gates.',
+            'next_start': 'Stage C (tools/work_elements.py) and the native project acceptance gates.',
             'project_completed': False}
 
     def check_search(self, state, request, answer):
