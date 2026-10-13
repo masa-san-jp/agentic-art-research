@@ -15,6 +15,7 @@ from handoff_common import (
     has_digital_prototype_plan,
     load_handoff_sources,
     prototype_task_effect_type_fields,
+    reference_categories,
     yaml_text,
 )
 from validate import validate_repository
@@ -114,6 +115,14 @@ def _source_refs(sources: HandoffSources, candidate_ids: set[str]) -> dict[str, 
                 evidence_ids.add(evidence_id)
 
     evidence = _records_by_id(sources.evidence, "evidence")
+    try:
+        selected_references = reference_categories(sources)
+    except HandoffInputError as exc:
+        raise HandoffBuildError(str(exc)) from exc
+    # Production references may be relevant to appearance/method without
+    # supporting the recommended decision. Do not alter decision/insight support.
+    evidence_ids.update(identifier for identifier, categories in selected_references.items()
+                        if identifier in evidence and categories)
     missing_evidence = sorted(evidence_ids - set(evidence))
     if missing_evidence:
         raise HandoffBuildError(f"evidence IDs are missing from evidence-ledger.jsonl: {', '.join(missing_evidence)}")

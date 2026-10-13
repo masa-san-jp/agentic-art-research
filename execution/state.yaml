@@ -1,10 +1,10 @@
-version: 9
-updated_at: "2026-10-08T12:12:28+00:00"
+version: 10
+updated_at: '2026-10-13T11:33:53.715999+00:00'
 current_milestone: G7
-next_task: null
+next_task: WORK-REFERENCE-139
 last_completed_task: SCANNER-RECALL-138
 terminal: false
-blocked_by: [LIVE-ACCEPTANCE-NOT-RUN]
+blocked_by: []
 resume_from:
   read:
     - docs/research-elements.md
@@ -454,3 +454,10 @@ works_history_135_p1:
   sensitive_git_content: none; synthetic regression only
   external_artifacts: rebuilt and preserved histories, fresh candidate copy, scan/pair
     JSON and full logs remain outside Git
+
+work_reference_139:
+  status: IN_PROGRESS
+  start_point: b493324d7223a8e0686f44702a55eb26e7155a48
+  branch: codex/work-reference-pool
+  lease: ISOLATED_CLONE; no other active writer observed
+  next_operation: Tests, independent review, fresh local C/D qualification and CI

@@ -62,10 +62,11 @@ Issue #129。段階 B（[要素リサーチ](research-elements.md)）が `COMPLE
 
 ## 制作への受け渡しの準備（#134）
 
-- 参照の分類（`reference.<カテゴリ>`）: 制作側が URL を求める CONCEPT / VISUAL / METHOD ごとに、推薦案の根拠資料
-  （判断の根拠と、洞察の主張の根拠）から当たるものを1つ選ぶ。当たるものが無ければ `NONE`。飛ばせる要素で、
+- 参照の分類（`reference.<カテゴリ>`）: 制作側が URL を求める CONCEPT / VISUAL / METHOD ごとに、固定した研究証拠全体から当たるものを1つ選ぶ。判断の根拠以外にも、見た目・手法の参考資料を選べる。
+  多い場合はbyte上限内の窓ごとに1つ選び、その候補を小さな比較窓で減らして最後に1つ選ぶ。長いURLはhost/hashで表示し、元の恒久URLは研究証拠に保持する。PRIVATE_RAW/RESTRICTEDは候補に出さない。当たるものが無ければ `NONE`。飛ばせる要素で、
   上限に達したらそのカテゴリは未対応のまま（制作側の参照の gap になる）。結果は
-  `05_production/reference-categories.yaml` に書く。
+  `05_production/reference-categories.yaml` に書く。採用した証拠IDはhandoffのsource_refsにも加え、既存exporterがhashと恒久URLを検査する。判断や洞察の根拠は変更しない。
+  旧checkpointは旧候補を維持する。資料を補う際は、旧C/Dを保存して新しいC/Dコピーで再生成し、受理済みhandoffを直接書き換えない。
 - デジタル試作の計画（`PP002`）: プログラムが書く。制作プランの寸法・素材・数量を読んで構成要素を SVG に描く
   2つの段取り（READ_ONLY → REPOSITORY_WRITE）で、物の制作・購入・公開・依頼はしない。制作側は handoff に
   この種の計画を求める。

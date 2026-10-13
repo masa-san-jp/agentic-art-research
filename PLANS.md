@@ -1531,3 +1531,19 @@ this repair: 57510e34fcf4e7ae689415342724084ab810cff9. No sensitive content or a
 project artifacts are committed; external history and verification copy stay outside Git.
 Next start: review the remaining lexical matches; use creator-scoped history in a fresh
 Stage B run. Original frozen project remains unchanged. PR #135 remains unmerged.
+
+## Issue139 — production references beyond the decision's support
+
+Purpose: make existing verified appearance/method sources selectable without inventing new evidence or changing the recommended decision's support.
+
+- [x] Read-only independent diagnosis: candidate-only change is insufficient; selected IDs must also reach handoff source_refs.
+- [x] Fresh isolated Lref based on b493324; conditional repository-local preflight completed.
+- [x] Preserve explicit selected categories, validate IDs/categories/classifications, union selected evidence only.
+- [x] Offer pinned research evidence in byte-bounded windows and reduce finalists in bounded rounds; retain NONE and legacy checkpoint behavior.
+- [ ] Focused/full tests, exporter/Production integration, independent code review.
+- [ ] Fresh local C/D replay, unchanged originals, real reference-access and plan validation.
+- [ ] Green CI, final evidence and merge; parent pin adoption.
+
+Discovery: the old docs intentionally limited reference candidates to hypothesis support. This prevents other researched art sources from helping the making of the work. Decision: treat selected appearance/method sources as production references, never as stronger evidence for the research claim. URLs/hashes remain native-exporter owned. Private/raw or restricted records are not offered or accepted for reference selection.
+
+Read-only code review repaired legacy request-ID continuity and oversized single URL/Unicode/finalist displays. Legacy scheduling is preserved intact; new display metadata is byte-bounded and final rounds admit at least two candidates. New10 regressions PASS and related56 earlier PASS. Re-review has no remaining required changes. The full run started before these fixes is supplemental, not final-source proof; qualify a frozen commit in an isolated local clone.

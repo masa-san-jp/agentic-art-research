@@ -16,7 +16,7 @@ from jsonschema import Draft202012Validator
 
 from _common import ROOT, load_json, load_yaml
 from canonical import canonical_sha256
-from handoff_common import HandoffInputError, HandoffSources, collection_yaml, load_handoff_sources, yaml_text
+from handoff_common import HandoffInputError, HandoffSources, collection_yaml, load_handoff_sources, yaml_text, reference_categories
 from validate import validate_repository
 
 
@@ -75,19 +75,10 @@ def _reference_categories(sources: HandoffSources) -> dict[str, list[str]]:
     and only the study knows which of its records answers which. Unstated
     records fall to OTHER rather than being guessed.
     """
-    path = sources.project / "05_production/reference-categories.yaml"
-    if not path.is_file():
-        return {}
-    document = load_yaml(path) or {}
-    mapping = document.get("categories") if isinstance(document, dict) else None
-    if not isinstance(mapping, dict):
-        raise HandoffExportError("reference-categories.yaml must map record IDs to a list of category IDs")
-    result: dict[str, list[str]] = {}
-    for record_id, values in mapping.items():
-        if not isinstance(values, list) or not all(isinstance(v, str) and v for v in values):
-            raise HandoffExportError(f"reference-categories.yaml entry {record_id!r} must be a list of category IDs")
-        result[str(record_id)] = list(values)
-    return result
+    try:
+        return reference_categories(sources)
+    except HandoffInputError as exc:
+        raise HandoffExportError(str(exc)) from exc
 
 
 def _access_url_reason(kind: str, location: Any) -> tuple[str | None, str | None]:

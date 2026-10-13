@@ -1,5 +1,5 @@
-version: 26
-updated_at: "2026-09-19T03:26:13.066202+00:00"
+version: 27
+updated_at: '2026-10-13T11:33:53.715999+00:00'
 selection_policy: lowest_id_ready_with_dependencies_done
 allowed_statuses: [BACKLOG, READY, IN_PROGRESS, BLOCKED, DONE]
 tasks:
@@ -541,7 +541,7 @@ tasks:
   - id: ELEMENT-RESEARCH-122
     milestone: G7
     title: Qualify standalone Stage B element research
-    status: BLOCKED
+    status: DONE
     depends_on: []
     issue_refs: ["agentic-art-research#122"]
     acceptance: Fake answerer runs questions through ledger-bound prior-art differences one element at a time; owner-profile live acceptance with actually retrieved public sources and grounded ledger claims/decisions must pass before DONE.
@@ -551,7 +551,9 @@ tasks:
       - .venv/bin/python tools/build_graph.py --check
       - git diff --check
     completion: Review code b3f60fc33d913aa84a8e2dbcb2866d6428e4abaf qualified with both full 410-test suites, focused 35 tests, fixture matrix 3, default fake CLI 118 first-attempt requests, small CLI 24, external validation and all prior checks (exit 0).
-    blocked_reason: LIVE-ACCEPTANCE-NOT-RUN; no external browsing authorized in this implementation session.
+    historical_blocked_reason: LIVE-ACCEPTANCE-NOT-RUN; no external browsing authorized in this implementation session.
+
+    reconciliation: Real Stage B A9-B2 checkpoint is COMPLETED with actually retrieved sources; native Stage C/D core gates pass. Quantity shortfalls remain explicit research gaps rather than fabricated completeness. Issues122/125/127 and merged follow-ups are recorded in HANDOFF.
 
   - id: SCANNER-OVERLAP-137
     milestone: G7
@@ -592,3 +594,16 @@ tasks:
       - .venv/bin/python tools/validate.py --check
       - git diff --check
     completion: PR135 P1 repair code 15f0026; focused 19 and clean local/shared full 453 tests PASS; validators PASS. Table-based plans emit substantive values in both artifacts and omit template text. Real copy scan compares 11 plans, 503 history signals and 50 candidate signals, with 17 matches and native HIGH; prior-comparable 20-claim scan has 11 matches and HIGH. Original project unchanged; owner scope and paths preserved.
+
+  - id: WORK-REFERENCE-139
+    milestone: G7
+    title: Choose production references from pinned research and retain them in handoff
+    status: IN_PROGRESS
+    depends_on: [ELEMENT-RESEARCH-122]
+    issue_refs: ['agentic-art-research#139']
+    acceptance: Reference-only art evidence reaches native source-ref-index without changing hypothesis support; bounded candidates preserve NONE and privacy/URL refusal; fresh C/D copy resolves visual/method gaps.
+    checks:
+      - .venv/bin/python -m unittest tests.test_production_references tests.test_work_elements tests.test_handoff_build -v
+      - .venv/bin/python -m unittest discover -s tests -v
+      - .venv/bin/python tools/validate.py --check
+      - git diff --check
