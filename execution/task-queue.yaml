@@ -1,5 +1,5 @@
-version: 27
-updated_at: '2026-10-13T11:33:53.715999+00:00'
+version: 28
+updated_at: '2026-10-13T12:04:00.483460+00:00'
 selection_policy: lowest_id_ready_with_dependencies_done
 allowed_statuses: [BACKLOG, READY, IN_PROGRESS, BLOCKED, DONE]
 tasks:
@@ -598,7 +598,7 @@ tasks:
   - id: WORK-REFERENCE-139
     milestone: G7
     title: Choose production references from pinned research and retain them in handoff
-    status: IN_PROGRESS
+    status: DONE
     depends_on: [ELEMENT-RESEARCH-122]
     issue_refs: ['agentic-art-research#139']
     acceptance: Reference-only art evidence reaches native source-ref-index without changing hypothesis support; bounded candidates preserve NONE and privacy/URL refusal; fresh C/D copy resolves visual/method gaps.
@@ -607,3 +607,4 @@ tasks:
       - .venv/bin/python -m unittest discover -s tests -v
       - .venv/bin/python tools/validate.py --check
       - git diff --check
+    completion: Independent read-only review clear; final-source local full473 tests/885.384s and CI38391356869 PASS. Fresh C95 values and D58 values COMPLETED/resume; native project validator PASS, PLAN_READY/actionability zero findings/prototype READY; original51 input hashes unchanged. No external physical/publication authority granted.
