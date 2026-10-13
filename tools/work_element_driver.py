@@ -8,6 +8,8 @@ research and writing files are program work.
 from __future__ import annotations
 
 import json
+import hashlib
+from urllib.parse import urlsplit
 from copy import deepcopy
 
 import yaml
@@ -372,7 +374,7 @@ def cited_evidence(research, plan):
     return [e for e in research.get('evidence', []) if e['id'] in ids]
 
 
-def references(state, plan, records):
+def legacy_references(state, plan, records):
     """Which cited evidence record answers each production reference category (one choice each)."""
     research = state['research']
     titles = {s['id']: s['title'] for s in research['sources']}
@@ -392,6 +394,123 @@ def references(state, plan, records):
                                '当たる資料が無ければ NONE を返してください。',
                                {'work_title': plan['title'], 'mechanism': records['points']['mechanism'], 'sources': sources},
                                ('mechanism',), choices=[*[s['id'] for s in sources], 'NONE'])
+        if value and value != 'NONE':
+            records['references'].setdefault(value, []).append(category)
+
+
+
+def reference_display(state, item, titles):
+    """Bound presentation metadata; retain the complete original URL in pinned research."""
+    def trim(value, limit):
+        return value.encode('utf-8')[:limit].decode('utf-8', errors='ignore')
+    source = {'id': item['id'], 'title': trim(titles.get(item['source_id'], ''), 120)}
+    url = item['url']
+    if len(url.encode('utf-8')) <= 160:
+        source['url'] = url
+    else:
+        try:
+            host = urlsplit(url).hostname or ''
+        except ValueError:
+            host = ''
+        source.update(source_host=trim(host, 80), url_sha256=hashlib.sha256(url.encode()).hexdigest())
+    if item.get('quote'):
+        source['quote'] = trim(item['quote'], 240)
+    limit = max(512, state['config']['input_bytes'] - 1000)
+    while len(json.dumps(source, ensure_ascii=False).encode()) > limit:
+        if 'quote' in source:
+            if len(source['quote'].encode()) > 40:
+                source['quote'] = trim(source['quote'], len(source['quote'].encode()) // 2)
+            else:
+                source.pop('quote')
+        elif len(source['title'].encode()) > 40:
+            source['title'] = trim(source['title'], len(source['title'].encode()) // 2)
+        else:
+            raise ValueError('Reference identity metadata exceeds the request budget')
+    return source
+
+
+def reference_finalist(state, source):
+    # The complete locator was presented in its window (or represented by
+    # its hash/host). Final rounds only compare identities and short descriptions.
+    def trim(value, limit):
+        return value.encode('utf-8')[:limit].decode('utf-8', errors='ignore')
+    result = {'id': source['id'], 'title': trim(source['title'], 80)}
+    if source.get('quote'):
+        result['quote'] = trim(source['quote'], 80)
+    budget = (max(512, state['config']['input_bytes'] - 1000) - 8) // 2
+    while len(json.dumps(result, ensure_ascii=False).encode()) > budget:
+        if 'quote' in result:
+            result.pop('quote')
+        elif len(result['title'].encode()) > 20:
+            result['title'] = trim(result['title'], len(result['title'].encode()) // 2)
+        else:
+            raise ValueError('Reference identity cannot fit a two-candidate comparison')
+    return result
+
+
+def reference_windows(state, sources):
+    limit = max(512, state['config']['input_bytes'] - 1000)
+    windows, current = [], []
+    for source in sources:
+        if current and len(json.dumps([*current, source], ensure_ascii=False).encode()) > limit:
+            windows.append(current)
+            current = []
+        current.append(source)
+    if current:
+        windows.append(current)
+    return windows
+
+
+def references(state, plan, records):
+    """Choose production references from pinned evidence, in byte-bounded windows."""
+    research = state['research']
+    titles = {source['id']: source['title'] for source in research['sources']}
+    evidence = research.get('evidence', [])
+    if not any('sensitivity' in item for item in evidence):
+        yield from legacy_references(state, plan, records)
+        return
+    pool = [item for item in evidence if item.get('sensitivity') not in {'PRIVATE_RAW', 'RESTRICTED'}]
+    if not pool:
+        return
+    sources = [reference_display(state, item, titles) for item in pool]
+    windows = reference_windows(state, sources)
+    for entry in state['config'].get('reference_categories') or []:
+        category = entry['id']
+        instruction = (f'制作のための参考資料として「{entry["label"]}」に当たるものを、資料（sources）から1つ選んで ID を返してください。'
+                       '当たる資料が無ければ NONE を返してください。')
+        selected = []
+        for index, window in enumerate(windows, 1):
+            identifier = f'reference.{category}' if len(windows) == 1 else f'reference.{category}.window.{index:02}'
+            value = yield from ask(state, identifier, instruction,
+                                   {'work_title': plan['title'], 'mechanism': records['points']['mechanism'], 'sources': window},
+                                   ('mechanism',), choices=[*[source['id'] for source in window], 'NONE'])
+            if value and value != 'NONE':
+                selected.append(next(source for source in window if source['id'] == value))
+        if len(windows) == 1:
+            value = selected[0]['id'] if selected else None
+        elif selected:
+            selected = [reference_finalist(state, source) for source in selected]
+            round_number = 0
+            while len(reference_windows(state, selected)) > 1:
+                round_number += 1
+                groups = reference_windows(state, selected)
+                if len(groups) == len(selected):
+                    raise ValueError('Reference finalists cannot fit the request budget')
+                winners = []
+                for index, group in enumerate(groups, 1):
+                    value = yield from ask(state, f'reference.{category}.select.{round_number}.{index:02}', instruction,
+                                           {'work_title': plan['title'], 'sources': group},
+                                           choices=[*[source['id'] for source in group], 'NONE'])
+                    if value and value != 'NONE':
+                        winners.append(next(source for source in group if source['id'] == value))
+                selected = winners
+            # Final choice sees only the window winners; every original source
+            # was offered, and unrelated sources can still all be declined.
+            value = yield from ask(state, f'reference.{category}', instruction,
+                                   {'work_title': plan['title'], 'sources': selected},
+                                   choices=[*[source['id'] for source in selected], 'NONE'])
+        else:
+            value = None
         if value and value != 'NONE':
             records['references'].setdefault(value, []).append(category)
 

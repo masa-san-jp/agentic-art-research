@@ -180,6 +180,32 @@ def sorted_records(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return sorted(records, key=lambda record: str(record.get("id", "")))
 
 
+def reference_categories(sources: HandoffSources) -> dict[str, list[str]]:
+    """Validate explicit production-reference choices without changing research support."""
+    path = sources.project / "05_production/reference-categories.yaml"
+    if not path.is_file():
+        return {}
+    document = load_yaml(path) or {}
+    mapping = document.get("categories") if isinstance(document, dict) else None
+    if not isinstance(mapping, dict):
+        raise HandoffInputError("reference-categories.yaml must map record IDs to category lists")
+    policy = load_yaml(sources.protocol_root / "config/handoff-policy.yaml")
+    allowed = set(policy["reference_categories"])
+    records = {str(record.get("id")): record for record in
+               [*sources.decisions, *sources.insights, *sources.evidence]}
+    result = {}
+    for identifier, values in mapping.items():
+        if not isinstance(identifier, str) or identifier not in records:
+            raise HandoffInputError("reference-categories.yaml has an unknown record ID")
+        if (not isinstance(values, list) or any(not isinstance(value, str) or value not in allowed for value in values)
+                or len(set(values)) != len(values)):
+            raise HandoffInputError("reference-categories.yaml has an invalid category list")
+        if values and records[identifier].get("sensitivity") in {"PRIVATE_RAW", "RESTRICTED"}:
+            raise HandoffInputError("reference-categories.yaml selects prohibited evidence")
+        result[identifier] = list(values)
+    return result
+
+
 def yaml_text(value: Any) -> str:
     return yaml.safe_dump(
         value,

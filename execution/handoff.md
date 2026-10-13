@@ -345,3 +345,11 @@ artifacts: previous/rebuilt history, fresh copy, scan reports, matched pairs and
 local full: 453 tests / 905.902s; log SHA-256 549a0f87b3092085e39655798c89a8a2cd045b0efdc5f42a71ec39c3376e132b.
 
 shared full: 453 tests / 902.947s; log SHA-256 a33be163ec1499fcec7a051c56a0c8b5a2a1e6e05000fed6cd077bc7f0cac4c7.
+
+
+## Issue139 reference pipeline qualification
+Isolated branch codex/work-reference-pool from b493324. Select existing pinned evidence for making references, union selected evidence into handoff without changing decision/insight support. Strict categories/IDs/privacy validation and native permanent URL/record hashing maintained. Independent read-only review repaired legacy schedule IDs and minimum-byte budget long URL/Unicode/finalists; final re-review has no remaining must-fix. New10 regressions PASS; related56 PASS before the final edge repairs. Final-source full/CI and fresh C/D copy are next. No original/private project or key is committed. StageB122 old live blocker is reconciled using an observed real COMPLETED element checkpoint and native C/D core gates, while quantity shortfall gaps remain explicit.
+
+
+## Issue139 final qualification
+Code25cb513 final local473tests/885.384s PASS, CI38391356869 PASS. Independent re-review clear. Fresh native C95/D58 COMPLETED and reopened COMPLETED; all3 required reference categories have permanent URLs, project validator zero findings, PLAN_READY/prototype READY/actionability zero findings. Native builder correctly refused in-place handoff edits; new HO002 revision2 supersedesHO001 was generated. Original51 input hashes unchanged. Earlier pre-fix full was interrupted130 and is not success evidence. Private/runtime/plan/image/key not committed or sent. Remaining: final evidence-head CI then mergePR140; parent adopt new Research main and matching retrieval fixture, require green CI.

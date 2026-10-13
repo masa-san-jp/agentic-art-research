@@ -82,9 +82,11 @@ def research_snapshot(stage_b, manifest):
         'prior_art': [{k: p[k] for k in ('id', 'work_title', 'source_url', 'difference', 'relation_to_proposal')}
                       for p in jsonl(files[paths['prior_art']])],
         'sources': [{'id': s['id'], 'title': s['title'], 'url': s['url'], 'duplicate_of': s.get('duplicate_of')} for s in sources],
-        # Evidence records the handoff cites; the reference-category requests choose among them.
+        # Pinned research evidence; reference choices may add appearance/method
+        # sources without changing the plan's decision/insight support.
         'evidence': [{'id': e['id'], 'source_id': evidence_source.get(e['id']), 'url': e['source_location'],
-                      'quote': quotes.get(e['id'], '')} for e in evidence],
+                      'quote': quotes.get(e['id'], ''), 'sensitivity': e['sensitivity'],
+                      'rights_status': e['rights_status']} for e in evidence],
         'counts': {**stage_b['record_counts'], **{k: v for k, v in counts.items() if isinstance(v, int)}},
         'question_gaps': list(stage_b['question_gaps']),
         'quality_failures': failures,
