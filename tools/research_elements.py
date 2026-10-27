@@ -298,6 +298,11 @@ class Engine:
             if any(answer[key] != request[key] for key in ('run_id', 'element_id', 'attempt')):
                 raise ValueError('Answer does not match pending identity/attempt')
             if kind == 'search':
+                # A ledger URL reaches the public plan, and Production refuses these only at the
+                # very end. Drop such a result here rather than re-asking the whole search: query
+                # links (?id=, ?p=, watch?v=) are common, and repeating them would block the run.
+                answer = {**answer, 'results': [source for source in answer['results']
+                                                if not valid_url(source['url']) or publishable_url(source['url'])]}
                 failures = self.check_search(state, request, answer)
                 value = answer['results']
             else:
@@ -407,9 +412,6 @@ class Engine:
                 fail('secret_output', 'Retrieved content matches a prohibited credential pattern.')
             if not valid_url(source['url']):
                 fail('url_shape', 'Use HTTP(S) without embedded credentials.')
-            elif not publishable_url(source['url']):
-                # A ledger URL reaches the public plan; Production would refuse it only at the end.
-                fail('public_url', 'Return a URL without a query string or a local/private host.')
             if not source['title'].strip() or not source['body'].strip():
                 fail('non_empty', 'Return a non-empty title and retrieved body.')
             question = state['answers']['question.' + request['element_id'].split('.')[1]]

@@ -38,9 +38,12 @@ def valid_url(value: object) -> bool:
 
 def publishable_url(value: str) -> bool:
     # Mirrors agentic-art-production tools/public_plan_attestation.py public_text
-    # (PUBLIC_URL_BLOCKED); keep the two identical, do not broaden one side.
+    # (PUBLIC_URL_BLOCKED); keep the two in step, do not broaden one side. Production cuts
+    # URLs at ']' and then cannot parse a bracketed IPv6 host, so it stops on those too.
     parsed = urlsplit(value)
     if parsed.username or parsed.password or parsed.query or parsed.hostname in {'localhost', 'localhost.localdomain'}:
+        return False
+    if '[' in parsed.netloc:
         return False
     try:
         return ip_address(parsed.hostname or '').is_global
