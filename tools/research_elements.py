@@ -19,7 +19,7 @@ import tempfile
 
 from _common import ROOT, atomic_write_text, load_json, load_yaml, stable_json
 from research_element_contracts import check_answer, require_message
-from research_element_checks import valid_url
+from research_element_checks import publishable_url, valid_url
 
 
 def digest(text):
@@ -298,6 +298,11 @@ class Engine:
             if any(answer[key] != request[key] for key in ('run_id', 'element_id', 'attempt')):
                 raise ValueError('Answer does not match pending identity/attempt')
             if kind == 'search':
+                # A ledger URL reaches the public plan, and Production refuses these only at the
+                # very end. Drop such a result here rather than re-asking the whole search: query
+                # links (?id=, ?p=, watch?v=) are common, and repeating them would block the run.
+                answer = {**answer, 'results': [source for source in answer['results']
+                                                if not valid_url(source['url']) or publishable_url(source['url'])]}
                 failures = self.check_search(state, request, answer)
                 value = answer['results']
             else:

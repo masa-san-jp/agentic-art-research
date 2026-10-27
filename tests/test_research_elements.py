@@ -309,6 +309,31 @@ class ResearchElementsTest(unittest.TestCase):
         self.assertIn('secret_output', [f['check'] for f in report['next_action']['request']['previous_failure']])
         self.assertEqual({}, load_json(self.engine.path)['ledger'])
 
+    def test_search_drops_urls_production_would_not_publish(self):
+        # Live run 2026-10-27: a '?p=' source passed Stage B and blocked publication at the end.
+        from copy import deepcopy
+        blocked = ('https://associationofcostslawyers.co.uk/?p=193524', 'http://localhost/source',
+                   'https://10.0.0.8/source', 'http://[2001:4860:4860::8888]/source')
+        request = self.until_search()
+        answer = self.fake(request)
+        kept = answer['results'][0]['url']
+        extra = deepcopy(answer['results'][0])
+        answer['results'] = [answer['results'][0]] + [{**extra, 'url': url} for url in blocked][:request['limit'] - 1]
+        self.assertGreater(len(answer['results']), 1)
+        report = self.engine.answer(answer, now=NOW)
+        self.assertNotEqual(request['element_id'], report['next_action']['request']['element_id'])
+        ledger = load_json(self.engine.path)['ledger']
+        self.assertIn(kept, ledger)
+        self.assertFalse(set(blocked) & set(ledger))
+
+    def test_publishable_url_matches_production_cases(self):
+        from research_element_checks import publishable_url
+        for url in ('https://example.com/a', 'https://example.com/a?', 'https://example.com/a#x?y=1', 'https://8.8.8.8/a'):
+            self.assertTrue(publishable_url(url), url)
+        for url in ('https://example.com/?q=1', 'https://EXAMPLE.com/?q', 'http://LOCALHOST/a', 'http://localhost:8080/a',
+                    'http://127.0.0.1/a', 'http://[::1]/a', 'http://[2001:4860:4860::8888]/a'):
+            self.assertFalse(publishable_url(url), url)
+
     def test_invalid_config_and_private_rights_table_are_rejected(self):
         from research_element_validation import require_schema
         from copy import deepcopy

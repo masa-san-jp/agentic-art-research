@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
-from ipaddress import IPv6Address
+from ipaddress import IPv6Address, ip_address
 import re
 import unicodedata
 from urllib.parse import urlsplit
@@ -34,6 +34,21 @@ def valid_url(value: object) -> bool:
                 and parsed.port != 0)
     except (ValueError, UnicodeError):
         return False
+
+
+def publishable_url(value: str) -> bool:
+    # Mirrors agentic-art-production tools/public_plan_attestation.py public_text
+    # (PUBLIC_URL_BLOCKED); keep the two in step, do not broaden one side. Production cuts
+    # URLs at ']' and then cannot parse a bracketed IPv6 host, so it stops on those too.
+    parsed = urlsplit(value)
+    if parsed.username or parsed.password or parsed.query or parsed.hostname in {'localhost', 'localhost.localdomain'}:
+        return False
+    if '[' in parsed.netloc:
+        return False
+    try:
+        return ip_address(parsed.hostname or '').is_global
+    except ValueError:
+        return True
 
 
 def parse_check(spec: str) -> tuple[str, str]:
