@@ -309,6 +309,19 @@ class ResearchElementsTest(unittest.TestCase):
         self.assertIn('secret_output', [f['check'] for f in report['next_action']['request']['previous_failure']])
         self.assertEqual({}, load_json(self.engine.path)['ledger'])
 
+    def test_search_rejects_urls_production_would_not_publish(self):
+        # Live run 2026-10-27: a '?p=' source passed Stage B and blocked publication at the end.
+        request = self.until_search()
+        for url in ('https://associationofcostslawyers.co.uk/?p=193524', 'http://localhost/source', 'https://10.0.0.8/source'):
+            answer = self.fake(request)
+            answer['results'][0]['url'] = url
+            request = self.engine.answer(answer, now=NOW)['next_action']['request']
+            self.assertEqual(['public_url'], [f['check'] for f in request['previous_failure']])
+            self.assertEqual({}, load_json(self.engine.path)['ledger'])
+        self.assertEqual(4, request['attempt'])
+        self.assertNotEqual('search-request/v1', self.engine.answer(self.fake(request), now=NOW)['next_action']['request']['contract_version'])
+        self.assertTrue(load_json(self.engine.path)['ledger'])
+
     def test_invalid_config_and_private_rights_table_are_rejected(self):
         from research_element_validation import require_schema
         from copy import deepcopy

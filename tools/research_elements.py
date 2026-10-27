@@ -19,7 +19,7 @@ import tempfile
 
 from _common import ROOT, atomic_write_text, load_json, load_yaml, stable_json
 from research_element_contracts import check_answer, require_message
-from research_element_checks import valid_url
+from research_element_checks import publishable_url, valid_url
 
 
 def digest(text):
@@ -407,6 +407,9 @@ class Engine:
                 fail('secret_output', 'Retrieved content matches a prohibited credential pattern.')
             if not valid_url(source['url']):
                 fail('url_shape', 'Use HTTP(S) without embedded credentials.')
+            elif not publishable_url(source['url']):
+                # A ledger URL reaches the public plan; Production would refuse it only at the end.
+                fail('public_url', 'Return a URL without a query string or a local/private host.')
             if not source['title'].strip() or not source['body'].strip():
                 fail('non_empty', 'Return a non-empty title and retrieved body.')
             question = state['answers']['question.' + request['element_id'].split('.')[1]]
