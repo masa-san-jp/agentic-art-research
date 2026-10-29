@@ -326,6 +326,69 @@ class ResearchElementsTest(unittest.TestCase):
         self.assertIn(kept, ledger)
         self.assertFalse(set(blocked) & set(ledger))
 
+    def test_search_with_every_result_dropped_proceeds_empty(self):
+        # Every result unpublishable is an empty search, not a failed one: the run moves on.
+        request = self.until_search()
+        answer = self.fake(request)
+        blocked = ('https://example.com/?p=1', 'http://localhost/source')[:request['limit']]
+        answer['results'] = [{**answer['results'][0], 'url': url} for url in blocked]
+        report = self.engine.answer(answer, now=NOW)
+        state = load_json(self.engine.path)
+        self.assertEqual('WAITING', report['status'])
+        self.assertNotEqual(request['element_id'], report['next_action']['request']['element_id'])
+        self.assertEqual(1, report['next_action']['request']['attempt'])
+        self.assertFalse(report['next_action']['request'].get('previous_failure'))
+        self.assertEqual([], state['answers'][request['element_id']])
+        self.assertEqual({}, state['ledger'])
+
+    def test_search_drops_query_url_with_userinfo(self):
+        # Userinfo must not turn a dropped query link into a url_shape failure.
+        request = self.until_search()
+        answer = self.fake(request)
+        kept = answer['results'][0]['url']
+        blocked = 'https://user:secret@example.com/page?p=193524'
+        answer['results'] = [answer['results'][0], {**answer['results'][0], 'url': blocked}][:request['limit']]
+        self.assertEqual(2, len(answer['results']))
+        report = self.engine.answer(answer, now=NOW)
+        self.assertNotEqual(request['element_id'], report['next_action']['request']['element_id'])
+        ledger = load_json(self.engine.path)['ledger']
+        self.assertIn(kept, ledger)
+        self.assertNotIn(blocked, ledger)
+        from research_element_checks import dropped_url, valid_url
+        self.assertTrue(dropped_url(blocked))
+        # Userinfo on a publishable URL is still the answerer's error, reported as url_shape.
+        self.assertFalse(dropped_url('https://user@example.com/page'))
+        self.assertFalse(valid_url('https://user@example.com/page'))
+
+    def test_search_limits_judge_the_received_answer(self):
+        # A result dropped for its URL still counts toward the requested limit.
+        request = self.until_search()
+        answer = self.fake(request)
+        answer['results'] = answer['results'][:request['limit']]
+        answer['results'].append({**answer['results'][0], 'url': 'https://example.com/?p=1'})
+        report = self.engine.answer(answer, now=NOW)
+        retry = report['next_action']['request']
+        self.assertEqual((request['element_id'], 2), (retry['element_id'], retry['attempt']))
+        self.assertIn('search_limit', [f['check'] for f in retry['previous_failure']])
+
+    def test_search_bytes_judge_the_received_answer(self):
+        # A large dropped result still counts toward the answer byte budget.
+        from research_elements import canonical
+        probe = self.fake(self.until_search())
+        budget = len(canonical(probe).encode()) + 100
+        self.setUp()
+        # The run copies the engine config into its state when it starts.
+        self.engine.config['max_search_answer_bytes'] = budget
+        request = self.until_search()
+        answer = self.fake(request)
+        answer['results'] = answer['results'][:request['limit'] - 1]
+        answer['results'].append({**answer['results'][0], 'url': 'https://example.com/?p=1', 'body': 'x' * budget})
+        self.assertLessEqual(len(answer['results']), request['limit'])
+        report = self.engine.answer(answer, now=NOW)
+        retry = report['next_action']['request']
+        self.assertEqual((request['element_id'], 2), (retry['element_id'], retry['attempt']))
+        self.assertIn('search_bytes', [f['check'] for f in retry['previous_failure']])
+
     def test_publishable_url_matches_production_cases(self):
         from research_element_checks import publishable_url
         for url in ('https://example.com/a', 'https://example.com/a?', 'https://example.com/a#x?y=1', 'https://8.8.8.8/a'):

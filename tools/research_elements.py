@@ -19,7 +19,7 @@ import tempfile
 
 from _common import ROOT, atomic_write_text, load_json, load_yaml, stable_json
 from research_element_contracts import check_answer, require_message
-from research_element_checks import publishable_url, valid_url
+from research_element_checks import dropped_url, valid_url
 
 
 def digest(text):
@@ -301,10 +301,11 @@ class Engine:
                 # A ledger URL reaches the public plan, and Production refuses these only at the
                 # very end. Drop such a result here rather than re-asking the whole search: query
                 # links (?id=, ?p=, watch?v=) are common, and repeating them would block the run.
-                answer = {**answer, 'results': [source for source in answer['results']
-                                                if not valid_url(source['url']) or publishable_url(source['url'])]}
-                failures = self.check_search(state, request, answer)
-                value = answer['results']
+                # The count and byte limits bound what the answerer returned, so they are judged
+                # on the received answer; dropping results must not let an oversized answer pass.
+                kept = [source for source in answer['results'] if not dropped_url(source['url'])]
+                failures = self.check_search(state, request, {**answer, 'results': kept}, received=answer)
+                value = kept
             else:
                 failures = check_answer(request, answer, state['ledger'], state['answers'])
                 if request['element_id'].startswith('excerpt.') and isinstance(value := answer['value'], str) and value not in request['inputs']['body']:
@@ -394,15 +395,18 @@ class Engine:
             'next_start': 'Stage C (tools/work_elements.py) and the native project acceptance gates.',
             'project_completed': False}
 
-    def check_search(self, state, request, answer):
+    def check_search(self, state, request, answer, received=None):
+        # answer holds the results kept after dropping unpublishable URLs; received is the
+        # answer as returned, which the count and byte limits are judged on.
+        received = answer if received is None else received
         failures = []
         def fail(check, reason):
             failures.append({'check': check, 'reason': reason})
         results = answer['results']
         # Empty searches are valid evidence rounds and participate in saturation.
-        if len(results) > request['limit']:
+        if len(received['results']) > request['limit']:
             fail('search_limit', 'Return at most the requested number of results.')
-        if len(canonical(answer).encode()) > state['config']['max_search_answer_bytes']:
+        if len(canonical(received).encode()) > state['config']['max_search_answer_bytes']:
             fail('search_bytes', 'Retrieved answer exceeds the configured byte budget.')
         urls = [r['url'] for r in results]
         if len(set(urls)) != len(urls):
