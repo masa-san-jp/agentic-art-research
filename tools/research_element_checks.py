@@ -5,7 +5,7 @@ from decimal import Decimal, InvalidOperation
 from ipaddress import IPv6Address, ip_address
 import re
 import unicodedata
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, urlunsplit
 
 
 class CheckConfigurationError(ValueError):
@@ -49,6 +49,23 @@ def publishable_url(value: str) -> bool:
         return ip_address(parsed.hostname or '').is_global
     except ValueError:
         return True
+
+
+def dropped_url(value: object) -> bool:
+    """True for a URL whose search result is removed before the checks, not retried.
+
+    A well-formed URL that Production would refuse is dropped. Userinfo is ignored for that
+    decision, so a query link with userinfo is dropped too and never reaches the ledger;
+    userinfo on an otherwise publishable URL still fails url_shape."""
+    if not isinstance(value, str):
+        return False
+    try:
+        parsed = urlsplit(value)
+        if '@' in parsed.netloc:
+            value = urlunsplit(parsed._replace(netloc=parsed.netloc.rpartition('@')[2]))
+    except ValueError:
+        return False
+    return valid_url(value) and not publishable_url(value)
 
 
 def parse_check(spec: str) -> tuple[str, str]:
